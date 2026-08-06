@@ -314,6 +314,13 @@
     *,*::before,*::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important;
       transition-duration:.01ms !important; scroll-behavior:auto !important; }
   }
+  /* [[wikilink]] chips + journal entries */
+  .wl{ display:inline-block; font:inherit; font-size:12.5px; font-weight:700; padding:1px 8px;
+    border:none; border-radius:999px; cursor:pointer; vertical-align:baseline; }
+  .wl-missing{ background:var(--line-soft); color:var(--ink-faint); cursor:default; font-weight:600; }
+  .jr-body{ font-size:14px; line-height:1.6; }
+  .jr-body p{ margin:0 0 8px; }
+
   /* The right panel is only ~220px wide — five row buttons there squeeze the title down to a couple of
      characters per line. Keep the checkbox and delete; the rest of the actions live in the main list. */
   #rightbar li.task .task-addsub, #rightbar li.task .task-focus, #rightbar li.task .task-star{ display:none; }
@@ -664,6 +671,7 @@
       <button data-view="people">People</button>
       <button data-view="calendar">Calendar</button>
       <button data-view="timeline">Timeline</button>
+      <button data-view="journal">Journal</button>
     </nav>
     <span class="spacer"></span>
     <button class="sync-chip" id="sync-status" title="Where your data is saved — tap for sync options" aria-label="Sync status"></button>
@@ -735,6 +743,11 @@
   // Map a seeded entity's (type,name) to its stable id so the dedupe migration converges every device on the same survivor.
   var SEED_CANON={ profile:{home:SEED_IDS.profHome, work:SEED_IDS.profWork}, project:{personal:SEED_IDS.projPersonal, work:SEED_IDS.projWork}, habit:{water:SEED_IDS.habitWater, "fresh air":SEED_IDS.habitAir, move:SEED_IDS.habitMove} };
   var DEDUPE_REV=1;
+  // Tags sanitizeRTE keeps. Declared up here on purpose: normalize() sanitises stored notes during
+  // load(), long before the rich-text code further down would otherwise define it. When it was declared
+  // late, var-hoisting left it undefined, sanitizeRTE threw, load() swallowed the error and fell back to
+  // seed() — silently wiping the whole store for anyone who had written a daily note.
+  var RTE_ALLOWED={B:1,STRONG:1,I:1,EM:1,U:1,UL:1,OL:1,LI:1,BR:1,P:1,DIV:1,SPAN:1};
   // ---- merge-by-item sync (Phase 2) ----
   var IDLISTS=["projects","tasks","templates","routines","habits","events","phases","people","emails","jobs","improve","calSources","profiles","archive"];
   var IDMAPS=["notes","focus","habitLog"]; // date-keyed maps merged per key
@@ -914,7 +927,22 @@
     IDLISTS.forEach(function(key){ (d[key]||[]).forEach(function(x){ if(x&&x.id&&!x._m) x._m=_base; }); }); // backfill legacy items
     dedupeSeededEntities(d);                              // collapse device-duplicated starter profiles/projects/habits
     return mergeSpuCoursePlan(d); }
-  function load(){ try{ var d=JSON.parse(localStorage.getItem(KEY)); if(d&&d.version) return normalize(d); }catch(e){ try{ var raw=localStorage.getItem(KEY); if(raw) localStorage.setItem(KEY+"-corrupt",raw); }catch(e2){} } return seed(); }
+  function load(){
+    var raw=null, d=null;
+    try{ raw=localStorage.getItem(KEY); }catch(e){}
+    if(!raw) return seed();
+    try{ d=JSON.parse(raw); }catch(e){ try{ localStorage.setItem(KEY+"-corrupt",raw); }catch(e2){} return seed(); }
+    if(!d||!d.version) return seed();
+    try{ return normalize(d); }
+    catch(e){
+      // A bug in a migration must not cost you your data. Keep the raw copy, tell you loudly, and carry
+      // on with the un-migrated state rather than starting from a blank seed.
+      try{ localStorage.setItem(KEY+"-corrupt",raw); }catch(e2){}
+      try{ console.error("Gena: normalize() failed, using un-migrated data.", e); }catch(e3){}
+      setTimeout(function(){ try{ toast("Something went wrong loading your data — a backup is safe. Export one from the ⋯ menu."); }catch(e4){} }, 1200);
+      return d;
+    }
+  }
   var SNAP_KEY="daybook-v1-snapshots";
   function substantive(d){ return !!(d && (d.tasks||[]).length>0); }
   function keepLocalBackups(){
@@ -1084,7 +1112,6 @@
   }
 
   /* ---------- rich text notes (bold/italic/underline/lists) ---------- */
-  var RTE_ALLOWED={B:1,STRONG:1,I:1,EM:1,U:1,UL:1,OL:1,LI:1,BR:1,P:1,DIV:1,SPAN:1};
   function sanitizeRTE(html){
     var d=document.createElement("div"); d.innerHTML=String(html||"");
     (function clean(node){
@@ -1168,6 +1195,7 @@
     var m=document.getElementById("view");
     if(view==="today") m.innerHTML=viewToday();
     else if(view==="day") m.innerHTML=viewDayGrid();
+    else if(view==="journal") m.innerHTML=viewJournal();
     else if(view==="week") m.innerHTML=viewWeek();
     else if(view==="backlog") m.innerHTML=viewBacklog();
     else if(view==="projects") m.innerHTML=viewProjects();
@@ -1972,6 +2000,37 @@
     return html+'</div>';
   }
 
+  /* ---------- [[wikilinks]] (Phase 13) ----------
+     Typed anywhere in a note, [[Name]] resolves against projects, people, and open task titles.
+     Rendered read-only (Journal, day detail) so the editable surface stays plain text you can trust. */
+  function wikiTarget(name){
+    var n=norm(name);
+    var pr=S.projects.find(function(x){return norm(x.name)===n;}); if(pr) return {kind:"project",id:pr.id,label:pr.name,color:pr.color};
+    var pe=S.people.find(function(x){return norm(x.name)===n;}); if(pe) return {kind:"person",id:pe.id,label:pe.name,color:pe.color||"var(--p5)"};
+    var tk=S.tasks.find(function(x){return norm(x.title)===n;}); if(tk) return {kind:"task",id:tk.id,label:tk.title,color:"var(--p4)"};
+    return null;
+  }
+  function wikiLinkHtml(html){
+    return String(html||"").replace(/\[\[([^\]|]{1,80})\]\]/g, function(_,name){
+      name=name.trim(); var t=wikiTarget(name);
+      if(!t) return '<span class="wl wl-missing" title="Nothing called that yet">[['+esc(name)+']]</span>';
+      return '<button type="button" class="wl" data-act="wiki" data-kind="'+t.kind+'" data-id="'+t.id+'" style="'+cbg(t.color)+'" title="Open this '+t.kind+'">'+esc(t.label)+'</button>';
+    });
+  }
+  /* ---------- JOURNAL (Phase 13) — every day you wrote something, newest first ---------- */
+  function viewJournal(){
+    var keys=Object.keys(S.notes||{}).filter(function(k){ return htmlToText(S.notes[k]||"").trim(); }).sort().reverse();
+    var html='<h2 class="view-h">Journal</h2><p class="sub">Everything you\'ve jotted in a day\'s Notes, newest first. Type <b>[[a project, person, or task name]]</b> in any note and it becomes a link here.</p>';
+    if(!keys.length) return html+'<div class="card empty" style="padding:36px">Nothing written yet. The Notes card on Today is where these start.</div>';
+    html+=keys.map(function(d){
+      return '<div class="card" style="margin-bottom:14px">'+
+        '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px">'+
+        '<b>'+esc(niceDate(d))+'</b>'+(d===today()?'<span class="pill block">today</span>':'')+
+        '<button class="chip" data-act="panel-goday" data-d="'+d+'" style="margin-left:auto">Open this day</button></div>'+
+        '<div class="jr-body">'+wikiLinkHtml(S.notes[d])+'</div></div>';
+    }).join("");
+    return html;
+  }
   /* ---------- TIMELINE ---------- */
   function viewTimeline(){
     var tv=S.tlView||"months";
@@ -2264,6 +2323,10 @@
         if(!tk){}
         else if(a.closest("#rightbar")||a.closest(".proj-card")||a.closest(".modal")) openTaskModal({edit:tk});
         else { editingTaskId=tk.id; render(); var ti=document.getElementById("ie-title"); if(ti){ ti.focus(); ti.setSelectionRange(ti.value.length,ti.value.length); } } }
+      else if(act==="wiki"){ var wk=a.dataset.kind, wid=a.dataset.id;
+        if(wk==="project"){ S.filterProjects=[wid]; view="projects"; save(); syncNav(); render(); }
+        else if(wk==="person"){ view="people"; syncNav(); render(); var pc=document.querySelector('.proj-card [data-act="editperson"][data-id="'+wid+'"]'); if(pc) pc.scrollIntoView({block:"center"}); }
+        else { var wt=S.tasks.find(function(x){return x.id===wid;}); if(wt){ if(wt.day){ viewDay=wt.day; view="today"; } syncNav(); render(); toast("Jumped to “"+wt.title.slice(0,40)+"”"); } } }
       else if(act==="star"){ var tk2=S.tasks.find(function(x){return x.id===(id||anyId);}); if(tk2){ tk2.priority=!tk2.priority; save(); render(); } }
       // promote / un-promote into Today's Focus straight from a collapsed row — no need to open the task
       else if(act==="tofocus"){ var tf=(id||anyId);
@@ -2951,6 +3014,8 @@
       (evs.length?evs.map(function(e){return '<li class="task" data-id="'+e.id+'"><span class="dot" style="background:'+(e.color||projColor(e.projectId))+';border-color:transparent;cursor:default"></span><div class="task-main"'+(e.sourceId?' style="cursor:default"':' data-dact="editev" title="Tap to edit"')+'><div class="task-title">'+esc(e.title)+'</div>'+(e.sourceId?'<div class="task-meta"><span class="pill block">subscribed</span></div>':"")+'</div>'+(e.sourceId?"":'<button class="task-x" data-dact="delev" style="opacity:1" aria-label="delete">✕</button>')+'</li>';}).join(""):'<div class="empty">No events</div>')+'</ul></div>';
     var fitems=S.focus[ds]||[];
     if(fitems.length) body+='<div class="fld"><label>Focus that day</label><ul class="tasks">'+fitems.map(function(f){ var ftxt=f.text, fdone=f.done, fsubs=f.subs; if(f.taskId){ var lk=S.tasks.find(function(x){return x.id===f.taskId;}); if(!lk) return ""; ftxt=lk.title; fdone=lk.status==="done"; fsubs=lk.subs; } return '<li class="task '+(fdone?"done":"")+'"><span class="dot '+(fdone?"on":"")+'" style="cursor:default"></span><div class="task-main" style="cursor:default"><div class="task-title">'+esc(ftxt)+'</div>'+(fsubs&&fsubs.length?'<div class="task-meta"><span class="pill subs-n">☑ '+fsubs.filter(function(s){return s.done;}).length+'/'+fsubs.length+'</span></div>':"")+'</div></li>';}).join("")+'</ul></div>';
+    var wlPrev=wikiLinkHtml(S.notes[ds]||"");
+    if(/class="wl/.test(wlPrev)) body+='<div class="fld"><label>Links in this note</label><div class="jr-body">'+wlPrev+'</div></div>';
     body+='<div class="fld"><label>Notes</label>'+richTextHtml("day:"+ds,S.notes[ds]||"","Nothing written this day — add a note…",64,"d-note","rte-compact")+'</div>';
     body+='<div class="modal-actions"><button class="btn ghost" data-x>Close</button><button class="btn" id="d-addev">+ Event</button><button class="btn primary" id="d-addtask">+ Task</button></div>';
     modal(body);
@@ -3874,7 +3939,7 @@
     build("");
   }
   function openShortcutsModal(){
-    var rows=[["⌘K / Ctrl+K","Command palette — every action in one box"],["⌘Z / Ctrl+Z","Undo · add ⇧ to redo"],["/","Search everything"],["n","Jump to the quick-add box"],["g then t · w · h · p · e · c · l","Go to Today · Week · Hub · Projects · People · Calendar · Timeline"],["[","Show / hide the sidebar"],["]","Show / hide the log panel"],["?","This cheat sheet"],["Esc","Close any popup or leave select mode"],["@ in any add box","Tag a project, time of day, day, or clock time"]];
+    var rows=[["⌘K / Ctrl+K","Command palette — every action in one box"],["⌘Z / Ctrl+Z","Undo · add ⇧ to redo"],["/","Search everything"],["n","Jump to the quick-add box"],["g then t · w · h · p · e · c · l","Go to Today · Week · Hub · Projects · People · Calendar · Timeline"],["[[Name]] in a note","Links to a project, person, or task — click it in Journal"],["[","Show / hide the sidebar"],["]","Show / hide the log panel"],["?","This cheat sheet"],["Esc","Close any popup or leave select mode"],["@ in any add box","Tag a project, time of day, day, or clock time"]];
     // Naming is deliberate — these four words mean different things and the app sticks to them.
     var words=[["task","Anything you enter. Every card holds tasks."],["To-do","The master list card on Today — all of the day's tasks in one place."],["Focus","Today's Focus: the few tasks you've promoted as what matters most. The ◎ button puts a task here."],["Block","Morning · Afternoon · Evening. No block means Anytime."],["★ vs ◎","★ marks a task important. ◎ puts it in Focus. Different things."]];
     modal('<h3>⌨️ Keyboard shortcuts</h3><div style="margin-top:12px">'+rows.map(function(r){
