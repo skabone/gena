@@ -314,10 +314,22 @@
     *,*::before,*::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important;
       transition-duration:.01ms !important; scroll-behavior:auto !important; }
   }
+  /* Day view: hour grid and the unscheduled list side by side, so dragging between them is one move */
+  .day-split{ display:flex; gap:16px; align-items:flex-start; }
+  .day-gridwrap{ flex:1 1 auto; min-width:0; }
+  .day-split .day-unsched{ flex:0 0 300px; margin-bottom:0; position:sticky; top:96px; max-height:calc(100vh - 130px); overflow-y:auto; }
+  /* narrow column: same reasoning as the right panel — drop the secondary row buttons so titles keep their width */
+  .day-split .day-unsched .task-addsub, .day-split .day-unsched .task-focus, .day-split .day-unsched .task-star{ display:none; }
+  @media (max-width:900px){
+    .day-split{ flex-direction:column-reverse; }
+    .day-split .day-unsched{ flex:1 1 auto; width:100%; position:static; max-height:none; margin-bottom:14px; }
+  }
   /* [[wikilink]] chips + journal entries */
   .wl{ display:inline-block; font:inherit; font-size:12.5px; font-weight:700; padding:1px 8px;
     border:none; border-radius:999px; cursor:pointer; vertical-align:baseline; }
   .wl-missing{ background:var(--line-soft); color:var(--ink-faint); cursor:default; font-weight:600; }
+  .reflink{ color:var(--terra-deep); font-weight:600; text-decoration:none; border-bottom:1px solid var(--terra); }
+  .reflink:hover{ background:var(--terra-bg); }
   .jr-body{ font-size:14px; line-height:1.6; }
   .jr-body p{ margin:0 0 8px; }
 
@@ -1341,6 +1353,8 @@
           '<input class="ie-subnew" id="ie-subnew" placeholder="Add a subtask — press Enter" aria-label="Add a subtask"/>'+
           '<div class="ie-lbl">Notes</div>'+
           '<textarea class="ie-notes" id="ie-notes" rows="3" placeholder="Details, links, context…" aria-label="Notes">'+esc(htmlToText(k.notes||""))+'</textarea>'+
+          (function(){ var disp=noteDisplayHtml(k.notes||"");
+            return /class="(wl|reflink)/.test(disp) ? '<div class="ie-lbl">Links in this note</div><div class="jr-body">'+disp+'</div>' : ''; })()+
         '</div>'+
         '<div class="ie-side">'+
           '<div class="ie-lbl">Project</div><select id="ie-proj" aria-label="Project"><option value="">None</option>'+projOpts+'</select>'+
@@ -1499,7 +1513,7 @@
           (slot.length?'<ul class="tasks">'+slot.map(taskLi).join("")+'</ul>':'')+
         '</div></div>';
     }
-    return head+evBanner+tray+'<div class="day-grid">'+rows+'</div>';
+    return head+evBanner+'<div class="day-split"><div class="day-gridwrap"><div class="day-grid">'+rows+'</div></div>'+tray+'</div>';
   }
   function viewToday(){
     var t=today(), vd=viewDay;
@@ -2030,6 +2044,18 @@
       return '<button type="button" class="wl" data-act="wiki" data-kind="'+t.kind+'" data-id="'+t.id+'" style="'+cbg(t.color)+'" title="Open this '+t.kind+'">'+esc(t.label)+'</button>';
     });
   }
+  // Bare URLs in a note become real links; combined with wikiLinkHtml this is what "reference links"
+  // means in practice — you paste a URL or type [[a name]] and it just works, no separate field to manage.
+  function autoLinkHtml(html){
+    return String(html||"").replace(/(^|[\s>(])((?:https?:\/\/|www\.)[^\s<>()"']+)/g, function(m,pre,url){
+      var href=/^www\./i.test(url)?("https://"+url):url;
+      var label=url.replace(/^https?:\/\//,"").replace(/\/$/,"");
+      if(label.length>46) label=label.slice(0,44)+"…";
+      return pre+'<a class="reflink" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">🔗 '+esc(label)+'</a>';
+    });
+  }
+  // one call for anywhere a note is displayed rather than edited
+  function noteDisplayHtml(html){ return autoLinkHtml(wikiLinkHtml(html)); }
   /* ---------- JOURNAL (Phase 13) — every day you wrote something, newest first ---------- */
   function viewJournal(){
     var keys=Object.keys(S.notes||{}).filter(function(k){ return htmlToText(S.notes[k]||"").trim(); }).sort().reverse();
@@ -2040,7 +2066,7 @@
         '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px">'+
         '<b>'+esc(niceDate(d))+'</b>'+(d===today()?'<span class="pill block">today</span>':'')+
         '<button class="chip" data-act="panel-goday" data-d="'+d+'" style="margin-left:auto">Open this day</button></div>'+
-        '<div class="jr-body">'+wikiLinkHtml(S.notes[d])+'</div></div>';
+        '<div class="jr-body">'+noteDisplayHtml(S.notes[d])+'</div></div>';
     }).join("");
     return html;
   }
@@ -2432,6 +2458,12 @@
       else if(act==="delphase"){ var phid=a.dataset.id; confirmModal("Remove this phase?","It disappears from the Timeline. The project keeps its tasks.","Remove",function(){ S.phases=S.phases.filter(function(x){return x.id!==phid;}); save(); render(); }); }
       else if(act==="email-toggle"){ var em=S.emails.find(function(x){return x.id===anyId;}); if(em){ em.done=!em.done; save(); render(); } }
       else if(act==="email-del"){ S.emails=S.emails.filter(function(x){return x.id!==anyId;}); save(); render(); }
+      // flagged email -> a real task, with the sender kept as context and the email marked handled
+      else if(act==="email-task"){ var eb=S.emails.find(function(x){return x.id===(id||anyId);});
+        if(eb){ S.tasks.push({id:uid(),title:eb.subject,projectId:null,personIds:[],status:"todo",day:today(),
+            block:null,at:null,priority:false,rollover:0,subs:[],created:today(),
+            notes:eb.sender?plainToHtml("From: "+eb.sender):null});
+          eb.done=true; save(); render(); toast("Added to today — the email is marked handled"); } }
       else if(act==="job-open"){ openJobModal(S.jobs.find(function(x){return x.id===anyId;})); }
       else if(act==="imp-del"){ S.improve=S.improve.filter(function(x){return x.id!==anyId;}); save(); render(); }
       else if(act==="tpl-pause"){ var tp1=S.templates.find(function(x){return x.id===a.dataset.tid;}); if(tp1){ tp1.paused=!tp1.paused; save(); render(); toast(tp1.paused?"Paused — no new copies":"Resumed"); } }
@@ -3027,8 +3059,8 @@
       (evs.length?evs.map(function(e){return '<li class="task" data-id="'+e.id+'"><span class="dot" style="background:'+(e.color||projColor(e.projectId))+';border-color:transparent;cursor:default"></span><div class="task-main"'+(e.sourceId?' style="cursor:default"':' data-dact="editev" title="Tap to edit"')+'><div class="task-title">'+esc(e.title)+'</div>'+(e.sourceId?'<div class="task-meta"><span class="pill block">subscribed</span></div>':"")+'</div>'+(e.sourceId?"":'<button class="task-x" data-dact="delev" style="opacity:1" aria-label="delete">✕</button>')+'</li>';}).join(""):'<div class="empty">No events</div>')+'</ul></div>';
     var fitems=S.focus[ds]||[];
     if(fitems.length) body+='<div class="fld"><label>Focus that day</label><ul class="tasks">'+fitems.map(function(f){ var ftxt=f.text, fdone=f.done, fsubs=f.subs; if(f.taskId){ var lk=S.tasks.find(function(x){return x.id===f.taskId;}); if(!lk) return ""; ftxt=lk.title; fdone=lk.status==="done"; fsubs=lk.subs; } return '<li class="task '+(fdone?"done":"")+'"><span class="dot '+(fdone?"on":"")+'" style="cursor:default"></span><div class="task-main" style="cursor:default"><div class="task-title">'+esc(ftxt)+'</div>'+(fsubs&&fsubs.length?'<div class="task-meta"><span class="pill subs-n">☑ '+fsubs.filter(function(s){return s.done;}).length+'/'+fsubs.length+'</span></div>':"")+'</div></li>';}).join("")+'</ul></div>';
-    var wlPrev=wikiLinkHtml(S.notes[ds]||"");
-    if(/class="wl/.test(wlPrev)) body+='<div class="fld"><label>Links in this note</label><div class="jr-body">'+wlPrev+'</div></div>';
+    var wlPrev=noteDisplayHtml(S.notes[ds]||"");
+    if(/class="(wl|reflink)/.test(wlPrev)) body+='<div class="fld"><label>Links in this note</label><div class="jr-body">'+wlPrev+'</div></div>';
     body+='<div class="fld"><label>Notes</label>'+richTextHtml("day:"+ds,S.notes[ds]||"","Nothing written this day — add a note…",64,"d-note","rte-compact")+'</div>';
     body+='<div class="modal-actions"><button class="btn ghost" data-x>Close</button><button class="btn" id="d-addev">+ Event</button><button class="btn primary" id="d-addtask">+ Task</button></div>';
     modal(body);
@@ -3641,6 +3673,7 @@
   function emailRow(e){
     return '<li class="task '+(e.done?"done":"")+'" data-id="'+e.id+'"><button class="chk '+(e.done?"done":"")+'" data-act="email-toggle" aria-label="done" aria-pressed="'+!!e.done+'"></button>'+
       '<div class="task-main"><div class="task-title">'+esc(e.subject)+'</div>'+(e.sender?'<div class="task-meta"><span class="pill block">'+esc(e.sender)+'</span></div>':"")+'</div>'+
+      '<button class="chip" data-act="email-task" data-id="'+e.id+'" style="flex:none;margin-right:6px" title="Turn this into a task">→ task</button>'+
       '<button class="task-x" data-act="email-del" style="opacity:1" aria-label="delete">✕</button></li>';
   }
   function jobCardHtml(j){
@@ -3976,6 +4009,10 @@
       h+='<div class="ins-tiles" style="margin-top:6px">'+
         '<div class="ins-tile"><b>✅ '+doneWk.length+'</b><span>done · last 7 days</span></div>'+
         '<div class="ins-tile"><b>🔥 '+doneStreak()+'</b><span>day streak</span></div>'+
+        (function(){ var mins=(S.sessions||[]).filter(function(x){return x.day>=wk;}).reduce(function(a,x){return a+(x.mins||0);},0);
+          if(!mins) return '';
+          var hrs=Math.floor(mins/60), rem=mins%60;
+          return '<div class="ins-tile"><b>⏱ '+(hrs?hrs+"h"+(rem?" "+rem+"m":""):mins+"m")+'</b><span>focused · last 7 days</span></div>'; })()+
         (best?'<div class="ins-tile"><b>🏆 '+DOWNAMES[dow(best)]+'</b><span>best day · '+byDay[best]+' done</span></div>':'')+'</div>';
       h+='<div class="fld"><label>Carried over — decide, don\'t drag</label>'+
         (carried.length?carried.map(function(k){
