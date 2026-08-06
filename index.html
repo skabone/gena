@@ -749,7 +749,7 @@
   // seed() — silently wiping the whole store for anyone who had written a daily note.
   var RTE_ALLOWED={B:1,STRONG:1,I:1,EM:1,U:1,UL:1,OL:1,LI:1,BR:1,P:1,DIV:1,SPAN:1};
   // ---- merge-by-item sync (Phase 2) ----
-  var IDLISTS=["projects","tasks","templates","routines","habits","events","phases","people","emails","jobs","improve","calSources","profiles","archive"];
+  var IDLISTS=["projects","tasks","templates","routines","habits","events","phases","people","emails","jobs","improve","calSources","profiles","archive","sessions"];
   var IDMAPS=["notes","focus","habitLog"]; // date-keyed maps merged per key
   // Settings/scalars merged per-field by their own modified-time (_sm) instead of taken wholesale from
   // whichever file saved last — otherwise a stale cloud push silently resets your name / active profile.
@@ -889,7 +889,7 @@
     dedupeRemovedCount=removed.length;
     return d;
   }
-  function normalize(d){ d.projects=d.projects||[]; d.tasks=d.tasks||[]; d.templates=d.templates||[]; d.habits=d.habits||[]; d.habitLog=d.habitLog||{}; d.events=d.events||[]; d.phases=d.phases||[]; d.dismissed=d.dismissed||[]; d.notes=d.notes||{}; d.calSources=d.calSources||[]; if(!d.proxy)d.proxy=PROXY_DEFAULT; d.emails=d.emails||[]; d.jobs=d.jobs||[]; d.improve=d.improve||[]; if(!d.calView)d.calView="month"; if(!d.calAnchor)d.calAnchor=(d.calMonth?d.calMonth+"-01":null); if(!d.skin)d.skin="paper"; delete d.apiKey; d.people=d.people||[]; d.collapsed=d.collapsed||{}; d.lastExport=d.lastExport||null; if(typeof d.name!=="string")d.name=""; d._sm=d._sm||{}; if(typeof d.autoCarry!=="boolean")d.autoCarry=false; if(typeof d.accent!=="string")d.accent=d.accent||null; d.tasks.forEach(function(k){ if(!Array.isArray(k.personIds)) k.personIds=[]; }); if(!d.density)d.density="cozy"; if(!d.font)d.font="rounded";
+  function normalize(d){ d.projects=d.projects||[]; d.tasks=d.tasks||[]; d.templates=d.templates||[]; d.habits=d.habits||[]; d.habitLog=d.habitLog||{}; d.events=d.events||[]; d.phases=d.phases||[]; d.dismissed=d.dismissed||[]; d.notes=d.notes||{}; d.calSources=d.calSources||[]; if(!d.proxy)d.proxy=PROXY_DEFAULT; d.emails=d.emails||[]; d.jobs=d.jobs||[]; d.improve=d.improve||[]; if(!d.calView)d.calView="month"; if(!d.calAnchor)d.calAnchor=(d.calMonth?d.calMonth+"-01":null); if(!d.skin)d.skin="paper"; delete d.apiKey; d.people=d.people||[]; d.collapsed=d.collapsed||{}; d.lastExport=d.lastExport||null; if(typeof d.name!=="string")d.name=""; d._sm=d._sm||{}; if(typeof d.autoCarry!=="boolean")d.autoCarry=false; if(typeof d.accent!=="string")d.accent=d.accent||null; d.tasks.forEach(function(k){ if(!Array.isArray(k.personIds)) k.personIds=[]; }); if(!d.density)d.density="cozy"; if(!d.font)d.font="rounded"; d.sessions=d.sessions||[];
     // One-time: 7.5 shipped autoCarry defaulting to on, which left the Carried-over card empty whenever
     // everything had already been auto-placed. Off is the setting where the day list and that card are
     // both useful, so re-default once. Any later toggle is the user's and is left alone.
@@ -1003,7 +1003,7 @@
       calSources:[], proxy:PROXY_DEFAULT,
       emails:[], jobs:[], improve:[],
       calView:"month", calAnchor:null, skin:"paper", lastExport:null, name:"",
-      people:[], collapsed:{}, tlView:"months", panelOpen:true, autoCarry:false, autoCarryRev:1, accent:null, density:"cozy", font:"rounded", _sm:{}
+      people:[], collapsed:{}, tlView:"months", panelOpen:true, autoCarry:false, autoCarryRev:1, accent:null, density:"cozy", font:"rounded", sessions:[], _sm:{}
     });
   }
 
@@ -1581,7 +1581,8 @@
       // S.todayOrder keep working. "task" remains the generic word for any item you enter.
       tasks: fold("tasks","To-do",'<ul class="tasks" data-list="master">'+master.map(taskLi).join("")+inlineAddRow("master","Add a task — try @project @morning, or “tomorrow”…")+'</ul>',foldProg(doneCount,total)),
       blocks: blocksHtml,
-      habitsnotes: '<div class="grid2">'+fold("habits","Habits &amp; wellness",hb,foldProg(habitDone,habitTotal))+fold("notes","Notes",richTextHtml("daily",S.notes[vd]||"","Jot anything — ideas, blockers, wins…",110))+'</div>'
+      habitsnotes: '<div class="grid2">'+fold("habits","Habits &amp; wellness",hb,foldProg(habitDone,habitTotal))+fold("notes","Notes",richTextHtml("daily",S.notes[vd]||"","Jot anything — ideas, blockers, wins… try [[a project name]]",110))+'</div>'+
+        fold("sessions","Focus sessions"+(focusMinutes(vd)?" · "+focusMinutes(vd)+"m":""), focusLogHtml(vd))
     };
     var DEF_UNITS=["focus","tasks","blocks","habitsnotes"];
     var uorder=(S.todayOrder&&S.todayOrder.length)?S.todayOrder.slice():DEF_UNITS.slice();
@@ -2000,6 +2001,18 @@
     return html+'</div>';
   }
 
+  // What actually got focused on a given day, with a total — the counterpart to the completed-tasks log.
+  function focusLogHtml(day){
+    var rows=sessionsOn(day).slice().sort(function(a,b){ return (a.at||"").localeCompare(b.at||""); });
+    if(!rows.length) return '<div class="empty">No focus blocks yet. Start one with ⏱ on any task.</div>';
+    var total=focusMinutes(day);
+    return '<div class="sub" style="margin:0 0 8px"><b>'+total+' minutes</b> across '+rows.length+' block'+(rows.length===1?"":"s")+'.</div>'+
+      '<ul class="tasks">'+rows.map(function(x){
+        return '<li class="task" style="cursor:default"><div class="task-main" style="cursor:default"><div class="task-title" style="font-size:13.5px">'+
+          (x.label?esc(x.label):'<span class="sub" style="margin:0">Untitled block</span>')+'</div>'+
+          '<div class="task-meta"><span class="pill block">🕒 '+esc(x.at||"")+'</span><span class="pill imp">'+(x.mins||0)+'m</span></div></div></li>';
+      }).join("")+'</ul>';
+  }
   /* ---------- [[wikilinks]] (Phase 13) ----------
      Typed anywhere in a note, [[Name]] resolves against projects, people, and open task titles.
      Rendered read-only (Journal, day detail) so the editable surface stays plain text you can trust. */
@@ -4029,13 +4042,24 @@
   function ftTick(){
     if(!FT.running) return;
     FT.left--;
-    if(FT.left<=0){ var lbl=FT.label; ftStop(); beep(); toast("⏱ Focus block done — stretch!");
+    if(FT.left<=0){ var lbl=FT.label; var mins=FT.mins||25; ftStop(); beep(); toast("⏱ Focus block done — stretch!");
+      logFocusSession(lbl,mins);
       try{ if(typeof Notification!=="undefined"&&Notification.permission==="granted") new Notification("Gena",{body:"Focus block done"+(lbl?" — "+lbl:"")}); }catch(e){}
       return; }
     ftPaint();
   }
+  // Completed focus blocks are kept so the effort shows up somewhere afterwards, not just as a beep.
+  function logFocusSession(label,mins){
+    S.sessions=S.sessions||[];
+    S.sessions.push({id:uid(),day:today(),mins:mins||25,label:label||"",at:new Date().toTimeString().slice(0,5)});
+    if(S.sessions.length>500) S.sessions=S.sessions.slice(-500);
+    save();
+    if(view==="today") render();
+  }
+  function sessionsOn(day){ return (S.sessions||[]).filter(function(x){return x.day===day;}); }
+  function focusMinutes(day){ return sessionsOn(day).reduce(function(a,x){ return a+(x.mins||0); },0); }
   function startFocusTimer(label,mins){
-    FT.label=label||""; FT.left=(mins||25)*60; FT.running=true;
+    FT.label=label||""; FT.mins=mins||25; FT.left=(mins||25)*60; FT.running=true;
     if(!FT.int) FT.int=setInterval(ftTick,1000);
     ftPaint(); toast("⏱ "+(mins||25)+" minutes — go");
   }
