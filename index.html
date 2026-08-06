@@ -264,7 +264,19 @@
   .modal input:focus,.modal select:focus,.modal textarea:focus{ outline:none; border-color:var(--terra); }
   .row{ display:flex; gap:10px; }
   .row>*{ flex:1; }
-  .modal-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
+  .modal-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:20px; flex-wrap:wrap; }
+  /* wide two-column modal: writing on the left, scheduling on the right, actions pinned so Save /
+     Delete / focus are always reachable without scrolling to the bottom of a long form */
+  .modal.wide{ width:min(880px,100%); padding-bottom:0; }
+  .modal.wide .m-cols{ display:flex; gap:24px; align-items:flex-start; }
+  .modal.wide .m-col-main{ flex:1 1 56%; min-width:0; }
+  .modal.wide .m-col-side{ flex:1 1 44%; min-width:0; border-left:1px solid var(--line-soft); padding-left:22px; }
+  .modal.wide .m-col-main .fld:first-child, .modal.wide .m-col-side .fld:first-child{ margin-top:0; }
+  .modal.wide .modal-actions{ position:sticky; bottom:0; background:var(--sheet); border-top:1px solid var(--line-soft); padding:13px 0; margin-top:18px; z-index:3; }
+  @media (max-width:760px){
+    .modal.wide .m-cols{ flex-direction:column; gap:0; }
+    .modal.wide .m-col-side{ border-left:none; padding-left:0; border-top:1px solid var(--line-soft); padding-top:6px; margin-top:14px; }
+  }
   .btn{ font-family:inherit; font-size:14px; font-weight:700; border-radius:11px; padding:10px 18px; cursor:pointer; border:1.5px solid var(--line); background:var(--card); color:var(--ink); }
   .btn.primary{ background:var(--terra); border-color:var(--terra); color:#fff; }
   .btn.primary:hover{ background:var(--terra-deep); }
@@ -484,6 +496,11 @@
   .task-addsub{ flex:none; background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:13px; font-weight:700; padding:2px 5px; border-radius:6px; opacity:0; transition:opacity .15s; }
   .task:hover .task-addsub{ opacity:1; }
   .task-addsub:hover{ color:var(--good); background:var(--good-bg); }
+  /* promote straight into Today's Focus without opening the task */
+  .task-focus{ flex:none; background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:14px; padding:2px 4px; border-radius:6px; opacity:0; transition:opacity .15s; line-height:1; }
+  .task:hover .task-focus, .panel-task:hover .task-focus{ opacity:1; }
+  .task-focus:hover{ color:var(--terra-deep); background:var(--terra-bg); }
+  .task-focus.on{ opacity:1; color:var(--terra); }
   .sub .inline-add{ font-size:13px; padding:2px 0; }
   .ac{ position:fixed; z-index:70; background:var(--card); border:1.5px solid var(--line); border-radius:12px; box-shadow:0 14px 34px -12px rgba(0,0,0,.35); min-width:220px; max-width:320px; max-height:262px; overflow-y:auto; }
   .ac-item{ padding:8px 12px; font-size:13.5px; display:flex; gap:8px; align-items:center; cursor:pointer; }
@@ -658,6 +675,10 @@
   // ---- merge-by-item sync (Phase 2) ----
   var IDLISTS=["projects","tasks","templates","routines","habits","events","phases","people","emails","jobs","improve","calSources","profiles","archive"];
   var IDMAPS=["notes","focus","habitLog"]; // date-keyed maps merged per key
+  // Settings/scalars merged per-field by their own modified-time (_sm) instead of taken wholesale from
+  // whichever file saved last — otherwise a stale cloud push silently resets your name / active profile.
+  var SCALARS=["name","activeProfile","filterProjects","sbOpen","panelOpen","skin","theme","calView","calAnchor","tlView","collapsed","remind","proxy","notesRTE","lastExport","autoCarry","todayOrder"];
+  function isBlankVal(v){ return v===undefined||v===null||v===""; }
   function clone(x){ return JSON.parse(JSON.stringify(x)); }
   function itemSig(x){ if(!x||typeof x!=="object") return JSON.stringify(x); var o={}; for(var k in x){ if(k!=="_m") o[k]=x[k]; } return JSON.stringify(o); }
   // Stamp per-item modified-times and deletion tombstones by diffing against the previous saved state.
@@ -665,7 +686,13 @@
     var now=Date.now();
     if(!cur._del) cur._del={};
     if(!cur._mm) cur._mm={notes:{},focus:{},habitLog:{}};
+    if(!cur._sm) cur._sm={};
     IDMAPS.forEach(function(m){ if(!cur._mm[m]) cur._mm[m]={}; });
+    // per-setting modified-times, so a scalar edit here can out-rank a newer whole-file save elsewhere
+    SCALARS.forEach(function(k){
+      if(!prev){ if(!cur._sm[k]) cur._sm[k]=now; return; }
+      if(JSON.stringify(prev[k])!==JSON.stringify(cur[k])) cur._sm[k]=now;
+    });
     IDLISTS.forEach(function(key){
       var pv={}; (prev&&prev[key]||[]).forEach(function(x){ if(x&&x.id) pv[x.id]=x; });
       var seen={};
@@ -718,6 +745,16 @@
       });
       out[key]=res; out._mm[key]=mm;
     });
+    // settings: newest edit of each field wins independently of which file saved last
+    var asm=A._sm||{}, bsm=B._sm||{}, osm={};
+    SCALARS.forEach(function(k){
+      var at=asm[k]||0, bt=bsm[k]||0;
+      if(bt>at) out[k]=B[k];
+      else if(at>bt) out[k]=A[k];
+      else if(isBlankVal(out[k])){ if(!isBlankVal(A[k])) out[k]=A[k]; else if(!isBlankVal(B[k])) out[k]=B[k]; }
+      osm[k]=Math.max(at,bt);
+    });
+    out._sm=osm;
     // dismissed is append-only -> union
     var dis={}; (A.dismissed||[]).concat(B.dismissed||[]).forEach(function(x){ dis[x]=1; }); out.dismissed=Object.keys(dis);
     return out;
@@ -776,7 +813,7 @@
     dedupeRemovedCount=removed.length;
     return d;
   }
-  function normalize(d){ d.projects=d.projects||[]; d.tasks=d.tasks||[]; d.templates=d.templates||[]; d.habits=d.habits||[]; d.habitLog=d.habitLog||{}; d.events=d.events||[]; d.phases=d.phases||[]; d.dismissed=d.dismissed||[]; d.notes=d.notes||{}; d.calSources=d.calSources||[]; if(!d.proxy)d.proxy=PROXY_DEFAULT; d.emails=d.emails||[]; d.jobs=d.jobs||[]; d.improve=d.improve||[]; if(!d.calView)d.calView="month"; if(!d.calAnchor)d.calAnchor=(d.calMonth?d.calMonth+"-01":null); if(!d.skin)d.skin="paper"; delete d.apiKey; d.people=d.people||[]; d.collapsed=d.collapsed||{}; d.lastExport=d.lastExport||null; if(typeof d.name!=="string")d.name="";
+  function normalize(d){ d.projects=d.projects||[]; d.tasks=d.tasks||[]; d.templates=d.templates||[]; d.habits=d.habits||[]; d.habitLog=d.habitLog||{}; d.events=d.events||[]; d.phases=d.phases||[]; d.dismissed=d.dismissed||[]; d.notes=d.notes||{}; d.calSources=d.calSources||[]; if(!d.proxy)d.proxy=PROXY_DEFAULT; d.emails=d.emails||[]; d.jobs=d.jobs||[]; d.improve=d.improve||[]; if(!d.calView)d.calView="month"; if(!d.calAnchor)d.calAnchor=(d.calMonth?d.calMonth+"-01":null); if(!d.skin)d.skin="paper"; delete d.apiKey; d.people=d.people||[]; d.collapsed=d.collapsed||{}; d.lastExport=d.lastExport||null; if(typeof d.name!=="string")d.name=""; d._sm=d._sm||{}; if(typeof d.autoCarry!=="boolean")d.autoCarry=true;
     d.focus=d.focus||{}; Object.keys(d.focus).forEach(function(k){ var v=d.focus[k]; if(typeof v==="string"){ d.focus[k]=v?[{id:uid(),text:v,done:false}]:[]; } (d.focus[k]||[]).forEach(function(f){ if(!Array.isArray(f.subs)) f.subs=[]; }); });
     if(!d.tlView)d.tlView="months"; if(typeof d.panelOpen!=="boolean")d.panelOpen=true;
     d.tasks.forEach(function(k){ if(!Array.isArray(k.subs)) k.subs=[]; });
@@ -871,7 +908,7 @@
       calSources:[], proxy:PROXY_DEFAULT,
       emails:[], jobs:[], improve:[],
       calView:"month", calAnchor:null, skin:"paper", lastExport:null, name:"",
-      people:[], collapsed:{}, tlView:"months", panelOpen:true
+      people:[], collapsed:{}, tlView:"months", panelOpen:true, autoCarry:true, _sm:{}
     });
   }
 
@@ -911,9 +948,13 @@
   function onOpen(){
     var t=today();
     if(S.lastOpen!==t){
-      // roll unfinished dated tasks forward to today
+      // Age unfinished dated tasks. With autoCarry on they also move onto today; with it off they stay
+      // put on their original day and surface only in the Carried-over card, which you pull from by hand.
       S.tasks.forEach(function(k){
-        if(k.status==="todo" && k.day && k.day<t){ k.rollover=(k.rollover||0)+diffDays(t,k.day); k.day=t; }
+        if(k.status==="todo" && k.day && k.day<t){
+          k.rollover=(k.rollover||0)+diffDays(t,k.day);
+          if(S.autoCarry!==false) k.day=t; else k.carriedFrom=k.carriedFrom||k.day;
+        }
       });
       generateRecurring(t);
       S.lastOpen=t; save();
@@ -1195,6 +1236,7 @@
       '<div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title">'+esc(k.title)+'</div>'+
       (pills?'<div class="task-meta">'+pills+'</div>':'')+subsHtml+'</div>'+
       '<button class="task-addsub" data-act="sub-add" aria-label="Add a subtask" title="Add a subtask">⤷+</button>'+
+      '<button class="task-focus'+(inFocus(k.id)?" on":"")+'" data-act="tofocus" aria-label="Add to Today’s Focus" title="Add to Today’s Focus">◎</button>'+
       '<button class="task-star '+(k.priority?"on":"")+'" data-act="star" aria-label="Toggle important" aria-pressed="'+!!k.priority+'">'+(k.priority?"★":"☆")+'</button>'+
       '<button class="task-x" data-act="del" aria-label="Delete">✕</button></li>';
   }
@@ -1238,6 +1280,8 @@
       '<button class="task-addsub" data-act="fsub-add" aria-label="Add a subitem" title="Add a subitem">⤷+</button>'+
       '<button class="task-x" data-act="focus-del" aria-label="Delete">✕</button></li>';
   }
+  // is this task already promoted into the focus list for the day being viewed?
+  function inFocus(taskId){ return (S.focus[viewDay]||[]).some(function(f){return f.taskId===taskId;}); }
   function addTaskToFocus(taskId, silent){
     if(!taskId||!S.tasks.some(function(x){return x.id===taskId;})) return false;
     S.focus[viewDay]=S.focus[viewDay]||[];
@@ -1417,7 +1461,10 @@
     var rb=document.getElementById("rightbar"); if(!rb) return;
     var vd=(view==="today")?viewDay:today();
     var backlog=orderTasks(S.tasks.filter(function(k){return !k.day && k.status!=="done" && inScope(k.projectId);}),false);
-    var carried=S.tasks.filter(function(k){return k.status==="todo" && (k.rollover||0)>=1 && inScope(k.projectId);});
+    // A carried task that's already been placed into a block on the day you're looking at is done being
+    // triaged — showing it here too just duplicates the day list. Unplaced ones stay, since this card is
+    // where you actually put them somewhere.
+    var carried=S.tasks.filter(function(k){return k.status==="todo" && (k.rollover||0)>=1 && inScope(k.projectId) && !(k.day===vd && k.block);});
     var doneV=S.tasks.filter(function(k){return k.status==="done" && k.completedOn===vd && inScope(k.projectId);});
     var MOVES=[["morning","☀️ Morning"],["afternoon","🌤 Afternoon"],["evening","🌙 Evening"],["anytime","⏳ Anytime"],["someday","💭 Someday"]];
     var blAdd='<ul class="tasks" data-list="someday" style="padding:0;margin:0 0 4px"><li class="task inline-row" style="padding:6px 4px"><span class="inline-plus">+</span><input class="inline-add" data-block="someday" placeholder="Add to backlog…" aria-label="Add to backlog"/></li></ul>';
@@ -1537,6 +1584,7 @@
     return '<div class="panel-task" data-id="'+k.id+'">'+
       '<div style="display:flex;gap:11px;align-items:flex-start"><button class="chk" data-act="toggle" aria-label="Complete" aria-pressed="false"></button>'+
       '<div class="task-main" data-act="edit" style="flex:1" title="Tap to edit"><div class="task-title">'+esc(k.title)+'</div>'+(pills?'<div class="task-meta">'+pills+'</div>':"")+'</div>'+
+      '<button class="task-focus'+(inFocus(k.id)?" on":"")+'" data-act="tofocus" style="opacity:1" aria-label="Add to Today’s Focus" title="Add to Today’s Focus">◎</button>'+
       '<button class="task-star '+(k.priority?"on":"")+'" data-act="star" aria-label="Important">'+(k.priority?"★":"☆")+'</button>'+
       '<button class="task-x" data-act="del" aria-label="Delete" style="opacity:1">✕</button></div>'+
       '<div class="panel-move" style="margin-left:31px">'+chips+'</div></div>';
@@ -2012,6 +2060,11 @@
       if(act==="toggle"){ toggleTask(id||anyId); }
       else if(act==="edit"){ var tk=S.tasks.find(function(x){return x.id===(id||anyId);}); if(tk) openTaskModal({edit:tk}); }
       else if(act==="star"){ var tk2=S.tasks.find(function(x){return x.id===(id||anyId);}); if(tk2){ tk2.priority=!tk2.priority; save(); render(); } }
+      // promote / un-promote into Today's Focus straight from a collapsed row — no need to open the task
+      else if(act==="tofocus"){ var tf=(id||anyId);
+        if(inFocus(tf)){ var fa=S.focus[viewDay]||[], fx2=fa.findIndex(function(x){return x.taskId===tf;});
+          if(fx2>=0){ fa.splice(fx2,1); save(); render(); toast("Removed from Today’s Focus"); } }
+        else addTaskToFocus(tf); }
       else if(act==="calview"){ S.calView=a.dataset.v; save(); render(); }
       else if(act==="focus-toggle"){ var fx=(S.focus[viewDay]||[]).find(function(x){return x.id===anyId;}); if(fx){ fx.done=!fx.done; save(); render(); } }
       else if(act==="focus-del"){ var arr=S.focus[viewDay]||[]; var fi=arr.findIndex(function(x){return x.id===anyId;}); if(fi>=0){ var fdel=arr[fi]; arr.splice(fi,1); save(); render(); toastUndo("Focus item deleted",function(){ arr.splice(Math.min(fi,arr.length),0,fdel); save(); render(); }); } }
@@ -2276,10 +2329,10 @@
   var lastFocus=null, onModalDismiss=null;
   /* dismissing a modal (click-away / Escape) runs its auto-save if one is set; the explicit Cancel button still discards */
   function dismissModal(){ if(onModalDismiss){ var f=onModalDismiss; onModalDismiss=null; try{ f(); }catch(e){ close(); } } else close(); }
-  function modal(inner){ var root=document.getElementById("modal-root");
+  function modal(inner,cls){ var root=document.getElementById("modal-root");
     if(!root.children.length) lastFocus=document.activeElement;
     onModalDismiss=null;
-    root.innerHTML='<div class="scrim" id="scrim"><div class="modal" role="dialog" aria-modal="true">'+inner+'</div></div>';
+    root.innerHTML='<div class="scrim" id="scrim"><div class="modal'+(cls?" "+cls:"")+'" role="dialog" aria-modal="true">'+inner+'</div></div>';
     wireRTE(root);
     document.getElementById("scrim").onclick=function(e){ if(e.target.id==="scrim") dismissModal(); };
     var m=root.querySelector(".modal");
@@ -2333,23 +2386,28 @@
     var etp = ed&&ed.tplId ? S.templates.find(function(x){return x.id===ed.tplId;}) : null;
     var freq = etp?etp.freq:"once", weekdays = etp?(etp.weekdays||[]).slice():[], intervalV = etp?(etp.interval||2):2;
     modal('<h3>'+(ed?"Edit task":"New task")+'</h3>'+
-      '<div class="fld"><label>Task</label><input id="m-title" value="'+esc(base.title||"")+'" placeholder="What needs doing?"/></div>'+
-      '<div class="row"><div class="fld"><label>Project</label><select id="m-proj"><option value="">None</option>'+projOpts+'<option value="__new">+ New project…</option></select></div>'+
-      '<div class="fld"><label>Day <span style="text-transform:none;letter-spacing:0;font-weight:600">(empty = someday)</span></label><input id="m-day" type="date" value="'+(ed?(base.day||""):(base.day||today()))+'"/></div></div>'+
-      '<div class="row"><div class="fld"><label>'+(ed?"Schedule":"Schedule — pick one or several")+'</label><div class="chips" id="m-block">'+
-        BLKS.map(function(b){return '<button class="chip" data-b="'+b[0]+'" aria-pressed="'+(!!selBlocks[b[0]])+'">'+b[1]+'</button>';}).join("")+'</div></div>'+
-      '<div class="fld" style="flex:0 0 130px"><label>Time</label><input id="m-time" type="time" value="'+(base.at||"")+'"/></div></div>'+
-      '<div class="fld"><label>Importance</label><div class="chips" id="m-imp">'+
-        '<button class="chip" data-i="0" aria-pressed="'+(!priorityV)+'">Normal</button>'+
-        '<button class="chip" data-i="1" aria-pressed="'+priorityV+'">★ Important</button></div></div>'+
-      '<div class="fld"><label>Subtasks</label><div id="m-subs"></div><input id="m-sub-new" placeholder="Add a subtask — press Enter"/></div>'+
-      '<div class="fld"><label>Notes</label>'+richTextHtml(null,base.notes||"","Details, links, context…",56,"m-notes","rte-compact")+'</div>'+
-      '<div class="fld"><label>Repeat</label><div class="chips" id="m-freq">'+
-        [["once","Once"],["daily","Daily"],["weekly","Weekly"],["everyN","Every N days"]].map(function(f){return '<button class="chip" data-f="'+f[0]+'" aria-pressed="'+(f[0]===freq)+'">'+f[1]+'</button>';}).join("")+'</div>'+
-        '<div id="m-ropts" style="margin-top:10px"></div>'+(etp?'<div class="sub" style="font-size:11px;margin-top:6px">This task repeats — changes here update the whole series. Pick “Once” to stop it repeating.</div>':(ed?'<div class="sub" style="font-size:11px;margin-top:6px">Pick a repeat to turn this into a recurring task going forward.</div>':""))+'</div>'+
+      '<div class="m-cols">'+
+      '<div class="m-col-main">'+
+        '<div class="fld"><label>Task</label><input id="m-title" value="'+esc(base.title||"")+'" placeholder="What needs doing?"/></div>'+
+        '<div class="fld"><label>Subtasks</label><div id="m-subs"></div><input id="m-sub-new" placeholder="Add a subtask — press Enter"/></div>'+
+        '<div class="fld"><label>Notes</label>'+richTextHtml(null,base.notes||"","Details, links, context…",56,"m-notes","rte-compact")+'</div>'+
+      '</div>'+
+      '<div class="m-col-side">'+
+        '<div class="fld"><label>Project</label><select id="m-proj"><option value="">None</option>'+projOpts+'<option value="__new">+ New project…</option></select></div>'+
+        '<div class="fld"><label>Day <span style="text-transform:none;letter-spacing:0;font-weight:600">(empty = someday)</span></label><input id="m-day" type="date" value="'+(ed?(base.day||""):(base.day||today()))+'"/></div>'+
+        '<div class="fld"><label>'+(ed?"Schedule":"Schedule — pick one or several")+'</label><div class="chips" id="m-block">'+
+          BLKS.map(function(b){return '<button class="chip" data-b="'+b[0]+'" aria-pressed="'+(!!selBlocks[b[0]])+'">'+b[1]+'</button>';}).join("")+'</div></div>'+
+        '<div class="fld"><label>Time</label><input id="m-time" type="time" value="'+(base.at||"")+'"/></div>'+
+        '<div class="fld"><label>Importance</label><div class="chips" id="m-imp">'+
+          '<button class="chip" data-i="0" aria-pressed="'+(!priorityV)+'">Normal</button>'+
+          '<button class="chip" data-i="1" aria-pressed="'+priorityV+'">★ Important</button></div></div>'+
+        '<div class="fld"><label>Repeat</label><div class="chips" id="m-freq">'+
+          [["once","Once"],["daily","Daily"],["weekly","Weekly"],["everyN","Every N days"]].map(function(f){return '<button class="chip" data-f="'+f[0]+'" aria-pressed="'+(f[0]===freq)+'">'+f[1]+'</button>';}).join("")+'</div>'+
+          '<div id="m-ropts" style="margin-top:10px"></div>'+(etp?'<div class="sub" style="font-size:11px;margin-top:6px">This task repeats — changes here update the whole series. Pick “Once” to stop it repeating.</div>':(ed?'<div class="sub" style="font-size:11px;margin-top:6px">Pick a repeat to turn this into a recurring task going forward.</div>':""))+'</div>'+
+      '</div></div>'+
       '<div class="modal-actions">'+
-      (ed?'<button class="btn ghost" id="m-del" style="margin-right:auto;color:var(--terra-deep)">Delete</button><button class="btn" id="m-tofocus" title="Add to Today\'s Focus">⭐</button><button class="btn" id="m-focus" title="Start a 25-minute focus timer on this task">⏱</button><button class="btn" id="m-dup">Duplicate</button>':'')+
-      '<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">'+(ed?"Save":"Add task")+'</button></div>');
+      (ed?'<button class="btn ghost" id="m-del" style="margin-right:auto;color:var(--terra-deep)">Delete</button><button class="btn" id="m-tofocus" title="Add to Today\'s Focus">◎ Focus</button><button class="btn" id="m-focus" title="Start a 25-minute focus timer on this task">⏱</button><button class="btn" id="m-dup">Duplicate</button>':'')+
+      '<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">'+(ed?"Save":"Add task")+'</button></div>',"wide");
     var mb=document.getElementById("m-block");
     mb.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; var val=b.dataset.b;
       if(ed||val==="allday"){ selBlocks={}; selBlocks[val]=true; }
@@ -3020,6 +3078,7 @@
       (window.showSaveFilePicker?'<button class="btn" id="x-sync">🔗 '+(syncName?"Sync file: "+esc(syncName):"Link a sync file (auto-save)")+'</button>'+(syncName?'<button class="btn ghost" id="x-unsync">Unlink sync file</button>':""):"")+
       '<button class="btn" id="x-gh">☁️ '+(GH&&GH.gistId?"Cloud sync: connected":"Cloud sync via GitHub (cross-device)")+'</button>'+
       '<button class="btn" id="x-remind">🔔 Task-time reminders: '+(S.remind?"on":"off")+'</button>'+
+      '<button class="btn" id="x-autocarry" title="On: unfinished tasks move onto today by themselves. Off: they stay on their original day and wait in the Carried-over card until you place them.">⏳ Carry unfinished onto today: '+(S.autoCarry===false?"off":"on")+'</button>'+
       '<button class="btn" id="x-feed">📡 Reminder calendar feed (subscribe)</button>'+
       '<button class="btn" id="x-share">🔗 Share a read-only snapshot</button>'+
       '<button class="btn" id="x-capture">⚡ Quick capture (bookmarklet / share)</button>'+
@@ -3047,6 +3106,10 @@
           else toast("Notifications were blocked by the browser");
         });
       } else { S.remind=false; save(); close(); toast("Reminders off"); }
+    };
+    document.getElementById("x-autocarry").onclick=function(){
+      S.autoCarry=(S.autoCarry===false); save(); close(); render();
+      toast(S.autoCarry?"Unfinished tasks will move onto today":"Unfinished tasks stay put — pull them in from Carried over");
     };
     document.getElementById("x-archive").onclick=function(){
       if(!archN){ toast("Nothing old enough to archive yet"); return; }
