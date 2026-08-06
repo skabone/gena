@@ -1,6 +1,6 @@
 <!doctype html>
 <!--
-  Daybook - Pencil Me In
+  Gena — a day planner
   Required Notice: Copyright (c) 2026 Mintay Misgano (https://github.com/skabone)
   Licensed under the PolyForm Noncommercial License 1.0.0
   https://polyformproject.org/licenses/noncommercial/1.0.0
@@ -9,36 +9,36 @@
 -->
 <html lang="en">
 <meta charset="utf-8">
-<title>Daybook — Pencil Me In</title>
+<title>Gena — a day planner</title>
 <style>
   :root {
     --paper: #f3efe6; --sheet: #fbfaf5; --card: #ffffff;
-    --ink: #34323a; --ink-soft: #6d6975; --ink-faint: #a39fa9;
+    --ink: #2c2a20; --ink-soft: #6b6252; --ink-faint: #9c927c;
     --line: #e2ddd1; --line-soft: #ede9df;
-    --slate: #565165; --slate-ink: #f2f0ea;
-    --terra: #c9724a; --terra-deep: #a2542f; --terra-bg: #f6e2d6;
-    --good: #4f8a6b; --good-bg: #dcefe3;
-    --warn: #8a5f14; --warn-bg: #f4e6c9;
-    --shadow: rgba(53,51,59,.10);
+    --slate: #45573f; --slate-ink: #f2f0ea;
+    --terra: #c99a3a; --terra-deep: #9c7420; --terra-bg: #f4e7c4;
+    --good: #4f6b52; --good-bg: #dfe8d9;
+    --warn: #a8472c; --warn-bg: #f6e0d6;
+    --shadow: rgba(42,40,30,.10);
     --font: ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", "Nunito", system-ui, sans-serif;
-    --p0:#c9724a; --p1:#565165; --p2:#4f8a6b; --p3:#8f6c18; --p4:#5b7fa6; --p5:#8a5a83; --p6:#b0603f;
-    --scene:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201600%20900'%20preserveAspectRatio='xMidYMax%20slice'%3E%3Ccircle%20cx='1210'%20cy='195'%20r='150'%20fill='%23f0ddae'%20opacity='.4'/%3E%3Ccircle%20cx='1210'%20cy='195'%20r='105'%20fill='%23eed7a2'/%3E%3Cpath%20d='M430%20165%20q14%20-15%2028%200%20q14%20-15%2028%200'%20stroke='%23b29a70'%20stroke-width='5'%20fill='none'%20stroke-linecap='round'/%3E%3Cpath%20d='M540%20215%20q11.9%20-12.75%2023.8%200%20q11.9%20-12.75%2023.8%200'%20stroke='%23b29a70'%20stroke-width='4'%20fill='none'%20stroke-linecap='round'/%3E%3Cpath%20d='M0%20615%20Q300%20540%20640%20600%20T1600%20565%20V900%20H0%20Z'%20fill='%23ecdcb2'/%3E%3Cpath%20d='M0%20715%20Q420%20640%20860%20705%20T1600%20685%20V900%20H0%20Z'%20fill='%23e2cd9b'/%3E%3Cpath%20d='M1148%20640%20q-4%20-70%20-2%20-105'%20stroke='%238f7850'%20stroke-width='11'%20fill='none'%20stroke-linecap='round'/%3E%3Cellipse%20cx='1146'%20cy='505'%20rx='64'%20ry='40'%20fill='%23bda26b'/%3E%3Cellipse%20cx='1100'%20cy='533'%20rx='42'%20ry='27'%20fill='%23c7ad78'/%3E%3Cellipse%20cx='1194'%20cy='537'%20rx='44'%20ry='27'%20fill='%23b19559'/%3E%3Cpath%20d='M0%20815%20Q500%20755%201000%20810%20T1600%20795%20V900%20H0%20Z'%20fill='%23d8c084'/%3E%3C/svg%3E");
+    --p0:#c99a3a; --p1:#45573f; --p2:#4f6b52; --p3:#a8472c; --p4:#5b7fa6; --p5:#8a5a83; --p6:#b0603f;
+    --scene:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201600%20900'%20preserveAspectRatio='xMidYMax%20slice'%3E%3Ccircle%20cx='1210'%20cy='195'%20r='150'%20fill='%23f4dfa0'%20opacity='.4'/%3E%3Ccircle%20cx='1210'%20cy='195'%20r='105'%20fill='%23e8c368'/%3E%3Cpath%20d='M430%20165%20q14%20-15%2028%200%20q14%20-15%2028%200'%20stroke='%238a7a4a'%20stroke-width='5'%20fill='none'%20stroke-linecap='round'/%3E%3Cpath%20d='M540%20215%20q11.9%20-12.75%2023.8%200%20q11.9%20-12.75%2023.8%200'%20stroke='%238a7a4a'%20stroke-width='4'%20fill='none'%20stroke-linecap='round'/%3E%3Cpath%20d='M0%20615%20Q300%20540%20640%20600%20T1600%20565%20V900%20H0%20Z'%20fill='%23e6d9a8'/%3E%3Cpath%20d='M0%20715%20Q420%20640%20860%20705%20T1600%20685%20V900%20H0%20Z'%20fill='%23d9c68e'/%3E%3Cpath%20d='M1148%20640%20q-4%20-70%20-2%20-105'%20stroke='%236b5a3a'%20stroke-width='11'%20fill='none'%20stroke-linecap='round'/%3E%3Cellipse%20cx='1146'%20cy='505'%20rx='64'%20ry='40'%20fill='%236f8a5c'/%3E%3Cellipse%20cx='1100'%20cy='533'%20rx='42'%20ry='27'%20fill='%2386a06e'/%3E%3Cellipse%20cx='1194'%20cy='537'%20rx='44'%20ry='27'%20fill='%235c7549'/%3E%3Cpath%20d='M0%20815%20Q500%20755%201000%20810%20T1600%20795%20V900%20H0%20Z'%20fill='%23c2a06a'/%3E%3C/svg%3E");
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --paper:#1a191e; --sheet:#232128; --card:#2b2933;
-      --ink:#ece9e2; --ink-soft:#a8a3b0; --ink-faint:#726d7a;
+      --ink:#ece4d0; --ink-soft:#b3a98f; --ink-faint:#847a63;
       --line:#403d48; --line-soft:#33313b;
-      --slate:#4a4657; --slate-ink:#f0eee8;
-      --terra:#d8875e; --terra-deep:#b76a45; --terra-bg:#3a2a20;
-      --good:#5fa17f; --good-bg:#223229; --warn:#d0a24a; --warn-bg:#38301c;
+      --slate:#3c4a37; --slate-ink:#f0eee8;
+      --terra:#e0b155; --terra-deep:#b8903a; --terra-bg:#3a2f14;
+      --good:#7c9a6d; --good-bg:#253023; --warn:#c4643c; --warn-bg:#3a2416;
       --shadow:rgba(0,0,0,.4);
-      --p0:#d8875e; --p1:#8a83b0; --p2:#5fa17f; --p3:#96711a; --p4:#7fa0c9; --p5:#b183a8; --p6:#cf7d5c;
-      --scene:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201600%20900'%20preserveAspectRatio='xMidYMax%20slice'%3E%3Ccircle%20cx='1210'%20cy='185'%20r='140'%20fill='%239a8d6d'%20opacity='.15'/%3E%3Ccircle%20cx='1210'%20cy='185'%20r='90'%20fill='%23a89a76'%20opacity='.4'/%3E%3Ccircle%20cx='260'%20cy='120'%20r='3'%20fill='%235f5a50'/%3E%3Ccircle%20cx='430'%20cy='190'%20r='2.5'%20fill='%235f5a50'/%3E%3Ccircle%20cx='620'%20cy='105'%20r='2'%20fill='%235f5a50'/%3E%3Ccircle%20cx='840'%20cy='170'%20r='2.5'%20fill='%235f5a50'/%3E%3Ccircle%20cx='1010'%20cy='95'%20r='2'%20fill='%235f5a50'/%3E%3Ccircle%20cx='1440'%20cy='120'%20r='2.5'%20fill='%235f5a50'/%3E%3Cpath%20d='M0%20615%20Q300%20540%20640%20600%20T1600%20565%20V900%20H0%20Z'%20fill='%23221f27'/%3E%3Cpath%20d='M0%20715%20Q420%20640%20860%20705%20T1600%20685%20V900%20H0%20Z'%20fill='%232a2533'/%3E%3Cpath%20d='M1148%20640%20q-4%20-70%20-2%20-105'%20stroke='%23443c4e'%20stroke-width='11'%20fill='none'%20stroke-linecap='round'/%3E%3Cellipse%20cx='1146'%20cy='505'%20rx='64'%20ry='40'%20fill='%23463e51'/%3E%3Cellipse%20cx='1100'%20cy='533'%20rx='42'%20ry='27'%20fill='%233f3849'/%3E%3Cellipse%20cx='1194'%20cy='537'%20rx='44'%20ry='27'%20fill='%233a3343'/%3E%3Cpath%20d='M0%20815%20Q500%20755%201000%20810%20T1600%20795%20V900%20H0%20Z'%20fill='%23332c3f'/%3E%3C/svg%3E");
+      --p0:#e0b155; --p1:#7c9468; --p2:#7c9a6d; --p3:#c4643c; --p4:#7fa0c9; --p5:#b183a8; --p6:#cf7d5c;
+      --scene:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201600%20900'%20preserveAspectRatio='xMidYMax%20slice'%3E%3Ccircle%20cx='1210'%20cy='185'%20r='140'%20fill='%237a6b45'%20opacity='.15'/%3E%3Ccircle%20cx='1210'%20cy='185'%20r='90'%20fill='%238a7a4a'%20opacity='.4'/%3E%3Ccircle%20cx='260'%20cy='120'%20r='3'%20fill='%235c5240'/%3E%3Ccircle%20cx='430'%20cy='190'%20r='2.5'%20fill='%235c5240'/%3E%3Ccircle%20cx='620'%20cy='105'%20r='2'%20fill='%235c5240'/%3E%3Ccircle%20cx='840'%20cy='170'%20r='2.5'%20fill='%235c5240'/%3E%3Ccircle%20cx='1010'%20cy='95'%20r='2'%20fill='%235c5240'/%3E%3Ccircle%20cx='1440'%20cy='120'%20r='2.5'%20fill='%235c5240'/%3E%3Cpath%20d='M0%20615%20Q300%20540%20640%20600%20T1600%20565%20V900%20H0%20Z'%20fill='%23201f16'/%3E%3Cpath%20d='M0%20715%20Q420%20640%20860%20705%20T1600%20685%20V900%20H0%20Z'%20fill='%23282417'/%3E%3Cpath%20d='M1148%20640%20q-4%20-70%20-2%20-105'%20stroke='%233c3527'%20stroke-width='11'%20fill='none'%20stroke-linecap='round'/%3E%3Cellipse%20cx='1146'%20cy='505'%20rx='64'%20ry='40'%20fill='%233a4530'/%3E%3Cellipse%20cx='1100'%20cy='533'%20rx='42'%20ry='27'%20fill='%23333d2b'/%3E%3Cellipse%20cx='1194'%20cy='537'%20rx='44'%20ry='27'%20fill='%232e3826'/%3E%3Cpath%20d='M0%20815%20Q500%20755%201000%20810%20T1600%20795%20V900%20H0%20Z'%20fill='%232c2717'/%3E%3C/svg%3E");
     }
   }
-  :root[data-theme="light"]{--paper:#f3efe6;--sheet:#fbfaf5;--card:#fff;--ink:#34323a;--ink-soft:#6d6975;--ink-faint:#a39fa9;--line:#e2ddd1;--line-soft:#ede9df;--slate:#565165;--slate-ink:#f2f0ea;--terra:#c9724a;--terra-deep:#a2542f;--terra-bg:#f6e2d6;--good:#4f8a6b;--good-bg:#dcefe3;--warn:#8a5f14;--warn-bg:#f4e6c9;--shadow:rgba(53,51,59,.10);--p0:#c9724a;--p1:#565165;--p2:#4f8a6b;--p3:#8f6c18;--p4:#5b7fa6;--p5:#8a5a83;--p6:#b0603f;--scene:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201600%20900'%20preserveAspectRatio='xMidYMax%20slice'%3E%3Ccircle%20cx='1210'%20cy='195'%20r='150'%20fill='%23f0ddae'%20opacity='.4'/%3E%3Ccircle%20cx='1210'%20cy='195'%20r='105'%20fill='%23eed7a2'/%3E%3Cpath%20d='M430%20165%20q14%20-15%2028%200%20q14%20-15%2028%200'%20stroke='%23b29a70'%20stroke-width='5'%20fill='none'%20stroke-linecap='round'/%3E%3Cpath%20d='M540%20215%20q11.9%20-12.75%2023.8%200%20q11.9%20-12.75%2023.8%200'%20stroke='%23b29a70'%20stroke-width='4'%20fill='none'%20stroke-linecap='round'/%3E%3Cpath%20d='M0%20615%20Q300%20540%20640%20600%20T1600%20565%20V900%20H0%20Z'%20fill='%23ecdcb2'/%3E%3Cpath%20d='M0%20715%20Q420%20640%20860%20705%20T1600%20685%20V900%20H0%20Z'%20fill='%23e2cd9b'/%3E%3Cpath%20d='M1148%20640%20q-4%20-70%20-2%20-105'%20stroke='%238f7850'%20stroke-width='11'%20fill='none'%20stroke-linecap='round'/%3E%3Cellipse%20cx='1146'%20cy='505'%20rx='64'%20ry='40'%20fill='%23bda26b'/%3E%3Cellipse%20cx='1100'%20cy='533'%20rx='42'%20ry='27'%20fill='%23c7ad78'/%3E%3Cellipse%20cx='1194'%20cy='537'%20rx='44'%20ry='27'%20fill='%23b19559'/%3E%3Cpath%20d='M0%20815%20Q500%20755%201000%20810%20T1600%20795%20V900%20H0%20Z'%20fill='%23d8c084'/%3E%3C/svg%3E");}
-  :root[data-theme="dark"]{--paper:#1a191e;--sheet:#232128;--card:#2b2933;--ink:#ece9e2;--ink-soft:#a8a3b0;--ink-faint:#726d7a;--line:#403d48;--line-soft:#33313b;--slate:#4a4657;--slate-ink:#f0eee8;--terra:#d8875e;--terra-deep:#b76a45;--terra-bg:#3a2a20;--good:#5fa17f;--good-bg:#223229;--warn:#d0a24a;--warn-bg:#38301c;--shadow:rgba(0,0,0,.4);--p0:#d8875e;--p1:#8a83b0;--p2:#5fa17f;--p3:#96711a;--p4:#7fa0c9;--p5:#b183a8;--p6:#cf7d5c;--scene:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201600%20900'%20preserveAspectRatio='xMidYMax%20slice'%3E%3Ccircle%20cx='1210'%20cy='185'%20r='140'%20fill='%239a8d6d'%20opacity='.15'/%3E%3Ccircle%20cx='1210'%20cy='185'%20r='90'%20fill='%23a89a76'%20opacity='.4'/%3E%3Ccircle%20cx='260'%20cy='120'%20r='3'%20fill='%235f5a50'/%3E%3Ccircle%20cx='430'%20cy='190'%20r='2.5'%20fill='%235f5a50'/%3E%3Ccircle%20cx='620'%20cy='105'%20r='2'%20fill='%235f5a50'/%3E%3Ccircle%20cx='840'%20cy='170'%20r='2.5'%20fill='%235f5a50'/%3E%3Ccircle%20cx='1010'%20cy='95'%20r='2'%20fill='%235f5a50'/%3E%3Ccircle%20cx='1440'%20cy='120'%20r='2.5'%20fill='%235f5a50'/%3E%3Cpath%20d='M0%20615%20Q300%20540%20640%20600%20T1600%20565%20V900%20H0%20Z'%20fill='%23221f27'/%3E%3Cpath%20d='M0%20715%20Q420%20640%20860%20705%20T1600%20685%20V900%20H0%20Z'%20fill='%232a2533'/%3E%3Cpath%20d='M1148%20640%20q-4%20-70%20-2%20-105'%20stroke='%23443c4e'%20stroke-width='11'%20fill='none'%20stroke-linecap='round'/%3E%3Cellipse%20cx='1146'%20cy='505'%20rx='64'%20ry='40'%20fill='%23463e51'/%3E%3Cellipse%20cx='1100'%20cy='533'%20rx='42'%20ry='27'%20fill='%233f3849'/%3E%3Cellipse%20cx='1194'%20cy='537'%20rx='44'%20ry='27'%20fill='%233a3343'/%3E%3Cpath%20d='M0%20815%20Q500%20755%201000%20810%20T1600%20795%20V900%20H0%20Z'%20fill='%23332c3f'/%3E%3C/svg%3E");}
+  :root[data-theme="light"]{--paper:#f3efe6;--sheet:#fbfaf5;--card:#fff;--ink:#2c2a20;--ink-soft:#6b6252;--ink-faint:#9c927c;--line:#e2ddd1;--line-soft:#ede9df;--slate:#45573f;--slate-ink:#f2f0ea;--terra:#c99a3a;--terra-deep:#9c7420;--terra-bg:#f4e7c4;--good:#4f6b52;--good-bg:#dfe8d9;--warn:#a8472c;--warn-bg:#f6e0d6;--shadow:rgba(42,40,30,.10);--p0:#c99a3a;--p1:#45573f;--p2:#4f6b52;--p3:#a8472c;--p4:#5b7fa6;--p5:#8a5a83;--p6:#b0603f;--scene:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201600%20900'%20preserveAspectRatio='xMidYMax%20slice'%3E%3Ccircle%20cx='1210'%20cy='195'%20r='150'%20fill='%23f4dfa0'%20opacity='.4'/%3E%3Ccircle%20cx='1210'%20cy='195'%20r='105'%20fill='%23e8c368'/%3E%3Cpath%20d='M430%20165%20q14%20-15%2028%200%20q14%20-15%2028%200'%20stroke='%238a7a4a'%20stroke-width='5'%20fill='none'%20stroke-linecap='round'/%3E%3Cpath%20d='M540%20215%20q11.9%20-12.75%2023.8%200%20q11.9%20-12.75%2023.8%200'%20stroke='%238a7a4a'%20stroke-width='4'%20fill='none'%20stroke-linecap='round'/%3E%3Cpath%20d='M0%20615%20Q300%20540%20640%20600%20T1600%20565%20V900%20H0%20Z'%20fill='%23e6d9a8'/%3E%3Cpath%20d='M0%20715%20Q420%20640%20860%20705%20T1600%20685%20V900%20H0%20Z'%20fill='%23d9c68e'/%3E%3Cpath%20d='M1148%20640%20q-4%20-70%20-2%20-105'%20stroke='%236b5a3a'%20stroke-width='11'%20fill='none'%20stroke-linecap='round'/%3E%3Cellipse%20cx='1146'%20cy='505'%20rx='64'%20ry='40'%20fill='%236f8a5c'/%3E%3Cellipse%20cx='1100'%20cy='533'%20rx='42'%20ry='27'%20fill='%2386a06e'/%3E%3Cellipse%20cx='1194'%20cy='537'%20rx='44'%20ry='27'%20fill='%235c7549'/%3E%3Cpath%20d='M0%20815%20Q500%20755%201000%20810%20T1600%20795%20V900%20H0%20Z'%20fill='%23c2a06a'/%3E%3C/svg%3E");}
+  :root[data-theme="dark"]{--paper:#1a191e;--sheet:#232128;--card:#2b2933;--ink:#ece4d0;--ink-soft:#b3a98f;--ink-faint:#847a63;--line:#403d48;--line-soft:#33313b;--slate:#3c4a37;--slate-ink:#f0eee8;--terra:#e0b155;--terra-deep:#b8903a;--terra-bg:#3a2f14;--good:#7c9a6d;--good-bg:#253023;--warn:#c4643c;--warn-bg:#3a2416;--shadow:rgba(0,0,0,.4);--p0:#e0b155;--p1:#7c9468;--p2:#7c9a6d;--p3:#c4643c;--p4:#7fa0c9;--p5:#b183a8;--p6:#cf7d5c;--scene:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201600%20900'%20preserveAspectRatio='xMidYMax%20slice'%3E%3Ccircle%20cx='1210'%20cy='185'%20r='140'%20fill='%237a6b45'%20opacity='.15'/%3E%3Ccircle%20cx='1210'%20cy='185'%20r='90'%20fill='%238a7a4a'%20opacity='.4'/%3E%3Ccircle%20cx='260'%20cy='120'%20r='3'%20fill='%235c5240'/%3E%3Ccircle%20cx='430'%20cy='190'%20r='2.5'%20fill='%235c5240'/%3E%3Ccircle%20cx='620'%20cy='105'%20r='2'%20fill='%235c5240'/%3E%3Ccircle%20cx='840'%20cy='170'%20r='2.5'%20fill='%235c5240'/%3E%3Ccircle%20cx='1010'%20cy='95'%20r='2'%20fill='%235c5240'/%3E%3Ccircle%20cx='1440'%20cy='120'%20r='2.5'%20fill='%235c5240'/%3E%3Cpath%20d='M0%20615%20Q300%20540%20640%20600%20T1600%20565%20V900%20H0%20Z'%20fill='%23201f16'/%3E%3Cpath%20d='M0%20715%20Q420%20640%20860%20705%20T1600%20685%20V900%20H0%20Z'%20fill='%23282417'/%3E%3Cpath%20d='M1148%20640%20q-4%20-70%20-2%20-105'%20stroke='%233c3527'%20stroke-width='11'%20fill='none'%20stroke-linecap='round'/%3E%3Cellipse%20cx='1146'%20cy='505'%20rx='64'%20ry='40'%20fill='%233a4530'/%3E%3Cellipse%20cx='1100'%20cy='533'%20rx='42'%20ry='27'%20fill='%23333d2b'/%3E%3Cellipse%20cx='1194'%20cy='537'%20rx='44'%20ry='27'%20fill='%232e3826'/%3E%3Cpath%20d='M0%20815%20Q500%20755%201000%20810%20T1600%20795%20V900%20H0%20Z'%20fill='%232c2717'/%3E%3C/svg%3E");}
 
   * { box-sizing: border-box; }
   html,body { margin:0; }
@@ -116,8 +116,8 @@
     border-radius: 0 0 18px 18px; box-shadow: 0 4px 20px -8px var(--shadow);
   }
   .appbar-inner { max-width:none; margin:0; padding: 14px 18px 16px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
-  .brand { color: var(--slate-ink); font-weight: 800; letter-spacing:.12em; text-transform:uppercase; font-size:15px; white-space:nowrap; }
-  .brand small { display:block; font-size:10.5px; letter-spacing:.18em; opacity:.7; font-weight:600; }
+  .brand { color: var(--slate-ink); font-weight: 800; letter-spacing:.12em; text-transform:uppercase; font-size:15px; white-space:nowrap; display:flex; align-items:center; gap:8px; }
+  .brand-mark { flex:none; width:19px; height:19px; color: var(--terra); }
   .appbar .spacer { flex:1; }
   .icon-btn {
     background: rgba(255,255,255,.1); color: var(--slate-ink); border: none;
@@ -573,7 +573,7 @@
 <div class="appbar">
   <div class="appbar-inner">
     <button class="icon-btn" id="sb-burger" title="Menu" aria-label="Open navigation">☰</button>
-    <div class="brand">Pencil Me In<small>daybook</small></div>
+    <div class="brand"><svg class="brand-mark" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="currentColor"><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z"/><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z" transform="rotate(90 32 32)"/><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z" transform="rotate(180 32 32)"/></g><line x1="32" y1="32" x2="20" y2="32" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="18" cy="32" r="4.5" fill="currentColor"/><circle cx="32" cy="32" r="3" fill="currentColor"/></svg>Gena</div>
     <nav class="nav" id="nav" aria-label="Views">
       <button data-view="hub">Hub</button>
       <button data-view="today" aria-current="true">Today</button>
@@ -623,13 +623,14 @@
   if (!document.querySelector('meta[name="viewport"]')) meta("viewport","width=device-width, initial-scale=1, viewport-fit=cover");
   meta("apple-mobile-web-app-capable","yes");
   meta("mobile-web-app-capable","yes");
-  meta("apple-mobile-web-app-title","Daybook");
+  meta("apple-mobile-web-app-title","Gena");
   meta("apple-mobile-web-app-status-bar-style","default");
-  meta("theme-color","#565165");
-  /* installable-app manifest + icon (data URIs — keeps this a single file) */
-  var DB_ICON="data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#565165"/><rect x="118" y="126" width="276" height="292" rx="30" fill="#fbfaf5"/><rect x="118" y="126" width="54" height="292" rx="0" fill="#c9724a"/><circle cx="145" cy="182" r="9" fill="#fbfaf5"/><circle cx="145" cy="256" r="9" fill="#fbfaf5"/><circle cx="145" cy="330" r="9" fill="#fbfaf5"/><rect x="206" y="190" width="150" height="18" rx="9" fill="#e2ddd1"/><rect x="206" y="248" width="150" height="18" rx="9" fill="#c9724a" opacity=".5"/><rect x="206" y="306" width="104" height="18" rx="9" fill="#e2ddd1"/></svg>');
+  meta("theme-color","#45573f");
+  /* installable-app manifest + icon (data URIs — keeps this a single file)
+     mark: a meskel flower, three petals open and one still a closed bud on its stem — three done, one on the way. */
+  var DB_ICON="data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#20241c"/><g fill="#e2b04e"><path d="M256 48 C320 48 344 128 256 192 C168 128 192 48 256 48 Z"/><path d="M256 48 C320 48 344 128 256 192 C168 128 192 48 256 48 Z" transform="rotate(90 256 256)"/><path d="M256 48 C320 48 344 128 256 192 C168 128 192 48 256 48 Z" transform="rotate(180 256 256)"/></g><line x1="256" y1="256" x2="146" y2="256" stroke="#e2b04e" stroke-width="14" stroke-linecap="round"/><circle cx="140" cy="256" r="26" fill="#e2b04e"/><circle cx="256" cy="256" r="17" fill="#e2b04e"/></svg>');
   (function(){
-    var mf={name:"Daybook — Pencil Me In",short_name:"Daybook",description:"A day planner in a single file — offline, private, yours.",start_url:"./",scope:"./",display:"standalone",background_color:"#f3efe6",theme_color:"#565165",icons:[{src:DB_ICON,sizes:"any",type:"image/svg+xml",purpose:"any maskable"}],
+    var mf={name:"Gena — a day planner",short_name:"Gena",description:"A day planner in a single file — offline, private, yours.",start_url:"./",scope:"./",display:"standalone",background_color:"#f3efe6",theme_color:"#45573f",icons:[{src:DB_ICON,sizes:"any",type:"image/svg+xml",purpose:"any maskable"}],
       // Quick-capture: share a page/note/link to the installed app -> lands in the Backlog (handled by handleCaptureParams on load)
       share_target:{action:"./",method:"GET",params:{title:"title",text:"text",url:"url"}}};
     var l=document.createElement("link"); l.rel="manifest"; l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(mf)); document.head.appendChild(l);
@@ -1086,7 +1087,7 @@
     var backlogOpen=S.tasks.filter(function(k){return !k.day&&k.status!=="done"&&inScope(k.projectId);}).length;
     var VIEWCNT={today:todayOpen, backlog:backlogOpen};
     var VIEWS=[["today","📅","Today"],["week","📆","Week"],["backlog","🗃","Backlog"],["hub","✨","Hub"],["projects","🗂","Projects"],["people","👥","People"],["calendar","🗓","Calendar"],["timeline","📈","Timeline"]];
-    var h='<div class="sb-brand">📔 Daybook<button class="sb-act" data-sb="collapse" title="Hide the sidebar">⟨ hide</button></div>';
+    var h='<div class="sb-brand">🌼 Gena<button class="sb-act" data-sb="collapse" title="Hide the sidebar">⟨ hide</button></div>';
     h+='<div class="sb-card"><div class="sb-h">Views</div>'+VIEWS.map(function(v){
       return '<button class="sb-row" data-sb="view" data-v="'+v[0]+'" aria-pressed="'+(view===v[0])+'">'+v[1]+'<span class="sb-name">'+v[2]+'</span>'+(VIEWCNT[v[0]]?'<span class="cnt">'+VIEWCNT[v[0]]+'</span>':"")+'</button>';
     }).join("")+'</div>';
@@ -2487,7 +2488,7 @@
     var editing=!!pr; var base=pr||{name:"",emoji:"💼"};
     var assigned={}; S.projects.forEach(function(p){ if(editing&&p.profileId===pr.id) assigned[p.id]=true; });
     modal('<h3>'+(editing?"Edit profile":"New profile")+'</h3>'+
-      '<p class="sub">Profiles group projects into contexts — Work, School, Home. Pick one in the sidebar and Daybook shows only that world.</p>'+
+      '<p class="sub">Profiles group projects into contexts — Work, School, Home. Pick one in the sidebar and Gena shows only that world.</p>'+
       '<div class="row"><div class="fld" style="flex:0 0 90px"><label>Icon</label><input id="pf-e" value="'+esc(base.emoji||"")+'" maxlength="4"/></div>'+
       '<div class="fld"><label>Name</label><input id="pf-n" value="'+esc(base.name)+'" placeholder="e.g. School"/></div></div>'+
       '<div class="fld"><label>Projects in this profile</label><div class="chips" id="pf-projs">'+
@@ -2749,7 +2750,7 @@
   }
   function linkSyncFile(){
     if(!window.showSaveFilePicker){ toast("Sync file needs Chrome or Edge"); return; }
-    window.showSaveFilePicker({suggestedName:"daybook-sync.json",types:[{description:"Daybook data",accept:{"application/json":[".json"]}}]}).then(function(h){
+    window.showSaveFilePicker({suggestedName:"gena-sync.json",types:[{description:"Gena data",accept:{"application/json":[".json"]}}]}).then(function(h){
       syncHandle=h; syncName=h.name; idbSet("syncHandle",h); idbSet("syncName",h.name); close();
       h.getFile().then(function(f){ return f.text(); }).then(function(txt){
         var d=null; try{ d=JSON.parse(txt); }catch(e){}
@@ -2759,7 +2760,7 @@
   }
 
   /* ---------- optional cloud sync via a GitHub gist (free, no server) ---------- */
-  var GH_KEY="daybook-gh", GH_FILE="daybook.json", GH_DESC="Daybook sync";
+  var GH_KEY="daybook-gh", GH_FILE="daybook.json", GH_DESC="Gena sync";
   var GH=null, ghTimer=null, ghLastSync=null, ghError=null, ghBusy=false, ghDirty=false, ghEmptyWarned=false;
   try{ GH=JSON.parse(localStorage.getItem(GH_KEY))||null; }catch(e){ GH=null; }
   function ghSaveCfg(){ if(GH&&GH.token) localStorage.setItem(GH_KEY,JSON.stringify(GH)); else localStorage.removeItem(GH_KEY); }
@@ -2814,7 +2815,7 @@
     var connected=GH&&GH.token&&GH.gistId;
     if(connected){
       modal('<h3>☁️ Cloud sync — connected</h3>'+
-        '<p class="sub">Every change auto-saves to a secret gist on your GitHub account. Open Daybook in any browser, connect with the same token, and pick up where you left off.</p>'+
+        '<p class="sub">Every change auto-saves to a secret gist on your GitHub account. Open Gena in any browser, connect with the same token, and pick up where you left off.</p>'+
         '<div class="sub" style="font-size:12px;margin:10px 0">'+(ghError?"⚠ Last sync failed: "+esc(ghError):(ghLastSync?"Last synced "+new Date(ghLastSync).toLocaleTimeString():"Not synced yet this session"))+'</div>'+
         '<p class="sub" style="font-size:12px">✓ Safe merge sync: edits on two devices are merged item-by-item — the newest edit of each task wins, so nothing gets clobbered.</p>'+
         '<div class="stack">'+
@@ -2833,11 +2834,11 @@
       '<div class="stack" style="font-size:13.5px;line-height:1.55">'+
       '<div><b>1.</b> Create a free account at <b>github.com</b> (skip if you have one).</div>'+
       '<div><b>2.</b> Go to <b>Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token (classic)</b>.</div>'+
-      '<div><b>3.</b> Name it “Daybook”, pick an expiration, and tick <b>only the “gist” scope</b>. Generate, then copy the token.</div>'+
+      '<div><b>3.</b> Name it “Gena”, pick an expiration, and tick <b>only the “gist” scope</b>. Generate, then copy the token.</div>'+
       '<div><b>4.</b> Paste it below. Treat the token like a password — it is stored only in this browser.</div>'+
       '</div>'+
       '<div class="fld"><label>Personal access token</label><input id="gh-token" placeholder="ghp_…" autocomplete="off"/></div>'+
-      '<div class="sub" style="font-size:11px">Note: secret gists are hidden from listings but readable by anyone who has their URL. Fine for a task list — don\'t keep truly sensitive secrets in Daybook.</div>'+
+      '<div class="sub" style="font-size:11px">Note: secret gists are hidden from listings but readable by anyone who has their URL. Fine for a task list — don\'t keep truly sensitive secrets in Gena.</div>'+
       '<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="gh-go">Connect</button></div>');
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("gh-go").onclick=function(){
@@ -2848,7 +2849,7 @@
       ghApi("GET","/gists?per_page=100").then(function(list){
         var g=(list||[]).find(function(x){ return x.description===GH_DESC || (x.files&&x.files[GH_FILE]); });
         if(g){
-          // Found an existing Daybook gist -> merge (non-destructive: your data and the cloud's are unioned, no clobber).
+          // Found an existing Gena gist -> merge (non-destructive: your data and the cloud's are unioned, no clobber).
           GH.gistId=g.id; ghSaveCfg(); close(); toast("Connecting — merging your data…"); ghSync("connect");
         } else {
           ghApi("POST","/gists",{description:GH_DESC,public:false,files:{"daybook.json":{content:JSON.stringify(S)}}}).then(function(ng){
@@ -2972,13 +2973,13 @@
       var meta=[]; if(k.at)meta.push("🕒 "+k.at); if(k.b&&BLK[k.b])meta.push(BLK[k.b]+" "+k.b); if(k.pr)meta.push(esc2(k.pr)); if(k.p)meta.push("★");
       return '<li class="snap-task'+(k.done?" done":"")+'"><div>'+(k.done?"✓ ":"○ ")+esc2(k.t)+'</div>'+(meta.length?'<div class="snap-meta">'+meta.join(" · ")+'</div>':"")+(subs?'<ul class="snap-subs">'+subs+'</ul>':"")+'</li>';
     };
-    var body='<div class="snap-wrap"><div class="snap-banner">🔗 Shared read-only snapshot'+(snap.n?" from "+esc2(snap.n):"")+' · <a href="'+esc2(location.pathname)+'">Open your own Daybook →</a></div>'+
+    var body='<div class="snap-wrap"><div class="snap-banner">🔗 Shared read-only snapshot'+(snap.n?" from "+esc2(snap.n):"")+' · <a href="'+esc2(location.pathname)+'">Open your own Gena →</a></div>'+
       '<h1 class="snap-h1">📔 '+(snap.scope==="week"?"This week":"Today")+(snap.d?' · '+niceD(snap.d):"")+'</h1>';
     if((snap.focus||[]).length){ body+='<div class="snap-card"><h2>⭐ Focus</h2><ul class="snap-list">'+snap.focus.map(function(f){return '<li class="snap-task'+(f.done?" done":"")+'">'+(f.done?"✓ ":"○ ")+esc2(f.t)+'</li>';}).join("")+'</ul></div>'; }
     if(!dates.length){ body+='<div class="snap-card"><p style="opacity:.6">No tasks in this snapshot.</p></div>'; }
     dates.forEach(function(d){ body+='<div class="snap-card"><h2>'+niceD(d)+'</h2><ul class="snap-list">'+byDay[d].map(taskHtml).join("")+'</ul></div>'; });
     if((snap.events||[]).length){ body+='<div class="snap-card"><h2>📅 Events</h2><ul class="snap-list">'+snap.events.map(function(e){return '<li class="snap-task">'+esc2(e.t)+' <span class="snap-meta">· '+niceD(e.d)+'</span></li>';}).join("")+'</ul></div>'; }
-    body+='<div class="snap-foot">Made with Daybook — a free, offline, single-file planner. <a href="'+esc2(location.pathname)+'">Try it →</a></div></div>';
+    body+='<div class="snap-foot">Made with Gena — a free, offline, single-file planner. <a href="'+esc2(location.pathname)+'">Try it →</a></div></div>';
     document.body.innerHTML=body;
     document.body.setAttribute("data-snapshot","1");
   }
@@ -2987,7 +2988,7 @@
     try{ var lg=localStorage.getItem(KEY+"-lastgood"); if(lg){ var dl=JSON.parse(lg); items.push({label:"Most recent good save", t:dl.savedAt, n:(dl.tasks||[]).length, raw:lg}); } }catch(e){}
     try{ JSON.parse(localStorage.getItem(SNAP_KEY)||"[]").slice().reverse().forEach(function(s){ items.push({label:"Snapshot", t:s.t, n:s.n, raw:s.data}); }); }catch(e){}
     try{ var cr=localStorage.getItem(KEY+"-corrupt"); if(cr){ items.push({label:"Recovered (last readable)", t:null, n:"?", raw:cr}); } }catch(e){}
-    var body='<h3>🛟 Restore from a local backup</h3><p class="sub">Daybook keeps automatic on-device snapshots. Pick one to roll back to — it replaces the current data on this device (and re-syncs afterward).</p>';
+    var body='<h3>🛟 Restore from a local backup</h3><p class="sub">Gena keeps automatic on-device snapshots. Pick one to roll back to — it replaces the current data on this device (and re-syncs afterward).</p>';
     if(!items.length){ body+='<div class="empty" style="padding:20px">No local backups yet — they build up as you use the app.</div>'; }
     else { body+='<div class="stack">'+items.map(function(it,i){
       return '<button class="btn" data-ri="'+i+'" style="text-align:left"><b>'+esc(it.label)+'</b><br><span class="sub" style="font-size:12px">'+it.n+' tasks · '+(it.t?new Date(it.t).toLocaleString():"unknown time")+'</span></button>';
@@ -3028,7 +3029,7 @@
       '<button class="btn" id="x-host">🌐 Put it online (GitHub Pages)</button>'+
       '<button class="btn ghost" id="x-reset" style="color:var(--terra-deep)">Reset everything</button>'+
       '</div>'+
-      '<div class="sub" style="font-size:10.5px;margin-top:14px;text-align:center">Daybook · build '+APP_BUILD+' · © Mintay Misgano · PolyForm Noncommercial · press ? for shortcuts</div>'+
+      '<div class="sub" style="font-size:10.5px;margin-top:14px;text-align:center">Gena · build '+APP_BUILD+' · © Mintay Misgano · PolyForm Noncommercial · press ? for shortcuts</div>'+
       '<div class="modal-actions"><button class="btn primary" id="set-done">Done</button></div>');
     document.getElementById("set-done").onclick=function(){ close(); render(); };
     document.getElementById("x-csv").onclick=exportCSV;
@@ -3042,7 +3043,7 @@
       if(!S.remind){
         if(typeof Notification==="undefined"){ toast("This browser can't show notifications"); return; }
         Notification.requestPermission().then(function(p){
-          if(p==="granted"){ S.remind=true; save(); close(); toast("Reminders on — they fire at each task's 🕒 time while Daybook is open"); }
+          if(p==="granted"){ S.remind=true; save(); close(); toast("Reminders on — they fire at each task's 🕒 time while Gena is open"); }
           else toast("Notifications were blocked by the browser");
         });
       } else { S.remind=false; save(); close(); toast("Reminders off"); }
@@ -3065,7 +3066,7 @@
     var xu=document.getElementById("x-unsync"); if(xu) xu.onclick=function(){ syncHandle=null; syncName=null; idbSet("syncHandle",null); idbSet("syncName",null); close(); toast("Sync file unlinked"); };
     document.getElementById("x-import").onclick=function(){
       pickFile(".json,application/json", function(f){ var r=new FileReader();
-        r.onload=function(){ try{ var d=JSON.parse(r.result); if(d.version){ openImportModal(normalize(d)); } else toast("Not a Daybook file"); }catch(e){ toast("Couldn't read that file"); } };
+        r.onload=function(){ try{ var d=JSON.parse(r.result); if(d.version){ openImportModal(normalize(d)); } else toast("Not a Gena file"); }catch(e){ toast("Couldn't read that file"); } };
         r.readAsText(f); });
     };
     document.getElementById("x-install").onclick=function(){
@@ -3079,7 +3080,7 @@
       document.querySelector("[data-x]").onclick=close;
     };
     document.getElementById("x-host").onclick=function(){
-      close(); modal('<h3>Put Daybook online — free, no API</h3><p class="sub" style="margin-bottom:14px">GitHub Pages hosts this file as a real website. One thing to know: your <b>data still lives in each browser</b> (localStorage) — the site itself stores nothing, so it stays private. A new browser starts empty; turn on <b>☁️ Cloud sync</b> to carry your data across devices, or use Export/Import.</p>'+
+      close(); modal('<h3>Put Gena online — free, no API</h3><p class="sub" style="margin-bottom:14px">GitHub Pages hosts this file as a real website. One thing to know: your <b>data still lives in each browser</b> (localStorage) — the site itself stores nothing, so it stays private. A new browser starts empty; turn on <b>☁️ Cloud sync</b> to carry your data across devices, or use Export/Import.</p>'+
         '<div class="stack" style="font-size:14px;line-height:1.6">'+
         '<div><b>1.</b> Create a free account at <b>github.com</b>.</div>'+
         '<div><b>2.</b> Click <b>+ → New repository</b>. Name it anything (e.g. <b>daybook</b>). Note: Pages sites are public — anyone with the link can load the app (but never your data).</div>'+
@@ -3090,7 +3091,7 @@
         '</div><div class="modal-actions"><button class="btn primary" data-x>Got it</button></div>');
       document.querySelector("[data-x]").onclick=close;
     };
-    document.getElementById("x-reset").onclick=function(){ confirmModal("Reset everything?","Erases all Daybook data on this device. This can't be undone.","Erase it all",function(){ localStorage.removeItem(KEY); S=seed(); save(); applyTheme(); fillProjSelect(); render(); }); };
+    document.getElementById("x-reset").onclick=function(){ confirmModal("Reset everything?","Erases all Gena data on this device. This can't be undone.","Erase it all",function(){ localStorage.removeItem(KEY); S=seed(); save(); applyTheme(); fillProjSelect(); render(); }); };
   };
 
   /* ---------- PEOPLE (follow-ups) ---------- */
@@ -3243,7 +3244,7 @@
   }
   function addEmails(text){ text=(text||"").trim(); if(!text)return; text.split(/\n/).forEach(function(line){ line=line.trim(); if(!line)return; var parts=line.split(/\s[—–-]\s/); S.emails.unshift({id:uid(),subject:parts[0].trim(),sender:(parts[1]||"").trim(),done:false,created:today()}); }); save(); render(); toast("Flagged"); }
   function addImprove(type,text){ text=(text||"").trim(); if(!text)return; S.improve.unshift({id:uid(),type:type||"idea",text:text,date:today()}); save(); render(); }
-  function copyImprove(){ if(!S.improve.length){toast("Nothing logged yet");return;} var lines=S.improve.map(function(e){return "- ["+e.type+"] "+e.text+" ("+e.date+")";}); copyText("Here is my Daybook improvement log from real day-to-day use. Please suggest and implement upgrades based on these notes:\n\n"+lines.join("\n"),function(){toast("Log copied for Claude");}); }
+  function copyImprove(){ if(!S.improve.length){toast("Nothing logged yet");return;} var lines=S.improve.map(function(e){return "- ["+e.type+"] "+e.text+" ("+e.date+")";}); copyText("Here is my Gena improvement log from real day-to-day use. Please suggest and implement upgrades based on these notes:\n\n"+lines.join("\n"),function(){toast("Log copied for Claude");}); }
 
   function parseChecklist(text, prev){
     prev=prev||[];
@@ -3290,7 +3291,7 @@
     var names=S.projects.map(function(p){return p.name;}).join(", ")||"none yet";
     var profs=S.profiles.map(function(p){return p.name;}).join(", ")||"none yet";
     if(withState){
-      return "You are helping me manage my personal planner app, Daybook. Below is my CURRENT open task list (each task has a stable [id]), then a brain-dump of what changed.\n\n"+
+      return "You are helping me manage my personal planner app, Gena. Below is my CURRENT open task list (each task has a stable [id]), then a brain-dump of what changed.\n\n"+
         "MY CURRENT TASKS:\n"+currentTasksSnapshot()+"\n\n"+
         "STEP 1 — Ask brief clarifying questions if needed (which task I mean, dates, etc.). Keep it short.\n\n"+
         "STEP 2 — Reply with ONLY a single fenced ```json block. Use \"updates\" to change EXISTING tasks (reference them by their exact [id]), \"deletes\" to remove tasks by id, and the other arrays to ADD new items. Omit anything you have nothing for:\n"+
@@ -3307,7 +3308,7 @@
         "- Don't invent or change anything I didn't say.\n\n"+
         "My brain-dump:\n\"\"\"\n"+blurb+"\n\"\"\"";
     }
-    return "You are helping me fill in my personal planner app, Daybook. I'll give you a brain-dump below.\n\n"+
+    return "You are helping me fill in my personal planner app, Gena. I'll give you a brain-dump below.\n\n"+
       "STEP 1 — Ask me a few brief clarifying questions for anything missing (dates, which project, priority, whether a task has sub-steps, job stage, who an email is from, etc.). Keep it short.\n\n"+
       "STEP 2 — After I answer, reply with ONLY a single fenced ```json code block in exactly this shape. Omit any field or array you have nothing for:\n"+
       "```json\n{\n"+
@@ -3588,7 +3589,7 @@
     S.tasks.forEach(function(k){
       if(k.status!=="todo"||k.day!==t||!k.at||k.at!==hm) return;
       var nk=k.id+"@"+t+hm; if(notified[nk]) return; notified[nk]=1;
-      try{ new Notification("Daybook — "+fmtTime(k.at),{body:k.title,tag:nk}); }catch(e){}
+      try{ new Notification("Gena — "+fmtTime(k.at),{body:k.title,tag:nk}); }catch(e){}
       toast("🔔 "+k.title);
     });
   }
@@ -3614,7 +3615,7 @@
     if(!FT.running) return;
     FT.left--;
     if(FT.left<=0){ var lbl=FT.label; ftStop(); beep(); toast("⏱ Focus block done — stretch!");
-      try{ if(typeof Notification!=="undefined"&&Notification.permission==="granted") new Notification("Daybook",{body:"Focus block done"+(lbl?" — "+lbl:"")}); }catch(e){}
+      try{ if(typeof Notification!=="undefined"&&Notification.permission==="granted") new Notification("Gena",{body:"Focus block done"+(lbl?" — "+lbl:"")}); }catch(e){}
       return; }
     ftPaint();
   }
@@ -3632,7 +3633,7 @@
   function showLock(){
     if(document.getElementById("lock-scrim")) return;
     var box=document.createElement("div"); box.className="lock-scrim"; box.id="lock-scrim";
-    box.innerHTML='<div class="lock-box"><div style="font-size:34px">🔒</div><h3 style="margin:8px 0 4px">Daybook is locked</h3><p class="sub" style="margin:0 0 4px">Enter your passcode</p><input id="lock-in" type="password" inputmode="numeric" autocomplete="off" style="width:100%;text-align:center;font-size:20px;letter-spacing:.25em;padding:11px;border:1.5px solid var(--line);border-radius:12px;margin:8px 0;background:var(--sheet);color:var(--ink)"/><div id="lock-err" class="sub" style="color:var(--terra-deep);min-height:18px;margin:0"></div><button class="btn primary" id="lock-go" style="width:100%">Unlock</button></div>';
+    box.innerHTML='<div class="lock-box"><div style="font-size:34px">🔒</div><h3 style="margin:8px 0 4px">Gena is locked</h3><p class="sub" style="margin:0 0 4px">Enter your passcode</p><input id="lock-in" type="password" inputmode="numeric" autocomplete="off" style="width:100%;text-align:center;font-size:20px;letter-spacing:.25em;padding:11px;border:1.5px solid var(--line);border-radius:12px;margin:8px 0;background:var(--sheet);color:var(--ink)"/><div id="lock-err" class="sub" style="color:var(--terra-deep);min-height:18px;margin:0"></div><button class="btn primary" id="lock-go" style="width:100%">Unlock</button></div>';
     document.body.appendChild(box);
     var inp=document.getElementById("lock-in"); setTimeout(function(){ inp.focus(); },60);
     function tryUnlock(){ var cfg=lockCfg(); if(cfg&&hashCode(inp.value)===cfg.hash){ box.remove(); } else { document.getElementById("lock-err").textContent="Wrong passcode"; inp.value=""; inp.focus(); } }
@@ -3641,22 +3642,22 @@
   }
   function openLockModal(){
     var has=!!lockCfg();
-    modal('<h3>🔒 App lock</h3><p class="sub">Shows a passcode screen when Daybook opens on this device. Note: this hides the screen, it does not encrypt your data — someone with deep browser access could still read it. Good for casual privacy.</p>'+
+    modal('<h3>🔒 App lock</h3><p class="sub">Shows a passcode screen when Gena opens on this device. Note: this hides the screen, it does not encrypt your data — someone with deep browser access could still read it. Good for casual privacy.</p>'+
       (has?'<div class="stack"><button class="btn" id="lk-change">Change passcode</button><button class="btn" id="lk-lock">🔒 Lock now</button><button class="btn ghost" id="lk-remove" style="color:var(--terra-deep)">Remove passcode</button></div><div class="modal-actions"><button class="btn primary" data-x>Done</button></div>'
           :'<div class="fld"><label>New passcode (3+ characters)</label><input id="lk-new" type="password" inputmode="numeric" autocomplete="off" placeholder="e.g. a PIN"/></div><div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="lk-set">Set passcode</button></div>'));
     document.querySelector("[data-x]").onclick=close;
     if(has){
       document.getElementById("lk-lock").onclick=function(){ close(); showLock(); };
-      document.getElementById("lk-remove").onclick=function(){ confirmModal("Remove passcode?","Daybook will open without a lock on this device.","Remove",function(){ localStorage.removeItem(LOCK_KEY); toast("Passcode removed"); }); };
+      document.getElementById("lk-remove").onclick=function(){ confirmModal("Remove passcode?","Gena will open without a lock on this device.","Remove",function(){ localStorage.removeItem(LOCK_KEY); toast("Passcode removed"); }); };
       document.getElementById("lk-change").onclick=function(){ localStorage.removeItem(LOCK_KEY); close(); openLockModal(); };
     } else {
-      document.getElementById("lk-set").onclick=function(){ var v=document.getElementById("lk-new").value; if((v||"").length<3){ toast("Use at least 3 characters"); return; } localStorage.setItem(LOCK_KEY, JSON.stringify({hash:hashCode(v)})); close(); toast("Passcode set — it'll ask when you next open Daybook"); };
+      document.getElementById("lk-set").onclick=function(){ var v=document.getElementById("lk-new").value; if((v||"").length<3){ toast("Use at least 3 characters"); return; } localStorage.setItem(LOCK_KEY, JSON.stringify({hash:hashCode(v)})); close(); toast("Passcode set — it'll ask when you next open Gena"); };
     }
   }
 
   /* ---------- first-run welcome ---------- */
   function openWelcomeModal(){
-    modal('<h3>👋 Welcome to Daybook</h3><p class="sub">A day planner that lives entirely in your browser — no account, no server, your data stays yours.</p>'+
+    modal('<h3>👋 Welcome to Gena</h3><p class="sub">A day planner that lives entirely in your browser — no account, no server, your data stays yours.</p>'+
       '<div class="stack" style="font-size:14px;line-height:1.6;margin-top:6px">'+
       '<div>📅 <b>Today</b> is home — focus list, tasks, and morning / afternoon / evening blocks.</div>'+
       '<div>⌨️ Type naturally: <b>“Call the bank tomorrow @errands @3pm”</b> files itself. Press <b>⌘K</b> for every command.</div>'+
@@ -3681,7 +3682,7 @@
   function icsEsc(s){ return String(s||"").replace(/\\/g,"\\\\").replace(/([,;])/g,"\\$1").replace(/\n/g,"\\n"); }
   // Build a full iCalendar. alarms=true adds VALARM reminders (used for the subscribable feed).
   function buildICS(alarms){
-    var L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Daybook//Pencil Me In//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:Daybook","X-WR-CALDESC:Daybook tasks & deadlines"];
+    var L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Gena//Gena Planner//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:Gena","X-WR-CALDESC:Gena tasks & deadlines"];
     var horizon=addDays(today(),-1); // keep it lean: only today-forward
     S.tasks.forEach(function(k){ if(!k.day || k.status==="done" || k.day<horizon) return;
       var timed=/^\d{2}:\d{2}$/.test(k.at||"");
@@ -3720,12 +3721,12 @@
       '<p class="sub">Drop a page, link, or bit of text into your Backlog from anywhere — no account, no extension.</p>'+
       '<div class="stack" style="gap:14px">'+
       '<div><div style="font-weight:600;margin-bottom:6px">On a computer — the bookmarklet</div>'+
-        '<p class="sub" style="font-size:12.5px;margin:0 0 8px">Drag this button to your bookmarks bar. Click it on any web page to send it to Daybook.</p>'+
-        '<a id="cap-bm" style="display:inline-block;padding:8px 14px;border-radius:10px;background:var(--terra);color:#fff;font-weight:600;text-decoration:none;cursor:grab">➕ Save to Daybook</a>'+
+        '<p class="sub" style="font-size:12.5px;margin:0 0 8px">Drag this button to your bookmarks bar. Click it on any web page to send it to Gena.</p>'+
+        '<a id="cap-bm" style="display:inline-block;padding:8px 14px;border-radius:10px;background:var(--terra);color:#fff;font-weight:600;text-decoration:none;cursor:grab">➕ Save to Gena</a>'+
         '<div class="sub" style="font-size:11px;margin-top:8px">Can\'t drag it? <button class="btn ghost" id="cap-copy" style="padding:2px 8px;font-size:11px">Copy the code</button> and make a new bookmark with it as the URL.</div>'+
       '</div>'+
       '<div><div style="font-weight:600;margin-bottom:6px">On a phone — the Share sheet</div>'+
-        '<p class="sub" style="font-size:12.5px;margin:0">Install Daybook to your home screen first (⋯ → “Add to phone home screen”). Then on <b>Android</b>, “Daybook” appears in any app’s Share menu — tap it to capture. <b>iPhone</b> doesn’t allow share-to-webapp, so use the bookmarklet in Safari there.</p>'+
+        '<p class="sub" style="font-size:12.5px;margin:0">Install Gena to your home screen first (⋯ → “Add to phone home screen”). Then on <b>Android</b>, “Gena” appears in any app’s Share menu — tap it to capture. <b>iPhone</b> doesn’t allow share-to-webapp, so use the bookmarklet in Safari there.</p>'+
       '</div>'+
       '</div>'+
       '<div class="modal-actions"><button class="btn primary" data-x>Done</button></div>');
@@ -3737,7 +3738,7 @@
   /* ---------- subscribable reminder feed (.ics via the sync gist) ---------- */
   function openFeedModal(){
     if(!GH||!GH.token||!GH.gistId){
-      modal('<h3>📡 Reminder calendar feed</h3><p class="sub">This publishes your deadlines as a live calendar your phone can subscribe to — so your normal Calendar app fires the reminders, even when Daybook is closed. It needs <b>☁️ Cloud sync</b> turned on first (that’s where the feed is hosted).</p><div class="modal-actions"><button class="btn ghost" data-x>Close</button><button class="btn primary" id="feed-gh">Set up Cloud sync</button></div>');
+      modal('<h3>📡 Reminder calendar feed</h3><p class="sub">This publishes your deadlines as a live calendar your phone can subscribe to — so your normal Calendar app fires the reminders, even when Gena is closed. It needs <b>☁️ Cloud sync</b> turned on first (that’s where the feed is hosted).</p><div class="modal-actions"><button class="btn ghost" data-x>Close</button><button class="btn primary" id="feed-gh">Set up Cloud sync</button></div>');
       document.querySelector("[data-x]").onclick=close;
       document.getElementById("feed-gh").onclick=function(){ close(); openGhModal(); };
       return;
@@ -3754,7 +3755,7 @@
         var https="https://gist.githubusercontent.com/"+login+"/"+GH.gistId+"/raw/daybook.ics";
         var webcal=https.replace(/^https:/,"webcal:");
         var body='<h3>📡 Reminder calendar feed</h3>'+
-          '<p class="sub">Subscribe your phone or computer’s calendar to this link. It refreshes on its own, and reminders fire from your real Calendar app — no need to keep Daybook open.</p>'+
+          '<p class="sub">Subscribe your phone or computer’s calendar to this link. It refreshes on its own, and reminders fire from your real Calendar app — no need to keep Gena open.</p>'+
           '<div class="fld"><label>Subscription link</label><input id="feed-url" readonly value="'+esc(webcal)+'" style="font-size:12px"/></div>'+
           '<div class="stack">'+
           '<a class="btn" href="'+esc(webcal)+'">➕ Subscribe now (opens your calendar app)</a>'+
