@@ -290,6 +290,35 @@
   .emoji-b:hover{ background:var(--terra-bg); }
   .emoji-b.on{ background:var(--terra); }
   .sw-custom{ width:30px; height:30px; padding:0; border:2px dashed var(--line-strong,var(--ink-faint)); border-radius:50%; cursor:pointer; background:var(--card); }
+
+  /* The right panel is only ~220px wide — five row buttons there squeeze the title down to a couple of
+     characters per line. Keep the checkbox and delete; the rest of the actions live in the main list. */
+  #rightbar li.task .task-addsub, #rightbar li.task .task-focus, #rightbar li.task .task-star{ display:none; }
+
+  /* inline task editor — the row becomes the form, so the list never vanishes underneath you */
+  li.task.ie-row{ display:block; padding:14px; background:var(--sheet); border:1.5px solid var(--terra);
+    border-radius:14px; margin:6px 0; cursor:default; }
+  .ie-wrap{ display:flex; gap:20px; align-items:flex-start; }
+  .ie-main{ flex:1 1 58%; min-width:0; }
+  .ie-side{ flex:1 1 42%; min-width:0; border-left:1px solid var(--line-soft); padding-left:18px; }
+  .ie-lbl{ font-size:10.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase;
+    letter-spacing:.08em; margin:12px 0 5px; }
+  .ie-main > .ie-lbl:first-child, .ie-side > .ie-lbl:first-child{ margin-top:0; }
+  .ie-row input, .ie-row select, .ie-row textarea{ width:100%; font-family:inherit; font-size:14px;
+    color:var(--ink); background:var(--card); border:1.5px solid var(--line); border-radius:10px; padding:8px 10px; }
+  .ie-row input:focus, .ie-row select:focus, .ie-row textarea:focus{ outline:none; border-color:var(--terra); }
+  .ie-title{ font-size:15.5px !important; font-weight:600; }
+  .ie-notes{ resize:vertical; }
+  .ie-sub{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .ie-sub .chk{ flex:none; }
+  .ie-sub input{ flex:1; }
+  .ie-subnew{ margin-top:6px; }
+  .ie-acts{ display:flex; gap:9px; justify-content:flex-end; flex-wrap:wrap;
+    margin-top:14px; padding-top:12px; border-top:1px solid var(--line-soft); }
+  @media (max-width:760px){
+    .ie-wrap{ flex-direction:column; gap:0; }
+    .ie-side{ border-left:none; padding-left:0; border-top:1px solid var(--line-soft); padding-top:12px; margin-top:14px; }
+  }
   .sw[aria-pressed="true"]{ border-color:var(--ink); }
   .chips{ display:flex; gap:6px; flex-wrap:wrap; }
   .chip{ font-size:12.5px; padding:6px 11px; border-radius:999px; border:1.5px solid var(--line); background:var(--card); color:var(--ink-soft); cursor:pointer; font-weight:600; }
@@ -1100,6 +1129,7 @@
   var pendingFocus=null;
   var dragTaskId=null, dragJobId=null, dragNestTarget=null, dragFocusId=null, dragUnitKey=null;
   var pendingSubAdd=null;
+  var editingTaskId=null;   // task being edited in place (Phase 8 — no modal for the common case)
   var bulkMode=false, bulkIds={};
   var lastRenderedView=null;
   var IN_CLAUDE=(function(){ try{ return window.self!==window.top || /claude|anthropic|usercontent/i.test(location.hostname); }catch(e){ return true; } })();
@@ -1235,6 +1265,49 @@
     if(local) k.bord=nv; else k.ord=nv;
   }
   function fmtTime(at){ var h=+at.slice(0,2), m=at.slice(3); var h12=h%12||12; return h12+(m!=="00"?":"+m:"")+" "+(h<12?"am":"pm"); }
+  /* ---------- inline task editor (Phase 8) — edit in place, no modal ----------
+     Same two-column shape as the modal (writing left, scheduling right) but rendered as the row itself,
+     so the list never disappears out from under you. Full-fat options (repeat, duplicate) still live in
+     the modal, reachable from "More…". */
+  function inlineEditorLi(k){
+    var p=proj(k.projectId);
+    var projOpts=S.projects.map(function(x){return '<option value="'+x.id+'" '+(x.id===k.projectId?"selected":"")+'>'+esc(x.name)+'</option>';}).join("");
+    var BLKS=[["","Anytime"],["morning","Morning"],["afternoon","Afternoon"],["evening","Evening"]];
+    var subs=(k.subs||[]).map(function(sb,i){
+      return '<div class="ie-sub"><button type="button" class="chk '+(sb.done?"done":"")+'" data-ie="subtoggle" data-i="'+i+'" aria-label="Toggle subtask" aria-pressed="'+!!sb.done+'"></button>'+
+        '<input value="'+esc(sb.text)+'" data-ie="subtext" data-i="'+i+'" aria-label="Subtask"/>'+
+        '<button type="button" class="task-x" style="opacity:1" data-ie="subdel" data-i="'+i+'" aria-label="Remove subtask">✕</button></div>';
+    }).join("");
+    return '<li class="task ie-row" data-id="'+k.id+'" data-editing="1">'+
+      '<div class="ie-wrap">'+
+        '<div class="ie-main">'+
+          '<input class="ie-title" id="ie-title" value="'+esc(k.title)+'" placeholder="What needs doing?" aria-label="Task"/>'+
+          '<div class="ie-lbl">Subtasks</div><div id="ie-subs">'+subs+'</div>'+
+          '<input class="ie-subnew" id="ie-subnew" placeholder="Add a subtask — press Enter" aria-label="Add a subtask"/>'+
+          '<div class="ie-lbl">Notes</div>'+
+          '<textarea class="ie-notes" id="ie-notes" rows="3" placeholder="Details, links, context…" aria-label="Notes">'+esc(htmlToText(k.notes||""))+'</textarea>'+
+        '</div>'+
+        '<div class="ie-side">'+
+          '<div class="ie-lbl">Project</div><select id="ie-proj" aria-label="Project"><option value="">None</option>'+projOpts+'</select>'+
+          (S.people.length?'<div class="ie-lbl">People</div><div class="chips" id="ie-people">'+
+            S.people.map(function(pp){return '<button type="button" class="chip" data-pid="'+pp.id+'" aria-pressed="'+((k.personIds||[]).indexOf(pp.id)>=0)+'">'+esc(pp.name)+'</button>';}).join("")+'</div>':'')+
+          '<div class="ie-lbl">Day</div><input type="date" id="ie-day" value="'+esc(k.day||"")+'" aria-label="Day"/>'+
+          '<div class="ie-lbl">Block</div><div class="chips" id="ie-block">'+
+            BLKS.map(function(b){return '<button type="button" class="chip" data-b="'+b[0]+'" aria-pressed="'+((k.block||"")===b[0])+'">'+b[1]+'</button>';}).join("")+'</div>'+
+          '<div class="ie-lbl">Time</div><input type="time" id="ie-time" value="'+esc(k.at||"")+'" aria-label="Time"/>'+
+          '<div class="ie-lbl">Importance</div><div class="chips" id="ie-imp">'+
+            '<button type="button" class="chip" data-i="0" aria-pressed="'+(!k.priority)+'">Normal</button>'+
+            '<button type="button" class="chip" data-i="1" aria-pressed="'+(!!k.priority)+'">★ Important</button></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="ie-acts">'+
+        '<button class="btn ghost" data-ie="del" style="margin-right:auto;color:var(--terra-deep)">Delete</button>'+
+        '<button class="btn" data-ie="more">More…</button>'+
+        '<button class="btn" data-ie="focus" title="Add to Today\u2019s Focus">◎ Focus</button>'+
+        '<button class="btn ghost" data-ie="cancel">Cancel</button>'+
+        '<button class="btn primary" data-ie="save">Save</button>'+
+      '</div></li>';
+  }
   function taskLi(k){
     var p=proj(k.projectId);
     var pills="";
@@ -1260,6 +1333,7 @@
       pills+='<span class="pill subs-n">☑ '+sdn+'/'+k.subs.length+'</span>';
       subRows=k.subs.map(function(s){return '<li class="sub '+(s.done?"done":"")+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-sid="'+s.id+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span></li>';}).join("");
     }
+    if(editingTaskId===k.id) return inlineEditorLi(k);
     if(pendingSubAdd===k.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+k.id+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
     var subsHtml=subRows?'<ul class="subs">'+subRows+'</ul>':'';
     return '<li class="task '+(k.status==="done"?"done":"")+'" data-id="'+k.id+'" draggable="true">'+
@@ -1966,6 +2040,69 @@
       if(e.target.dataset.subfor){ addSubInline(e.target.dataset.subfor, e.target.value); }
       else if(e.target.dataset.fsubfor){ addFocusSubInline(e.target.dataset.fsubfor, e.target.value); }
       else if(e.target.dataset.focus){ addFocusItem(e.target.value); } else { addTaskInline(e.target.value, e.target.dataset.block); } } };
+    // ---- inline task editor wiring (Phase 8) ----
+    var ieRow=v.querySelector("li.ie-row[data-editing]");
+    if(ieRow){
+      var ieId=ieRow.dataset.id;
+      var ieSubs=(function(){ var t=S.tasks.find(function(x){return x.id===ieId;}); return ((t&&t.subs)||[]).map(function(sb){return {id:sb.id,text:sb.text,done:!!sb.done};}); })();
+      var iePeople=(function(){ var t=S.tasks.find(function(x){return x.id===ieId;}); return ((t&&t.personIds)||[]).slice(); })();
+      var ieBlock=(function(){ var t=S.tasks.find(function(x){return x.id===ieId;}); return (t&&t.block)||""; })();
+      var iePrio=(function(){ var t=S.tasks.find(function(x){return x.id===ieId;}); return !!(t&&t.priority); })();
+      function ieRenderSubs(){
+        document.getElementById("ie-subs").innerHTML=ieSubs.map(function(sb,i){
+          return '<div class="ie-sub"><button type="button" class="chk '+(sb.done?"done":"")+'" data-ie="subtoggle" data-i="'+i+'" aria-label="Toggle subtask" aria-pressed="'+!!sb.done+'"></button>'+
+            '<input value="'+esc(sb.text)+'" data-ie="subtext" data-i="'+i+'" aria-label="Subtask"/>'+
+            '<button type="button" class="task-x" style="opacity:1" data-ie="subdel" data-i="'+i+'" aria-label="Remove subtask">✕</button></div>';
+        }).join("");
+      }
+      function ieCollect(){
+        var t=S.tasks.find(function(x){return x.id===ieId;}); if(!t) return null;
+        var newSub=(document.getElementById("ie-subnew")||{}).value||"";
+        if(newSub.trim()) ieSubs.push({id:uid(),text:newSub.trim(),done:false});
+        t.title=(document.getElementById("ie-title").value||"").trim()||t.title;
+        t.projectId=document.getElementById("ie-proj").value||null;
+        t.personIds=iePeople.slice();
+        var dv=document.getElementById("ie-day").value||null;
+        t.day=dv; if(!dv) t.block=null; else t.block=ieBlock||null;
+        t.at=document.getElementById("ie-time").value||null;
+        t.priority=iePrio;
+        t.subs=ieSubs.filter(function(sb){return (sb.text||"").trim();});
+        var nv=(document.getElementById("ie-notes").value||"").trim();
+        t.notes=nv?plainToHtml(nv):null;
+        return t;
+      }
+      function ieClose(){ editingTaskId=null; render(); }
+      ieRow.addEventListener("keydown",function(e){
+        if(e.key==="Escape"){ e.preventDefault(); ieClose(); return; }
+        if(e.key==="Enter"&&e.target.id==="ie-subnew"){ e.preventDefault();
+          var val=(e.target.value||"").trim(); if(val){ ieSubs.push({id:uid(),text:val,done:false}); e.target.value=""; ieRenderSubs(); e.target.focus(); } return; }
+        if(e.key==="Enter"&&e.target.id==="ie-title"){ e.preventDefault(); ieCollect(); save(); ieClose(); }
+      });
+      ieRow.addEventListener("input",function(e){
+        var w=e.target.dataset?e.target.dataset.ie:null;
+        if(w==="subtext") ieSubs[+e.target.dataset.i].text=e.target.value;
+      });
+      ieRow.addEventListener("click",function(e){
+        var b=e.target.closest("[data-ie],[data-pid],[data-b],[data-i]"); if(!b) return;
+        var w=b.dataset.ie;
+        if(w==="subtoggle"){ ieSubs[+b.dataset.i].done=!ieSubs[+b.dataset.i].done; ieRenderSubs(); return; }
+        if(w==="subdel"){ ieSubs.splice(+b.dataset.i,1); ieRenderSubs(); return; }
+        if(b.dataset.pid!==undefined && b.closest("#ie-people")){ var at=iePeople.indexOf(b.dataset.pid);
+          if(at>=0) iePeople.splice(at,1); else iePeople.push(b.dataset.pid);
+          b.setAttribute("aria-pressed",iePeople.indexOf(b.dataset.pid)>=0); return; }
+        if(b.dataset.b!==undefined && b.closest("#ie-block")){ ieBlock=b.dataset.b;
+          [].forEach.call(b.parentNode.children,function(c){c.setAttribute("aria-pressed",c===b);}); return; }
+        if(b.dataset.i!==undefined && b.closest("#ie-imp")){ iePrio=b.dataset.i==="1";
+          [].forEach.call(b.parentNode.children,function(c){c.setAttribute("aria-pressed",(c.dataset.i==="1")===iePrio);}); return; }
+        if(w==="save"){ ieCollect(); save(); ieClose(); toast("Saved"); return; }
+        if(w==="cancel"){ ieClose(); return; }
+        if(w==="focus"){ var t0=ieCollect(); save(); var vd0=viewDay; viewDay=today(); addTaskToFocus(ieId,true); viewDay=vd0; save(); ieClose(); toast("Added to Today’s Focus"); return; }
+        if(w==="more"){ var t1=ieCollect(); save(); editingTaskId=null; openTaskModal({edit:t1}); return; }
+        if(w==="del"){ var di=S.tasks.findIndex(function(x){return x.id===ieId;});
+          if(di>=0){ var dt=S.tasks.splice(di,1)[0]; editingTaskId=null; save(); render();
+            toastUndo("Task deleted",function(){ S.tasks.splice(Math.min(di,S.tasks.length),0,dt); save(); render(); }); } return; }
+      });
+    }
     if(pendingSubAdd){ var psi=v.querySelector('.inline-add[data-subfor="'+pendingSubAdd+'"],.inline-add[data-fsubfor="'+pendingSubAdd+'"]');
       if(psi){ psi.focus(); psi.onblur=function(){ if(!psi.value.trim()&&pendingSubAdd){ pendingSubAdd=null; render(); } }; } }
     if(pendingFocus){ var psel=pendingFocus==="focus" ? '.inline-add[data-focus="1"]' : '.inline-add[data-block="'+pendingFocus+'"]'; var pf=v.querySelector(psel)||document.querySelector("#rightbar "+psel); pendingFocus=null; if(pf){ pf.focus(); } }
@@ -2096,7 +2233,10 @@
       var idEl=e.target.closest("[data-id]"); var anyId=idEl&&idEl.dataset.id;
       if(a.closest("summary")) e.preventDefault();
       if(act==="toggle"){ toggleTask(id||anyId); }
-      else if(act==="edit"){ var tk=S.tasks.find(function(x){return x.id===(id||anyId);}); if(tk) openTaskModal({edit:tk}); }
+      else if(act==="edit"){ var tk=S.tasks.find(function(x){return x.id===(id||anyId);});
+        if(!tk){}
+        else if(a.closest("#rightbar")||a.closest(".proj-card")||a.closest(".modal")) openTaskModal({edit:tk});
+        else { editingTaskId=tk.id; render(); var ti=document.getElementById("ie-title"); if(ti){ ti.focus(); ti.setSelectionRange(ti.value.length,ti.value.length); } } }
       else if(act==="star"){ var tk2=S.tasks.find(function(x){return x.id===(id||anyId);}); if(tk2){ tk2.priority=!tk2.priority; save(); render(); } }
       // promote / un-promote into Today's Focus straight from a collapsed row — no need to open the task
       else if(act==="tofocus"){ var tf=(id||anyId);
