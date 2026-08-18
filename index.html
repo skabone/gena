@@ -314,6 +314,18 @@
     *,*::before,*::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important;
       transition-duration:.01ms !important; scroll-behavior:auto !important; }
   }
+  /* Phase 20: collapse a task's subtasks in place, and reorder them without a drag */
+  .subs-caret{ background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:11px;
+    padding:0 5px 0 0; line-height:1; }
+  .subs-caret:hover{ color:var(--terra-deep); }
+  .sub-move{ display:inline-flex; gap:1px; margin-left:auto; opacity:0; transition:opacity .12s; flex:none; }
+  li.sub:hover .sub-move{ opacity:1; }
+  .sub-mv{ background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:11px;
+    line-height:1; padding:2px 3px; border-radius:4px; }
+  .sub-mv:hover:not(:disabled){ color:var(--terra-deep); background:var(--terra-bg); }
+  .sub-mv:disabled{ opacity:.25; cursor:default; }
+  li.sub{ display:flex; align-items:center; gap:8px; }
+  li.sub.sub-dragover{ outline:2px dashed var(--terra); outline-offset:-2px; border-radius:6px; }
   /* Day view: hour grid and the unscheduled list side by side, so dragging between them is one move */
   .day-split{ display:flex; gap:16px; align-items:flex-start; }
   .day-gridwrap{ flex:1 1 auto; min-width:0; }
@@ -765,7 +777,7 @@
   var IDMAPS=["notes","focus","habitLog"]; // date-keyed maps merged per key
   // Settings/scalars merged per-field by their own modified-time (_sm) instead of taken wholesale from
   // whichever file saved last — otherwise a stale cloud push silently resets your name / active profile.
-  var SCALARS=["name","activeProfile","filterProjects","sbOpen","panelOpen","skin","theme","calView","calAnchor","tlView","collapsed","remind","proxy","notesRTE","lastExport","autoCarry","autoCarryRev","accent","density","font","todayOrder"];
+  var SCALARS=["name","activeProfile","filterProjects","sbOpen","panelOpen","skin","theme","calView","calAnchor","tlView","collapsed","remind","proxy","notesRTE","lastExport","autoCarry","autoCarryRev","accent","density","font","subsHidden","expandOnAdd","todayOrder"];
   function isBlankVal(v){ return v===undefined||v===null||v===""; }
   function clone(x){ return JSON.parse(JSON.stringify(x)); }
   function itemSig(x){ if(!x||typeof x!=="object") return JSON.stringify(x); var o={}; for(var k in x){ if(k!=="_m") o[k]=x[k]; } return JSON.stringify(o); }
@@ -901,7 +913,7 @@
     dedupeRemovedCount=removed.length;
     return d;
   }
-  function normalize(d){ d.projects=d.projects||[]; d.tasks=d.tasks||[]; d.templates=d.templates||[]; d.habits=d.habits||[]; d.habitLog=d.habitLog||{}; d.events=d.events||[]; d.phases=d.phases||[]; d.dismissed=d.dismissed||[]; d.notes=d.notes||{}; d.calSources=d.calSources||[]; if(!d.proxy)d.proxy=PROXY_DEFAULT; d.emails=d.emails||[]; d.jobs=d.jobs||[]; d.improve=d.improve||[]; if(!d.calView)d.calView="month"; if(!d.calAnchor)d.calAnchor=(d.calMonth?d.calMonth+"-01":null); if(!d.skin)d.skin="paper"; delete d.apiKey; d.people=d.people||[]; d.collapsed=d.collapsed||{}; d.lastExport=d.lastExport||null; if(typeof d.name!=="string")d.name=""; d._sm=d._sm||{}; if(typeof d.autoCarry!=="boolean")d.autoCarry=false; if(typeof d.accent!=="string")d.accent=d.accent||null; d.tasks.forEach(function(k){ if(!Array.isArray(k.personIds)) k.personIds=[]; }); if(!d.density)d.density="cozy"; if(!d.font)d.font="rounded"; d.sessions=d.sessions||[];
+  function normalize(d){ d.projects=d.projects||[]; d.tasks=d.tasks||[]; d.templates=d.templates||[]; d.habits=d.habits||[]; d.habitLog=d.habitLog||{}; d.events=d.events||[]; d.phases=d.phases||[]; d.dismissed=d.dismissed||[]; d.notes=d.notes||{}; d.calSources=d.calSources||[]; if(!d.proxy)d.proxy=PROXY_DEFAULT; d.emails=d.emails||[]; d.jobs=d.jobs||[]; d.improve=d.improve||[]; if(!d.calView)d.calView="month"; if(!d.calAnchor)d.calAnchor=(d.calMonth?d.calMonth+"-01":null); if(!d.skin)d.skin="paper"; delete d.apiKey; d.people=d.people||[]; d.collapsed=d.collapsed||{}; d.lastExport=d.lastExport||null; if(typeof d.name!=="string")d.name=""; d._sm=d._sm||{}; if(typeof d.autoCarry!=="boolean")d.autoCarry=false; if(typeof d.accent!=="string")d.accent=d.accent||null; d.tasks.forEach(function(k){ if(!Array.isArray(k.personIds)) k.personIds=[]; }); if(!d.density)d.density="cozy"; if(!d.font)d.font="rounded"; d.sessions=d.sessions||[]; d.subsHidden=d.subsHidden||{}; if(typeof d.expandOnAdd!=="boolean")d.expandOnAdd=true;
     // One-time: 7.5 shipped autoCarry defaulting to on, which left the Carried-over card empty whenever
     // everything had already been auto-placed. Off is the setting where the day list and that card are
     // both useful, so re-default once. Any later toggle is the user's and is left alone.
@@ -1015,7 +1027,7 @@
       calSources:[], proxy:PROXY_DEFAULT,
       emails:[], jobs:[], improve:[],
       calView:"month", calAnchor:null, skin:"paper", lastExport:null, name:"",
-      people:[], collapsed:{}, tlView:"months", panelOpen:true, autoCarry:false, autoCarryRev:1, accent:null, density:"cozy", font:"rounded", sessions:[], _sm:{}
+      people:[], collapsed:{}, tlView:"months", panelOpen:true, autoCarry:false, autoCarryRev:1, accent:null, density:"cozy", font:"rounded", sessions:[], subsHidden:{}, expandOnAdd:true, _sm:{}
     });
   }
 
@@ -1196,6 +1208,20 @@
   var dragTaskId=null, dragJobId=null, dragNestTarget=null, dragFocusId=null, dragUnitKey=null;
   var pendingSubAdd=null;
   var editingTaskId=null;   // task being edited in place (Phase 8 — no modal for the common case)
+  // Phase 20: subtask collapse is per-item and remembered, so a long task can sit quiet in the list.
+  function subsCollapsed(id){ return !!(S.subsHidden&&S.subsHidden[id]); }
+  function toggleSubs(id){ S.subsHidden=S.subsHidden||{}; if(S.subsHidden[id]) delete S.subsHidden[id]; else S.subsHidden[id]=1; save(); render(); }
+  // caret shown only when there is something to hide
+  function subsCaret(id,n){
+    if(!n) return "";
+    return '<button class="subs-caret" data-act="subs-toggle" data-id="'+id+'" aria-expanded="'+(!subsCollapsed(id))+'" title="'+(subsCollapsed(id)?"Show":"Hide")+' subtasks">'+(subsCollapsed(id)?"▸":"▾")+'</button>';
+  }
+  // up/down controls, so reordering works without a mouse drag
+  function subMoveBtns(ownerId,i,n,kind){
+    return '<span class="sub-move">'+
+      '<button class="sub-mv" data-act="'+kind+'-up" data-id="'+ownerId+'" data-i="'+i+'" '+(i===0?'disabled':'')+' aria-label="Move up" title="Move up">▴</button>'+
+      '<button class="sub-mv" data-act="'+kind+'-down" data-id="'+ownerId+'" data-i="'+i+'" '+(i===n-1?'disabled':'')+' aria-label="Move down" title="Move down">▾</button></span>';
+  }
   var bulkMode=false, bulkIds={};
   var lastRenderedView=null;
   var IN_CLAUDE=(function(){ try{ return window.self!==window.top || /claude|anthropic|usercontent/i.test(location.hostname); }catch(e){ return true; } })();
@@ -1400,14 +1426,14 @@
     if(k.subs&&k.subs.length){
       var sdn=k.subs.filter(function(s){return s.done;}).length;
       pills+='<span class="pill subs-n">☑ '+sdn+'/'+k.subs.length+'</span>';
-      subRows=k.subs.map(function(s){return '<li class="sub '+(s.done?"done":"")+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-sid="'+s.id+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span></li>';}).join("");
+      subRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subof="'+k.id+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-sid="'+s.id+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("");
     }
     if(editingTaskId===k.id) return inlineEditorLi(k);
     if(pendingSubAdd===k.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+k.id+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
     var subsHtml=subRows?'<ul class="subs">'+subRows+'</ul>':'';
     return '<li class="task '+(k.status==="done"?"done":"")+'" data-id="'+k.id+'" draggable="true">'+
       '<button class="chk '+(k.status==="done"?"done":"")+'" data-act="toggle" aria-label="Toggle done" aria-pressed="'+(k.status==="done")+'"></button>'+
-      '<div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title">'+esc(k.title)+'</div>'+
+      '<div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title">'+subsCaret(k.id,(k.subs||[]).length)+esc(k.title)+'</div>'+
       (pills?'<div class="task-meta">'+pills+'</div>':'')+subsHtml+'</div>'+
       '<button class="task-addsub" data-act="sub-add" aria-label="Add a subtask" title="Add a subtask">⤷+</button>'+
       '<button class="task-focus'+(inFocus(k.id)?" on":"")+'" data-act="tofocus" aria-label="Add to Today’s Focus" title="Add to Today’s Focus">◎</button>'+
@@ -1424,6 +1450,7 @@
     if(f.taskId){
       var k=S.tasks.find(function(x){return x.id===f.taskId;});
       if(!k) return "";
+      if(editingTaskId===k.id) return inlineEditorLi(k);
       var kp=k.projectId?proj(k.projectId):null;
       var done=k.status==="done";
       var lpills='<span class="pill" style="background:var(--terra-bg);color:var(--terra-deep)">↑ task</span>'+
@@ -1443,13 +1470,13 @@
     if(f.subs&&f.subs.length){
       var sdn=f.subs.filter(function(s){return s.done;}).length;
       pills+='<span class="pill subs-n">☑ '+sdn+'/'+f.subs.length+'</span>';
-      subRows=f.subs.map(function(s){return '<li class="sub '+(s.done?"done":"")+'"><button class="chk '+(s.done?"done":"")+'" data-act="fsub-toggle" data-sid="'+s.id+'" aria-label="Toggle subitem" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span></li>';}).join("");
+      subRows=subsCollapsed(f.id)?"":f.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subof="'+f.id+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="fsub-toggle" data-sid="'+s.id+'" aria-label="Toggle subitem" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(f.id,i,f.subs.length,"fsub")+'</li>';}).join("");
     }
     if(pendingSubAdd===f.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-fsubfor="'+f.id+'" placeholder="Add a subitem… (Esc to close)" aria-label="Add a subitem"/></li>';
     var subsHtml=subRows?'<ul class="subs">'+subRows+'</ul>':'';
     return '<li class="task '+(f.done?"done":"")+'" data-id="'+f.id+'" data-focus="1" draggable="true">'+
       '<button class="chk '+(f.done?"done":"")+'" data-act="focus-toggle" aria-label="Toggle done" aria-pressed="'+!!f.done+'"></button>'+
-      '<div class="task-main" data-act="focus-edit" title="Tap to edit"><div class="task-title">'+esc(f.text)+'</div>'+
+      '<div class="task-main" data-act="focus-edit" title="Tap to edit"><div class="task-title">'+subsCaret(f.id,(f.subs||[]).length)+esc(f.text)+'</div>'+
       (pills?'<div class="task-meta">'+pills+'</div>':"")+subsHtml+'</div>'+
       '<button class="task-addsub" data-act="fsub-add" aria-label="Add a subitem" title="Add a subitem">⤷+</button>'+
       '<button class="task-x" data-act="focus-del" aria-label="Delete">✕</button></li>';
@@ -2366,6 +2393,14 @@
         if(wk==="project"){ S.filterProjects=[wid]; view="projects"; save(); syncNav(); render(); }
         else if(wk==="person"){ view="people"; syncNav(); render(); var pc=document.querySelector('.proj-card [data-act="editperson"][data-id="'+wid+'"]'); if(pc) pc.scrollIntoView({block:"center"}); }
         else { var wt=S.tasks.find(function(x){return x.id===wid;}); if(wt){ if(wt.day){ viewDay=wt.day; view="today"; } syncNav(); render(); toast("Jumped to “"+wt.title.slice(0,40)+"”"); } } }
+      else if(act==="subs-toggle"){ toggleSubs(id||anyId); }
+      // subtask reordering — arrows here, drag handled alongside the task drag code
+      else if(act==="sub-up"||act==="sub-down"){ var mt=S.tasks.find(function(x){return x.id===(id||anyId);});
+        if(mt&&mt.subs){ var mi=+a.dataset.i, mj=act==="sub-up"?mi-1:mi+1;
+          if(mj>=0&&mj<mt.subs.length){ var mv=mt.subs.splice(mi,1)[0]; mt.subs.splice(mj,0,mv); save(); render(); } } }
+      else if(act==="fsub-up"||act==="fsub-down"){ var mf=(S.focus[viewDay]||[]).find(function(x){return x.id===(id||anyId);});
+        if(mf&&mf.subs){ var fi=+a.dataset.i, fj=act==="fsub-up"?fi-1:fi+1;
+          if(fj>=0&&fj<mf.subs.length){ var fv=mf.subs.splice(fi,1)[0]; mf.subs.splice(fj,0,fv); save(); render(); } } }
       else if(act==="star"){ var tk2=S.tasks.find(function(x){return x.id===(id||anyId);}); if(tk2){ tk2.priority=!tk2.priority; save(); render(); } }
       // promote / un-promote into Today's Focus straight from a collapsed row — no need to open the task
       else if(act==="tofocus"){ var tf=(id||anyId);
@@ -2377,7 +2412,10 @@
       else if(act==="focus-del"){ var arr=S.focus[viewDay]||[]; var fi=arr.findIndex(function(x){return x.id===anyId;}); if(fi>=0){ var fdel=arr[fi]; arr.splice(fi,1); save(); render(); toastUndo("Focus item deleted",function(){ arr.splice(Math.min(fi,arr.length),0,fdel); save(); render(); }); } }
       else if(act==="focus-edit"){ var fitem=(S.focus[viewDay]||[]).find(function(x){return x.id===anyId;}); if(fitem) openFocusEditModal(fitem); }
       else if(act==="focus-tasktoggle"){ toggleTask(a.dataset.tid); }
-      else if(act==="focus-editlinked"){ var lt=S.tasks.find(function(x){return x.id===a.dataset.tid;}); if(lt) openTaskModal({edit:lt}); }
+      else if(act==="focus-editlinked"){ var lt=S.tasks.find(function(x){return x.id===a.dataset.tid;});
+        if(!lt){}
+        else if(a.closest("#rightbar")||a.closest(".proj-card")||a.closest(".modal")) openTaskModal({edit:lt});
+        else { editingTaskId=lt.id; render(); var lti=document.getElementById("ie-title"); if(lti){ lti.focus(); lti.setSelectionRange(lti.value.length,lti.value.length); } } }
       else if(act==="sub-toggle"){ var pk=S.tasks.find(function(x){return x.id===(id||anyId);}); if(pk){ var sb=(pk.subs||[]).find(function(x){return x.id===a.dataset.sid;}); if(sb){ sb.done=!sb.done; save(); render(); } } }
       else if(act==="sub-add"){ pendingSubAdd=(id||anyId); render(); }
       else if(act==="fsub-add"){ pendingSubAdd=(id||anyId); render(); }
@@ -2631,7 +2669,10 @@
     var sd = p.day==="someday" || (key==="someday" && !p.day);
     var bl = (key==="loose"||key==="someday"||key==="master"||dayKey)?(p.block||null):(p.block||key);
     S.tasks.push({id:uid(),title:p.title,projectId:p.projectId||null,status:"todo",day:sd?null:(p.day||dayKey||viewDay),block:sd?null:bl,at:p.at||null,priority:false,rollover:0,subs:[],created:today()});
-    pendingFocus=key; save(); render();
+    var newId=S.tasks[S.tasks.length-1].id;
+    if(S.expandOnAdd!==false){ pendingFocus=null; editingTaskId=newId; save(); render();
+      var ti=document.getElementById("ie-title"); if(ti){ ti.focus(); ti.setSelectionRange(ti.value.length,ti.value.length); } }
+    else { pendingFocus=key; save(); render(); }
     if(sd&&key!=="someday") toast("Added to Someday"); else if(p.day&&p.day!=="someday"&&p.day!==viewDay) toast("Scheduled for "+niceDate(p.day)); else if(key==="master") toast(bl?"Added to "+bl:"Added to Anytime"); }
   document.getElementById("q-add").onclick=quickAdd;
   qInput.addEventListener("keydown",function(e){ if(e.key==="Enter") quickAdd(); });
@@ -3443,6 +3484,7 @@
       '<button class="btn" id="x-gh">☁️ '+(GH&&GH.gistId?"Cloud sync: connected":"Cloud sync via GitHub (cross-device)")+'</button>'+
       '<button class="btn" id="x-remind">🔔 Task-time reminders: '+(S.remind?"on":"off")+'</button>'+
       '<button class="btn" id="x-autocarry" title="On: unfinished tasks move onto today by themselves. Off: they stay on their original day and wait in the Carried-over card until you place them.">⏳ Carry unfinished onto today: '+(S.autoCarry===false?"off":"on")+'</button>'+
+      '<button class="btn" id="x-expandadd" title="On: adding a task opens its editor so you can fill in details straight away. Off: it just adds the line and keeps the cursor ready for the next one.">📝 Open the editor when I add a task: '+(S.expandOnAdd===false?"off":"on")+'</button>'+
       '<button class="btn" id="x-feed">📡 Reminder calendar feed (subscribe)</button>'+
       '<button class="btn" id="x-share">🔗 Share a read-only snapshot</button>'+
       '<button class="btn" id="x-capture">⚡ Quick capture (bookmarklet / share)</button>'+
@@ -3470,6 +3512,10 @@
           else toast("Notifications were blocked by the browser");
         });
       } else { S.remind=false; save(); close(); toast("Reminders off"); }
+    };
+    document.getElementById("x-expandadd").onclick=function(){
+      S.expandOnAdd=(S.expandOnAdd===false); save(); close();
+      toast(S.expandOnAdd?"New tasks open their editor":"New tasks just get added");
     };
     document.getElementById("x-autocarry").onclick=function(){
       S.autoCarry=(S.autoCarry===false); save(); close(); render();
