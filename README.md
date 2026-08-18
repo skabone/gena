@@ -1,8 +1,14 @@
-# Daybook — Pencil Me In
+# Gena — a day planner
 
 A day planner that lives in **one HTML file**. No accounts, no backend, no build step, no tracking — open it and plan your day. Works offline, and your data never leaves your own storage.
 
-**Try it:** https://skabone.github.io/daybook/
+**Try it:** https://skabone.github.io/gena/
+
+> **Gena** (ገና) is the everyday Amharic word for *not yet* — which is also what Carol Dweck's
+> growth-mindset research is about. An unfinished list isn't failure; it's a comma, not a period.
+> The mark is a meskel flower: three petals open, one still a bud.
+
+*Previously called Daybook / Pencil Me In. The old address redirects here.*
 
 ## Features
 
@@ -20,12 +26,28 @@ A day planner that lives in **one HTML file**. No accounts, no backend, no build
 - **Insights** — 14-day completion chart, streaks, power block, and per-project progress. All computed locally.
 - **Reminders & focus timer** — browser notifications at each task's clock time (while open) and a built-in 25-minute focus timer.
 - **Projects, milestones & phases** — kanban-style project cards, a color-coded calendar (month / week / work-week / 3-day / year), and a zoomable timeline (months / weeks / days).
-- **Recurring tasks** — daily, weekly by weekday, or every N days.
+- **Recurring tasks** — daily, weekly by weekday, or every N days, with an optional **end date**. Editing one occurrence asks the Outlook question: just this one, this and all future, or the whole series. Repeats stay on their own dates and never carry forward.
+- **Date ranges** — set an end date on a one-off and it spreads across those days as separate tasks.
+- **Day-start review** — first open of a new day lists everything still open, showing where each thing lived, so you can tick off what got done and pull the rest forward.
+- **Edit in place** — clicking a task turns the row itself into a two-column editor; the list never disappears underneath you. Subtasks collapse, and reorder by drag or by arrows.
+- **Journal & `[[wikilinks]]`** — every day you wrote something, newest first. Type `[[a project, person, or task]]` and it becomes a link; bare URLs link themselves.
+- **Focus-session log** — completed focus blocks are recorded with a daily total.
 - **People / follow-ups** — lightweight CRM for staying in touch on a cadence.
 - **Habits & streaks** — daily habit dots with streak tracking.
 - **Smart suggestions** — local, explainable nudges from your own patterns. No AI calls, nothing sent anywhere.
 - **Calendar import & export** — subscribe to iCal/webcal feeds, import `.ics`, export your plan as `.ics` or CSV.
-- **Light/dark themes** with several color skins, a print-friendly layout, and an archive to stay fast over the years.
+- **Make it yours** — six colour schemes including **Habesha** (deep green / gold / red), a full colour picker for the app accent and for every project and person, emoji on projects and profiles, three densities and four typefaces. Light/dark throughout, a print-friendly layout, and an archive to stay fast over the years.
+- **Accessible** — skip-to-content, visible focus rings for keyboard users, and reduced-motion support.
+
+## Install it
+
+**As an app (any browser):** open https://skabone.github.io/gena/ and use your browser's *Install* / *Add to
+Dock* option. It gets its own window and icon, and still syncs.
+
+**As a native macOS app:** `cd native && ./build.sh` builds `Gena.app` with Swift + WKWebView — no Electron,
+no dependencies, nothing to pay for. Drag it to `/Applications`. See [`native/README.md`](native/README.md).
+
+**As a plain file:** download `index.html` and open it. That's the whole app; it works with no server at all.
 
 ## Where your data lives
 
@@ -33,16 +55,16 @@ Everything is stored in your browser's `localStorage`. The site itself stores no
 
 1. **Export / Import** — one-click JSON backup.
 2. **Sync file** — auto-save to a local file (Chrome/Edge), handy with a synced drive folder.
-3. **Cloud sync (optional)** — connect a GitHub personal access token (gist scope only) and Daybook auto-saves to a secret gist on *your* account, so you can pick up on any browser or computer. The token never leaves your browser and is never included in exports.
+3. **Cloud sync (optional)** — connect a GitHub personal access token (gist scope only) and Gena auto-saves to a secret gist on *your* account, so you can pick up on any browser or computer. The token never leaves your browser and is never included in exports.
 
 ## Install it as an app
 
-Daybook runs fine in a browser tab, but you can also give it its own window and Dock/Home-screen icon:
+Gena runs fine in a browser tab, but you can also give it its own window and Dock/Home-screen icon:
 
-- **Desktop (Brave / Chrome / Edge):** open the site, then menu → **Install Daybook…** (or the install icon in the address bar). It opens in its own window, works offline, and lives in Launchpad / the Start menu.
+- **Desktop (Brave / Chrome / Edge):** open the site, then menu → **Install Gena…** (or the install icon in the address bar). It opens in its own window, works offline, and lives in Launchpad / the Start menu.
 - **iPhone / iPad (Safari):** Share → **Add to Home Screen**.
 - **Android (Chrome):** menu → **Add to Home screen / Install app**.
-- **Native macOS app (no Electron, free):** build a real Swift + WKWebView app — see [`native/`](native/). `cd native && ./build.sh`, then move `Daybook.app` to Applications.
+- **Native macOS app (no Electron, free):** build a real Swift + WKWebView app — see [`native/`](native/). `cd native && ./build.sh`, then move `Gena.app` to Applications.
 
 ## Run it yourself
 
@@ -52,10 +74,10 @@ Download `index.html` and double-click it — that's the whole install. Or fork 
 
 **Free for personal & noncommercial use · created by Mintay Misgano · commercial use by permission.**
 
-Daybook is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE):
+Gena is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE):
 
 - ✅ Use it, change it, and share it freely for any **noncommercial** purpose.
 - 🏷️ Keep the credit — every shared copy or derivative must retain the notice
   `Required Notice: Copyright (c) 2026 Mintay Misgano (https://github.com/skabone)`.
-- 💼 **Commercial use** (selling it, paid products/services built on it, etc.) requires written permission — [open an issue](https://github.com/skabone/daybook/issues) to ask.
+- 💼 **Commercial use** (selling it, paid products/services built on it, etc.) requires written permission — [open an issue](https://github.com/skabone/gena/issues) to ask.
 - 💌 Building something on top of it? A heads-up is appreciated.
