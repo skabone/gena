@@ -762,40 +762,36 @@
      mark: a meskel flower, three petals open and one still a closed bud on its stem — three done, one on the way. */
   var DB_ICON="data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#20241c"/><g fill="#e2b04e"><path d="M256 48 C320 48 344 128 256 192 C168 128 192 48 256 48 Z"/><path d="M256 48 C320 48 344 128 256 192 C168 128 192 48 256 48 Z" transform="rotate(90 256 256)"/><path d="M256 48 C320 48 344 128 256 192 C168 128 192 48 256 48 Z" transform="rotate(180 256 256)"/></g><line x1="256" y1="256" x2="146" y2="256" stroke="#e2b04e" stroke-width="14" stroke-linecap="round"/><circle cx="140" cy="256" r="26" fill="#e2b04e"/><circle cx="256" cy="256" r="17" fill="#e2b04e"/></svg>');
   (function(){
-    // Chromium (so Brave/Chrome/Edge) ignores SVG data-URI icons when installing a PWA and falls back to
-    // a letter tile. Raster the same mark to PNG at install sizes and hand it those instead; the SVG
-    // stays as the favicon and as a last entry for browsers that do prefer it.
-    var mf={name:"Gena — a day planner",short_name:"Gena",
-      description:"A day planner in a single file — offline, private, yours.",
-      start_url:"./",scope:"./",display:"standalone",
-      background_color:"#f3efe6",theme_color:"#45573f",
-      icons:[{src:DB_ICON,sizes:"512x512",type:"image/svg+xml",purpose:"any"}],
-      share_target:{action:"./",method:"GET",params:{title:"title",text:"text",url:"url"}}};
+    // Chromium will not reliably take icons from a data:-URI manifest, and swapping link.href after load
+    // does not re-trigger manifest parsing — which is why the installed app fell back to a letter tile.
+    // On a real host (the GitHub Pages build) there are actual manifest + PNG files next to this page, so
+    // point at those. Opened as a bare local file there is no server to fetch them from, and the inline
+    // data:-URI manifest is used instead so single-file use still installs *something*.
     var link=document.createElement("link"); link.rel="manifest";
-    function publish(){ link.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(mf)); }
-    publish(); document.head.appendChild(link);
-    var ai=document.createElement("link"); ai.rel="apple-touch-icon"; ai.href=DB_ICON; document.head.appendChild(ai);
-    // raster asynchronously, then republish the manifest with real PNGs in front
-    try{
-      var img=new Image();
-      img.onload=function(){
-        try{
-          var out=[];
-          [512,192].forEach(function(sz){
-            var c=document.createElement("canvas"); c.width=c.height=sz;
-            c.getContext("2d").drawImage(img,0,0,sz,sz);
-            out.push({src:c.toDataURL("image/png"),sizes:sz+"x"+sz,type:"image/png",purpose:"any"});
-          });
-          if(out.length){
-            mf.icons=out.concat(mf.icons);
-            publish();
-            var ai2=document.querySelector('link[rel="apple-touch-icon"]');
-            if(ai2) ai2.href=out[0].src;
-          }
-        }catch(e){}
-      };
-      img.src=DB_ICON;
-    }catch(e){}
+    function inlineManifest(){
+      var mf={name:"Gena — a day planner",short_name:"Gena",
+        description:"A day planner in a single file — offline, private, yours.",
+        start_url:"./",scope:"./",display:"standalone",
+        background_color:"#f3efe6",theme_color:"#45573f",
+        icons:[{src:DB_ICON,sizes:"512x512",type:"image/svg+xml",purpose:"any"}],
+        share_target:{action:"./",method:"GET",params:{title:"title",text:"text",url:"url"}}};
+      return "data:application/manifest+json,"+encodeURIComponent(JSON.stringify(mf));
+    }
+    var ai=document.createElement("link"); ai.rel="apple-touch-icon";
+    if(location.protocol==="file:"){
+      link.href=inlineManifest(); ai.href=DB_ICON;
+      document.head.appendChild(link); document.head.appendChild(ai);
+    } else {
+      // set the real paths up front so the manifest is correct the first time Chromium reads it
+      link.href="manifest.webmanifest"; ai.href="icon-192.png";
+      document.head.appendChild(link); document.head.appendChild(ai);
+      // if those files aren't actually there, quietly fall back
+      fetch("manifest.webmanifest",{method:"HEAD"}).then(function(r){
+        if(!r.ok) throw 0;
+      }).catch(function(){ link.href=inlineManifest(); ai.href=DB_ICON; });
+    }
+    var fav=document.createElement("link"); fav.rel="icon"; fav.type="image/svg+xml"; fav.href=DB_ICON;
+    document.head.appendChild(fav);
   })();
 
   /* ---------- shared read-only snapshot mode (Phase 6): bail out of the normal app ---------- */
