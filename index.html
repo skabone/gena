@@ -338,11 +338,18 @@
   .sub-mv:disabled{ opacity:.25; cursor:default; }
   li.sub{ display:flex; align-items:center; gap:8px; }
   li.sub.sub-dragover{ outline:2px dashed var(--terra); outline-offset:-2px; border-radius:6px; }
+  li.sub.sub-dragging{ opacity:.45; }
+  li.sub[draggable="true"]{ cursor:grab; }
+  li.sub[draggable="true"]:active{ cursor:grabbing; }
   /* Day view: hour grid and the unscheduled list side by side, so dragging between them is one move */
   /* grid rather than flex: guarantees the unscheduled column is exactly as tall as the hour grid */
   .day-split{ display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:16px; align-items:stretch; }
   .day-gridwrap{ min-width:0; }
-  .day-split .day-unsched{ margin-bottom:0; overflow-y:auto; max-height:100%; }
+  /* stretch to the grid row, then scroll inside. min-height:0 is what actually lets a grid item
+     shrink below its content so overflow-y takes effect; max-height:100% does not resolve here. */
+  .day-split .day-unsched{ margin-bottom:0; align-self:stretch; min-height:0; display:flex; flex-direction:column; }
+  .day-split .day-unsched .day-unsched-h{ flex:none; }
+  .day-split .day-unsched > .tasks, .day-split .day-unsched > .day-tray{ flex:1 1 auto; min-height:0; overflow-y:auto; }
   /* narrow column: same reasoning as the right panel — drop the secondary row buttons so titles keep their width */
   .day-split .day-unsched .task-addsub, .day-split .day-unsched .task-focus, .day-split .day-unsched .task-star{ display:none; }
   @media (max-width:900px){
@@ -1236,6 +1243,7 @@
   var viewDay=today();
   var pendingFocus=null;
   var dragTaskId=null, dragJobId=null, dragNestTarget=null, dragFocusId=null, dragUnitKey=null;
+  var dragSub=null;   // {owner:<task or focus id>, i:<index>, kind:'sub'|'fsub'} while dragging a subtask
   var pendingSubAdd=null;
   var editingTaskId=null;   // task being edited in place (Phase 8 — no modal for the common case)
   var dayStartFrom=null;    // set by onOpen when the date rolls over; drives the day-start review
@@ -1458,7 +1466,7 @@
     if(k.subs&&k.subs.length){
       var sdn=k.subs.filter(function(s){return s.done;}).length;
       pills+='<span class="pill subs-n">☑ '+sdn+'/'+k.subs.length+'</span>';
-      subRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subof="'+k.id+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-sid="'+s.id+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("");
+      subRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subkind="sub" data-subof="'+k.id+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-sid="'+s.id+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("");
     }
     if(editingTaskId===k.id) return inlineEditorLi(k);
     if(pendingSubAdd===k.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+k.id+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
@@ -1502,7 +1510,7 @@
     if(f.subs&&f.subs.length){
       var sdn=f.subs.filter(function(s){return s.done;}).length;
       pills+='<span class="pill subs-n">☑ '+sdn+'/'+f.subs.length+'</span>';
-      subRows=subsCollapsed(f.id)?"":f.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subof="'+f.id+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="fsub-toggle" data-sid="'+s.id+'" aria-label="Toggle subitem" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(f.id,i,f.subs.length,"fsub")+'</li>';}).join("");
+      subRows=subsCollapsed(f.id)?"":f.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subkind="fsub" data-subof="'+f.id+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="fsub-toggle" data-sid="'+s.id+'" aria-label="Toggle subitem" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(f.id,i,f.subs.length,"fsub")+'</li>';}).join("");
     }
     if(pendingSubAdd===f.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-fsubfor="'+f.id+'" placeholder="Add a subitem… (Esc to close)" aria-label="Add a subitem"/></li>';
     var subsHtml=subRows?'<ul class="subs">'+subRows+'</ul>':'';
@@ -2362,6 +2370,13 @@
     // drag & drop — tasks between today lists, job cards between stages
     function clearDrag(){ [].forEach.call(v.querySelectorAll(".drag-over,.nest-over,.unit-over"),function(x){ x.classList.remove("drag-over"); x.classList.remove("nest-over"); x.classList.remove("unit-over"); }); }
     v.ondragstart=function(e){
+      // a subtask row is inside a draggable task row, so it has to be checked first or the
+      // task drag swallows it
+      var sub=e.target.closest&&e.target.closest("li.sub[data-subof]");
+      if(sub){ e.stopPropagation();
+        dragSub={owner:sub.dataset.subof, i:+sub.dataset.si, kind:sub.dataset.subkind||"sub"};
+        e.dataTransfer.effectAllowed="move"; try{ e.dataTransfer.setData("text/plain",sub.dataset.subof); }catch(err){}
+        sub.classList.add("sub-dragging"); return; }
       var li=e.target.closest&&e.target.closest(".task[data-id]");
       var jc=e.target.closest&&e.target.closest(".job-card[data-id]");
       if(li && li.dataset.focus){ dragFocusId=li.dataset.id; e.dataTransfer.effectAllowed="move"; try{ e.dataTransfer.setData("text/plain",li.dataset.id); }catch(err){} return; }
@@ -2374,6 +2389,14 @@
       if(dragTaskId && S.tasks.some(function(x){return x.id===dragTaskId;})) showDragDock();
     };
     v.ondragover=function(e){
+      if(dragSub){
+        var over=e.target.closest("li.sub[data-subof]");
+        if(over && over.dataset.subof===dragSub.owner && +over.dataset.si!==dragSub.i){
+          e.preventDefault(); e.dataTransfer.dropEffect="move";
+          v.querySelectorAll("li.sub.sub-dragover").forEach(function(x){ x.classList.remove("sub-dragover"); });
+          over.classList.add("sub-dragover");
+        }
+        return; }
       if(dragUnitKey){ var u=e.target.closest(".today-unit[data-unit]"); if(u && u.dataset.unit!==dragUnitKey){ e.preventDefault(); e.dataTransfer.dropEffect="move"; clearDrag(); u.classList.add("unit-over"); } return; }
       if(dragFocusId){ var ulf=e.target.closest('.tasks[data-list="focus"]'); if(ulf){ e.preventDefault(); e.dataTransfer.dropEffect="move"; clearDrag(); ulf.classList.add("drag-over"); } return; }
       if(dragTaskId){
@@ -2390,6 +2413,25 @@
       else if(dragJobId){ var col=e.target.closest(".jobs-col[data-stage]"); if(col){ e.preventDefault(); e.dataTransfer.dropEffect="move"; clearDrag(); col.classList.add("drag-over"); } }
     };
     v.ondrop=function(e){
+      if(dragSub){
+        var over=e.target.closest("li.sub[data-subof]");
+        var d=dragSub; dragSub=null;
+        v.querySelectorAll(".sub-dragover,.sub-dragging").forEach(function(x){ x.classList.remove("sub-dragover"); x.classList.remove("sub-dragging"); });
+        if(over && over.dataset.subof===d.owner){
+          e.preventDefault();
+          var owner = d.kind==="fsub"
+            ? (S.focus[viewDay]||[]).find(function(x){return x.id===d.owner;})
+            : S.tasks.find(function(x){return x.id===d.owner;});
+          if(owner && owner.subs){
+            var to=+over.dataset.si;
+            if(to!==d.i && d.i>=0 && d.i<owner.subs.length){
+              var mv=owner.subs.splice(d.i,1)[0];
+              owner.subs.splice(to,0,mv);
+              save(); render();
+            }
+          }
+        }
+        return; }
       if(dragUnitKey){ var u=e.target.closest(".today-unit[data-unit]");
         if(u && u.dataset.unit!==dragUnitKey){ e.preventDefault();
           var DEF=["focus","tasks","blocks","habitsnotes"];
