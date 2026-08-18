@@ -314,6 +314,13 @@
     *,*::before,*::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important;
       transition-duration:.01ms !important; scroll-behavior:auto !important; }
   }
+  /* day-start review rows */
+  .ds-list{ max-height:52vh; overflow-y:auto; margin:4px 0 2px; }
+  .ds-row{ display:flex; gap:14px; align-items:flex-start; padding:9px 2px; border-bottom:1px solid var(--line-soft); }
+  .ds-main{ flex:1; min-width:0; }
+  .ds-title{ font-size:14.5px; font-weight:600; margin-bottom:3px; }
+  .ds-pick{ display:flex; gap:5px; flex:none; flex-wrap:wrap; }
+  .ds-pick .chip[aria-pressed="true"]{ background:var(--terra); border-color:var(--terra); color:#fff; }
   .grp-head{ display:flex; align-items:center; gap:7px; font-size:10.5px; font-weight:800; letter-spacing:.07em;
     text-transform:uppercase; color:var(--ink-soft); margin:12px 0 5px; padding-top:8px; border-top:1px solid var(--line-soft); }
   .grp-head:first-child{ margin-top:2px; padding-top:0; border-top:none; }
@@ -1095,12 +1102,15 @@
       // Age unfinished dated tasks. With autoCarry on they also move onto today; with it off they stay
       // put on their original day and surface only in the Carried-over card, which you pull from by hand.
       S.tasks.forEach(function(k){
+        if(k.tplId) return;                     // a repeat belongs on its own day, never dragged forward
         if(k.status==="todo" && k.day && k.day<t){
           k.rollover=(k.rollover||0)+diffDays(t,k.day);
           if(S.autoCarry!==false) k.day=t; else k.carriedFrom=k.carriedFrom||k.day;
         }
       });
       generateRecurring(t);
+      // remember the day we came from, so the day-start review knows what to ask about
+      dayStartFrom=S.lastOpen||null;
       S.lastOpen=t; save();
     } else { generateRecurring(t); }
   }
@@ -1119,6 +1129,7 @@
   }
   function ruleHits(tp,day){
     if(tp.start && day<tp.start) return false;
+    if(tp.until && day>tp.until) return false;   // optional end date, Outlook-style
     if(tp.freq==="daily") return true;
     if(tp.freq==="weekly") return (tp.weekdays||[]).indexOf(dow(day))>=0;
     if(tp.freq==="everyN"){ var base=tp.start||day; return diffDays(day,base)%(tp.interval||2)===0; }
@@ -1214,6 +1225,8 @@
   var dragTaskId=null, dragJobId=null, dragNestTarget=null, dragFocusId=null, dragUnitKey=null;
   var pendingSubAdd=null;
   var editingTaskId=null;   // task being edited in place (Phase 8 — no modal for the common case)
+  var dayStartFrom=null;    // set by onOpen when the date rolls over; drives the day-start review
+  var reopenEditorFor=null; // id of a task whose inline editor should be restored after the next render
   // Phase 20: subtask collapse is per-item and remembered, so a long task can sit quiet in the list.
   function subsCollapsed(id){ return !!(S.subsHidden&&S.subsHidden[id]); }
   function toggleSubs(id){ S.subsHidden=S.subsHidden||{}; if(S.subsHidden[id]) delete S.subsHidden[id]; else S.subsHidden[id]=1; save(); render(); }
@@ -1296,7 +1309,7 @@
     h+='<button class="sb-row" data-sb="profile" data-id="all" aria-pressed="'+(S.activeProfile==="all")+'">🌐<span class="sb-name">All</span></button>';
     h+='<button class="sb-row" data-sb="profile" data-id="fav" aria-pressed="'+(S.activeProfile==="fav")+'">⭐<span class="sb-name">Favorites</span>'+(favCnt?'<span class="cnt">'+favCnt+'</span>':"")+'</button>';
     S.profiles.forEach(function(pr){
-      h+='<div class="sb-row" role="button" tabindex="0" data-sb="profile" data-id="'+pr.id+'" aria-pressed="'+(S.activeProfile===pr.id)+'">'+esc(pr.emoji||"👤")+'<span class="sb-name">'+esc(pr.name)+'</span><span class="cnt">'+profCnt(pr.id)+'</span><button class="sb-star" data-sb="editprofile" data-id="'+pr.id+'" title="Edit profile" aria-label="Edit profile">✎</button></div>';
+      h+='<div class="sb-row" role="button" tabindex="0" data-sb="profile" data-id="'+pr.id+'" aria-pressed="'+(S.activeProfile===pr.id)+'" style="'+(pr.color?"--prof-dot:"+pr.color:"")+'">'+esc(pr.emoji||"👤")+'<span class="sb-name">'+esc(pr.name)+'</span><span class="cnt">'+profCnt(pr.id)+'</span><button class="sb-star" data-sb="editprofile" data-id="'+pr.id+'" title="Edit profile" aria-label="Edit profile">✎</button></div>';
     });
     h+='</div>';
     var ids=null;
@@ -1389,7 +1402,7 @@
             return /class="(wl|reflink)/.test(disp) ? '<div class="ie-lbl">Links in this note</div><div class="jr-body">'+disp+'</div>' : ''; })()+
         '</div>'+
         '<div class="ie-side">'+
-          '<div class="ie-lbl">Project</div><select id="ie-proj" aria-label="Project"><option value="">None</option>'+projOpts+'</select>'+
+          '<div class="ie-lbl">Project</div><select id="ie-proj" aria-label="Project"><option value="">None</option>'+projOpts+'<option value="__new">+ New project…</option></select>'+
           (S.people.length?'<div class="ie-lbl">People</div><div class="chips" id="ie-people">'+
             S.people.map(function(pp){return '<button type="button" class="chip" data-pid="'+pp.id+'" aria-pressed="'+((k.personIds||[]).indexOf(pp.id)>=0)+'">'+esc(pp.name)+'</button>';}).join("")+'</div>':'')+
           '<div class="ie-lbl">Day</div><input type="date" id="ie-day" value="'+esc(k.day||"")+'" aria-label="Day"/>'+
@@ -1413,7 +1426,7 @@
     var p=proj(k.projectId);
     var pills="";
     if(k.priority) pills+='<span class="pill imp">★ important</span>';
-    if(p) pills+='<span class="pill proj" style="'+cbg(p.color)+'">'+esc(p.name)+'</span>';
+    if(p) pills+='<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>';
     if(k.tplId) pills+='<span class="pill rec">↻ repeats</span>';
     if(k.rollover>=1) pills+='<span class="pill aged">carried '+k.rollover+'d</span>';
     if(k.dueLabel) pills+='<span class="pill block">'+esc(k.dueLabel)+'</span>';
@@ -1471,7 +1484,7 @@
         '<button class="task-x" data-act="focus-del" aria-label="Remove from focus" title="Remove from focus (keeps the task)">✕</button></li>';
     }
     var p=f.projectId?proj(f.projectId):null;
-    var pills=(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+esc(p.name)+'</span>':"");
+    var pills=(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"");
     var subRows="";
     if(f.subs&&f.subs.length){
       var sdn=f.subs.filter(function(s){return s.done;}).length;
@@ -1690,7 +1703,7 @@
     // A carried task that's already been placed into a block on the day you're looking at is done being
     // triaged — showing it here too just duplicates the day list. Unplaced ones stay, since this card is
     // where you actually put them somewhere.
-    var carried=S.tasks.filter(function(k){return k.status==="todo" && (k.rollover||0)>=1 && inScope(k.projectId) && !(k.day===vd && k.block);});
+    var carried=S.tasks.filter(function(k){return k.status==="todo" && (k.rollover||0)>=1 && !k.tplId && inScope(k.projectId) && !(k.day===vd && k.block);});
     var doneV=S.tasks.filter(function(k){return k.status==="done" && k.completedOn===vd && inScope(k.projectId);});
     var MOVES=[["morning","☀️ Morning"],["afternoon","🌤 Afternoon"],["evening","🌙 Evening"],["anytime","⏳ Anytime"],["someday","💭 Someday"]];
     var blAdd='<ul class="tasks" data-list="someday" style="padding:0;margin:0 0 4px"><li class="task inline-row" style="padding:6px 4px"><span class="inline-plus">+</span><input class="inline-add" data-block="someday" placeholder="Add to backlog…" aria-label="Add to backlog"/></li></ul>';
@@ -1805,7 +1818,7 @@
   /* ---------- BACKLOG — undated tasks you schedule when ready (Structured-style) ---------- */
   function backlogRow(k){
     var p=proj(k.projectId);
-    var pills=(k.priority?'<span class="pill imp">★</span>':"")+((k.rollover||0)>=1?'<span class="pill aged">carried '+k.rollover+'d</span>':"")+(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+esc(p.name)+'</span>':"")+
+    var pills=(k.priority?'<span class="pill imp">★</span>':"")+((k.rollover||0)>=1?'<span class="pill aged">carried '+k.rollover+'d</span>':"")+(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+
       (k.subs&&k.subs.length?'<span class="pill subs-n">☑ '+k.subs.filter(function(s){return s.done;}).length+'/'+k.subs.length+'</span>':"");
     var chips='<button data-act="sched" data-id="'+k.id+'" data-d="'+today()+'">📅 Today</button>'+
       '<button data-act="sched" data-id="'+k.id+'" data-d="'+addDays(today(),1)+'">→ Tomorrow</button>';
@@ -1821,7 +1834,7 @@
   }
   function viewBacklog(){
     var undated=orderTasks(S.tasks.filter(function(k){return !k.day && k.status!=="done" && inScope(k.projectId);}),false);
-    var carried=orderTasks(S.tasks.filter(function(k){return k.status==="todo" && (k.rollover||0)>=1 && inScope(k.projectId);}),false);
+    var carried=orderTasks(S.tasks.filter(function(k){return k.status==="todo" && (k.rollover||0)>=1 && !k.tplId && inScope(k.projectId);}),false);
     var html='<h2 class="view-h">Backlog</h2><p class="sub">Things to do <b>someday</b> — no set date. Add them here, then schedule each one for a day when you\'re ready.'+(scopeActive()?' <b>Filtered:</b> '+esc(scopeLabel())+' — <button class="chip" data-act="clearscope" style="padding:2px 9px">show all</button>':'')+'</p>';
     html+='<div class="card" style="margin-bottom:16px"><ul class="tasks" data-list="someday" style="padding:0"><li class="task inline-row"><span class="inline-plus">+</span><input class="inline-add" data-block="someday" placeholder="Add something to do someday — @project works too…" aria-label="Add backlog task"/></li></ul></div>';
     if(carried.length){
@@ -1870,7 +1883,7 @@
     html+='</div>';
     if(S.templates.length){
       var tl='<ul class="tasks">'+S.templates.map(function(tp){ var p=proj(tp.projectId);
-        return '<li class="task" data-id="'+tp.id+'"><div class="task-main" style="cursor:default"><div class="task-title">'+esc(tp.title)+'</div><div class="task-meta"><span class="pill rec">'+recDesc(tp)+'</span>'+(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+esc(p.name)+'</span>':"")+(tp.paused?'<span class="pill block">paused</span>':"")+'</div></div>'+
+        return '<li class="task" data-id="'+tp.id+'"><div class="task-main" style="cursor:default"><div class="task-title">'+esc(tp.title)+'</div><div class="task-meta"><span class="pill rec">'+recDesc(tp)+'</span>'+(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+(tp.paused?'<span class="pill block">paused</span>':"")+'</div></div>'+
           '<button class="chip" data-act="tpl-pause" data-tid="'+tp.id+'">'+(tp.paused?"Resume":"Pause")+'</button>'+
           '<button class="task-x" data-act="tpl-del" data-tid="'+tp.id+'" style="opacity:1" aria-label="Stop repeating">✕</button></li>';
       }).join("")+'</ul>';
@@ -2215,6 +2228,9 @@
       if(e.target.dataset.subfor){ addSubInline(e.target.dataset.subfor, e.target.value); }
       else if(e.target.dataset.fsubfor){ addFocusSubInline(e.target.dataset.fsubfor, e.target.value); }
       else if(e.target.dataset.focus){ addFocusItem(e.target.value); } else { addTaskInline(e.target.value, e.target.dataset.block); } } };
+    // openProjModal renders before it calls back, so that render still holds the old projectId.
+    // Re-render unconditionally here, or the stale select would revert the project on the next save.
+    if(reopenEditorFor){ var _r=reopenEditorFor; reopenEditorFor=null; editingTaskId=_r; render(); return; }
     // ---- inline task editor wiring (Phase 8) ----
     var ieRow=v.querySelector("li.ie-row[data-editing]");
     if(ieRow){
@@ -2253,6 +2269,21 @@
           var val=(e.target.value||"").trim(); if(val){ ieSubs.push({id:uid(),text:val,done:false}); e.target.value=""; ieRenderSubs(); e.target.focus(); } return; }
         if(e.key==="Enter"&&e.target.id==="ie-title"){ e.preventDefault(); ieCollect(); save(); ieClose(); }
       });
+      var ieProjSel=document.getElementById("ie-proj");
+      if(ieProjSel) ieProjSel.onchange=function(){
+        if(ieProjSel.value!=="__new") return;
+        ieProjSel.value=(S.tasks.find(function(x){return x.id===ieId;})||{}).projectId||"";
+        openProjModal(null,function(newId){
+          var t=S.tasks.find(function(x){return x.id===ieId;});
+          if(t){ t.projectId=newId; save(); }
+          // openProjModal renders before it calls back, so that render still holds the old projectId.
+          // Flag the editor for restore and render again ourselves, or the stale select would revert
+          // the project on the next save.
+          // openProjModal renders before it calls back, so the editor on screen still holds the old
+          // projectId. Flag it and render again, or the stale select reverts the project on next save.
+          reopenEditorFor=ieId; render();
+        });
+      };
       ieRow.addEventListener("input",function(e){
         var w=e.target.dataset?e.target.dataset.ie:null;
         if(w==="subtext") ieSubs[+e.target.dataset.i].text=e.target.value;
@@ -2269,7 +2300,23 @@
           [].forEach.call(b.parentNode.children,function(c){c.setAttribute("aria-pressed",c===b);}); return; }
         if(b.dataset.i!==undefined && b.closest("#ie-imp")){ iePrio=b.dataset.i==="1";
           [].forEach.call(b.parentNode.children,function(c){c.setAttribute("aria-pressed",(c.dataset.i==="1")===iePrio);}); return; }
-        if(w==="save"){ ieCollect(); save(); ieClose(); toast("Saved"); return; }
+        if(w==="save"){
+          var t0=S.tasks.find(function(x){return x.id===ieId;});
+          if(t0&&t0.tplId){
+            askRecurScope(t0,function(sc){
+              var tt=S.tasks.find(function(x){return x.id===ieId;}); if(!tt) return;
+              if(sc==="one") detachInstance(tt);
+              else if(sc==="future") splitSeriesAt(tt);
+              var saved=ieCollect();
+              if(sc!=="one"&&saved){ var tp2=S.templates.find(function(x){return x.id===saved.tplId;});
+                if(tp2){ tp2.title=saved.title; tp2.projectId=saved.projectId; tp2.block=saved.block; tp2.priority=saved.priority;
+                  S.tasks.forEach(function(x){ if(x.tplId===tp2.id&&x.id!==saved.id&&x.status!=="done"){ x.title=tp2.title; x.projectId=tp2.projectId; x.block=tp2.block; x.priority=tp2.priority; } }); } }
+              save(); ieClose();
+              toast(sc==="one"?"Just this one updated":(sc==="future"?"This and future ones updated":"Whole series updated"));
+            });
+            return;
+          }
+          ieCollect(); save(); ieClose(); toast("Saved"); return; }
         if(w==="cancel"){ ieClose(); return; }
         if(w==="focus"){ var t0=ieCollect(); save(); var vd0=viewDay; viewDay=today(); addTaskToFocus(ieId,true); viewDay=vd0; save(); ieClose(); toast("Added to Today’s Focus"); return; }
         if(w==="more"){ var t1=ieCollect(); save(); editingTaskId=null; openTaskModal({edit:t1}); return; }
@@ -2844,8 +2891,15 @@
       else { var sbb=subs[+b.dataset.si]; sbb.done=!sbb.done; renderSubs(); } };
     ms.oninput=function(e){ var si=e.target.dataset.st; if(si!==undefined) subs[+si].text=e.target.value; };
     msn.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); var sv=msn.value.trim(); if(sv){ subs.push({id:uid(),text:sv,done:false}); msn.value=""; renderSubs(); } } });
+    // one "Until" field, two meanings: with Repeat = Once it spreads copies across the range,
+    // otherwise it bounds the series. The hint says which is live.
+    function untilHint(){ var h=document.getElementById("m-until-hint"); if(!h) return;
+      h.textContent = freq==="once"
+        ? "With Repeat = Once, this makes one copy per day from Day through Until."
+        : "The repeat stops after this date. Leave empty to run indefinitely."; }
+    untilHint();
     var mf=document.getElementById("m-freq"), ro=document.getElementById("m-ropts");
-    if(mf) mf.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; freq=b.dataset.f; [].forEach.call(mf.children,function(c){c.setAttribute("aria-pressed",c===b);}); renderRopts(); };
+    if(mf) mf.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; freq=b.dataset.f; [].forEach.call(mf.children,function(c){c.setAttribute("aria-pressed",c===b);}); renderRopts(); untilHint(); };
     function renderRopts(){
       if(freq==="weekly"){ ro.innerHTML='<label>On</label><div class="wd" id="m-wd">'+DOWNAMES.map(function(d,i){return '<button data-w="'+i+'" aria-pressed="'+(weekdays.indexOf(i)>=0)+'">'+d[0]+'</button>';}).join("")+'</div>';
         document.getElementById("m-wd").onclick=function(e){ var b=e.target.closest("button"); if(!b)return; var w=+b.dataset.w; var on=b.getAttribute("aria-pressed")==="true"; b.setAttribute("aria-pressed",!on); if(on)weekdays=weekdays.filter(function(x){return x!==w;}); else weekdays.push(w); };
@@ -2937,7 +2991,9 @@
     var editing=!!p; p=p||{name:"",color:COLORS[S.projects.length%COLORS.length],notes:"",profileId:(S.activeProfile!=="all"&&S.activeProfile!=="fav"&&profileById(S.activeProfile))?S.activeProfile:null,fav:false}; var createdId=null;
     var profOpts='<option value="">None</option>'+S.profiles.map(function(pr){return '<option value="'+pr.id+'" '+(pr.id===p.profileId?"selected":"")+'>'+esc((pr.emoji?pr.emoji+" ":"")+pr.name)+'</option>';}).join("");
     modal('<h3>'+(editing?"Edit project":"New project")+'</h3>'+
-      '<div class="fld"><label>Name</label><input id="p-name" value="'+esc(p.name)+'"/></div>'+
+      '<div class="row"><div class="fld" style="flex:0 0 96px"><label>Icon</label><input id="p-emoji" value="'+esc(p.emoji||"")+'" maxlength="4" placeholder="📁"/></div>'+
+      '<div class="fld"><label>Name</label><input id="p-name" value="'+esc(p.name)+'"/></div></div>'+
+      emojiPickerHtml("p-emoji")+
       '<div class="fld"><label>Color</label><div class="swatches" id="p-sw">'+COLORS.map(function(c){return '<button class="sw" style="background:'+c+'" data-c="'+c+'" aria-pressed="'+(c===p.color)+'"></button>';}).join("")+'<input type="color" class="sw-custom" id="p-sw-hex" value="'+esc(/^#/.test(p.color||"")?p.color:"#c99a3a")+'" title="Any colour you like" aria-label="Custom colour"/>'+'</div></div>'+
       '<div class="row"><div class="fld"><label>Profile</label><select id="p-prof">'+profOpts+'</select></div>'+
       '<div class="fld"><label>Favorite</label><div class="chips"><button type="button" class="chip" id="p-fav" aria-pressed="'+!!p.fav+'">'+(p.fav?"★":"☆")+' Favorite</button></div></div></div>'+
@@ -2952,7 +3008,9 @@
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("m-save").onclick=function(){ var name=document.getElementById("p-name").value.trim(); if(!name){toast("Name it");return;}
       var profV=document.getElementById("p-prof").value||null;
-      if(editing){ p.name=name; p.color=color; p.profileId=profV; p.fav=favV; } else { var np={id:uid(),name:name,color:color,notes:"",profileId:profV,fav:favV}; S.projects.push(np); createdId=np.id; }
+      var emojiV=(document.getElementById("p-emoji")||{}).value||"";
+      if(editing){ p.name=name; p.color=color; p.emoji=emojiV.trim(); p.profileId=profV; p.fav=favV; }
+      else { var np={id:uid(),name:name,color:color,emoji:emojiV.trim(),notes:"",profileId:profV,fav:favV}; S.projects.push(np); createdId=np.id; }
       save(); fillProjSelect(); close(); render(); if(onDone&&createdId) onDone(createdId); };
     if(editing){ document.getElementById("p-del").onclick=function(){ confirmModal("Delete project?","Its tasks stay but lose their tag.","Delete",function(){
       S.tasks.forEach(function(k){ if(k.projectId===p.id)k.projectId=null; }); S.projects=S.projects.filter(function(x){return x.id!==p.id;}); S.filterProjects=S.filterProjects.filter(function(x){return x!==p.id;}); save(); fillProjSelect(); render(); }); }; }
@@ -2966,6 +3024,8 @@
       '<div class="row"><div class="fld" style="flex:0 0 90px"><label>Icon</label><input id="pf-e" value="'+esc(base.emoji||"")+'" maxlength="4"/></div>'+
       '<div class="fld"><label>Name</label><input id="pf-n" value="'+esc(base.name)+'" placeholder="e.g. School"/></div></div>'+
       emojiPickerHtml("pf-e")+
+      '<div class="fld"><label>Colour</label><div class="swatches" id="pf-sw">'+COLORS.map(function(c){return '<button class="sw" style="background:'+c+'" data-c="'+c+'" aria-pressed="'+(c===base.color)+'"></button>';}).join("")+
+        '<input type="color" class="sw-custom" id="pf-sw-hex" value="'+esc(/^#/.test(base.color||"")?base.color:"#c99a3a")+'" title="Any colour you like" aria-label="Custom colour"/></div></div>'+
       '<div class="fld"><label>Projects in this profile</label><div class="chips" id="pf-projs">'+
         (S.projects.length?S.projects.map(function(p){return '<button type="button" class="chip" data-pid="'+p.id+'" aria-pressed="'+!!assigned[p.id]+'">'+esc(p.name)+'</button>';}).join(""):'<span class="sub">No projects yet</span>')+'</div>'+
       (editing?'':'<div class="sub" style="font-size:11px;margin-top:6px">Tip: a project can live in one profile at a time.</div>')+'</div>'+
@@ -2973,13 +3033,19 @@
       '<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>');
     document.querySelector("[data-x]").onclick=close;
     var pp=document.getElementById("pf-projs");
+    window.__pfColor=base.color||null;
+    var pfSw=document.getElementById("pf-sw"), pfHex=document.getElementById("pf-sw-hex");
+    if(pfSw) pfSw.onclick=function(e){ var b=e.target.closest(".sw"); if(!b)return; window.__pfColor=b.dataset.c;
+      [].forEach.call(pfSw.querySelectorAll(".sw"),function(c){c.setAttribute("aria-pressed",c===b);}); };
+    if(pfHex) pfHex.oninput=function(){ window.__pfColor=pfHex.value; [].forEach.call(pfSw.querySelectorAll(".sw"),function(c){c.setAttribute("aria-pressed",false);}); };
     pp.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; var on=b.getAttribute("aria-pressed")==="true"; b.setAttribute("aria-pressed",!on); assigned[b.dataset.pid]=!on; };
     document.getElementById("m-save").onclick=function(){
       var name=document.getElementById("pf-n").value.trim(); if(!name){toast("Name it");return;}
       var emoji=document.getElementById("pf-e").value.trim();
       var target=pr;
-      if(!editing){ target={id:uid(),name:name,emoji:emoji}; S.profiles.push(target); }
-      else { target.name=name; target.emoji=emoji; }
+      var pfColor=(window.__pfColor!==undefined)?window.__pfColor:base.color;
+      if(!editing){ target={id:uid(),name:name,emoji:emoji,color:pfColor}; S.profiles.push(target); }
+      else { target.name=name; target.emoji=emoji; target.color=pfColor; }
       S.projects.forEach(function(p){
         if(assigned[p.id]) p.profileId=target.id;
         else if(p.profileId===target.id) p.profileId=null;
@@ -3118,7 +3184,7 @@
     var evs=S.events.filter(function(e){return e.date===ds && sourceEnabled(e);});
     var body='<h3>'+niceDate(ds)+'</h3>';
     body+='<div class="fld"><label>Tasks</label><ul class="tasks">'+
-      (tasks.length?tasks.map(function(k){var p=proj(k.projectId);var mp=(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+esc(p.name)+'</span>':"")+(k.at?'<span class="pill block">🕒 '+fmtTime(k.at)+'</span>':"")+(k.subs&&k.subs.length?'<span class="pill subs-n">☑ '+k.subs.filter(function(s){return s.done;}).length+'/'+k.subs.length+'</span>':"");return '<li class="task '+(k.status==="done"?"done":"")+'" data-id="'+k.id+'"><button class="chk '+(k.status==="done"?"done":"")+'" data-dact="toggle" aria-label="done" aria-pressed="'+(k.status==="done")+'"></button><div class="task-main"><div class="task-title">'+esc(k.title)+'</div>'+(mp?'<div class="task-meta">'+mp+'</div>':"")+'</div><button class="task-x" data-dact="deltask" style="opacity:1" aria-label="delete">✕</button></li>';}).join(""):'<div class="empty">No tasks</div>')+'</ul></div>';
+      (tasks.length?tasks.map(function(k){var p=proj(k.projectId);var mp=(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+(k.at?'<span class="pill block">🕒 '+fmtTime(k.at)+'</span>':"")+(k.subs&&k.subs.length?'<span class="pill subs-n">☑ '+k.subs.filter(function(s){return s.done;}).length+'/'+k.subs.length+'</span>':"");return '<li class="task '+(k.status==="done"?"done":"")+'" data-id="'+k.id+'"><button class="chk '+(k.status==="done"?"done":"")+'" data-dact="toggle" aria-label="done" aria-pressed="'+(k.status==="done")+'"></button><div class="task-main"><div class="task-title">'+esc(k.title)+'</div>'+(mp?'<div class="task-meta">'+mp+'</div>':"")+'</div><button class="task-x" data-dact="deltask" style="opacity:1" aria-label="delete">✕</button></li>';}).join(""):'<div class="empty">No tasks</div>')+'</ul></div>';
     body+='<div class="fld"><label>Events &amp; milestones</label><ul class="tasks">'+
       (evs.length?evs.map(function(e){return '<li class="task" data-id="'+e.id+'"><span class="dot" style="background:'+(e.color||projColor(e.projectId))+';border-color:transparent;cursor:default"></span><div class="task-main"'+(e.sourceId?' style="cursor:default"':' data-dact="editev" title="Tap to edit"')+'><div class="task-title">'+esc(e.title)+'</div>'+(e.sourceId?'<div class="task-meta"><span class="pill block">subscribed</span></div>':"")+'</div>'+(e.sourceId?"":'<button class="task-x" data-dact="delev" style="opacity:1" aria-label="delete">✕</button>')+'</li>';}).join(""):'<div class="empty">No events</div>')+'</ul></div>';
     var fitems=S.focus[ds]||[];
@@ -4065,6 +4131,115 @@
     document.querySelector("[data-x]").onclick=close;
   }
 
+  /* ---------- recurring edit scope (Phase 21) ----------
+     Editing one instance of a repeat asks the Outlook question first, so a small tweak to today doesn't
+     silently rewrite months of a series (or vice versa). */
+  function askRecurScope(task, cb){
+    var tp=task.tplId?S.templates.find(function(x){return x.id===task.tplId;}):null;
+    if(!tp) return cb("one");
+    modal('<h3>↻ This task repeats</h3><p class="sub">“'+esc(task.title)+'” is part of a repeating series. What should the change apply to?</p>'+
+      '<div class="stack">'+
+        '<button class="btn" data-scope="one">Just this one — '+esc(niceDate(task.day))+'</button>'+
+        '<button class="btn" data-scope="future">This and all future ones</button>'+
+        '<button class="btn" data-scope="all">Every one in the series</button>'+
+      '</div><div class="modal-actions"><button class="btn ghost" data-x>Cancel</button></div>');
+    document.querySelector("[data-x]").onclick=close;
+    document.querySelector(".modal").onclick=function(e){
+      var b=e.target.closest("[data-scope]"); if(!b) return;
+      var sc=b.dataset.scope; close(); cb(sc);
+    };
+  }
+  // Detach one instance from its series so edits to it stay local.
+  function detachInstance(task){
+    var tp=S.templates.find(function(x){return x.id===task.tplId;});
+    if(tp){ tp.skip=(tp.skip||[]); if(tp.skip.indexOf(task.day)<0) tp.skip.push(task.day); }
+    delete task.tplId;
+  }
+  // End the series the day before this instance, and re-point the rest at a fresh template.
+  function splitSeriesAt(task){
+    var tp=S.templates.find(function(x){return x.id===task.tplId;});
+    if(!tp) return null;
+    var fresh={}; for(var k in tp) fresh[k]=tp[k];
+    fresh.id=uid(); fresh.start=task.day; fresh.until=tp.until||null; fresh.skip=[];
+    tp.until=addDays(task.day,-1);
+    S.templates.push(fresh);
+    S.tasks.forEach(function(x){ if(x.tplId===tp.id && x.day>=task.day) x.tplId=fresh.id; });
+    return fresh;
+  }
+  /* ---------- day-start review (Phase 22) ----------
+     First open of a new day: everything still open from before, shown with WHERE it lived, so you can
+     tick off what actually got done and pull the rest forward without hunting through cards. */
+  function whereWasIt(k,fromDay){
+    var inF=Object.keys(S.focus||{}).some(function(d){ return d<today() && (S.focus[d]||[]).some(function(f){return f.taskId===k.id;}); });
+    if(inF) return {label:"Focus",cls:"imp"};
+    if(k.block) return {label:k.block,cls:"block"};
+    if(!k.day) return {label:"Backlog",cls:"block"};
+    return {label:"To-do",cls:"block"};
+  }
+  function openDayStartReview(fromDay){
+    var t=today();
+    var open=S.tasks.filter(function(k){
+      return k.status==="todo" && k.day && k.day<t && inScope(k.projectId) && !k.tplId;
+    });
+    if(!open.length) return false;
+    var choice={};                       // id -> "done" | "today" | "leave"
+    open.forEach(function(k){ choice[k.id]="today"; });
+    function body(){
+      var groups=groupByProject(open);
+      var h='<h3>🌅 Good morning — yesterday\u2019s loose ends</h3>'+
+        '<p class="sub">'+open.length+' thing'+(open.length===1?"":"s")+' didn\u2019t get finished'+(fromDay?' since '+esc(niceDate(fromDay)):"")+
+        '. Tick off what you actually did, and choose what comes to today.</p>'+
+        '<div class="modal-actions" style="justify-content:flex-start;margin:10px 0 4px">'+
+          '<button class="chip" data-all="today">All to today</button>'+
+          '<button class="chip" data-all="done">All done</button>'+
+          '<button class="chip" data-all="leave">Leave all</button></div>';
+      h+='<div class="ds-list">';
+      groups.forEach(function(g){
+        h+='<div class="grp-head"><span class="pdot" style="'+cbg(g.color)+'"></span>'+esc(g.name)+'<span class="cnt">'+g.items.length+'</span></div>';
+        g.items.forEach(function(k){
+          var w=whereWasIt(k,fromDay);
+          h+='<div class="ds-row" data-id="'+k.id+'">'+
+            '<div class="ds-main"><div class="ds-title">'+esc(k.title)+'</div>'+
+            '<div class="task-meta"><span class="pill '+w.cls+'">'+esc(w.label)+'</span>'+
+              '<span class="pill block">'+esc(niceDate(k.day))+'</span>'+
+              ((k.rollover||0)>=1?'<span class="pill aged">carried '+k.rollover+'d</span>':"")+'</div></div>'+
+            '<div class="ds-pick">'+
+              ['["done","\u2713 Did it"]','["today","\u2192 Today"]','["leave","Leave"]'].map(function(x){ var o=JSON.parse(x);
+                return '<button class="chip" data-pick="'+o[0]+'" data-id="'+k.id+'" aria-pressed="'+(choice[k.id]===o[0])+'">'+o[1]+'</button>'; }).join("")+
+            '</div></div>';
+        });
+      });
+      h+='</div><div class="modal-actions"><button class="btn ghost" data-x>Not now</button><button class="btn primary" id="ds-go">Start the day</button></div>';
+      return h;
+    }
+    function wire(){
+      var root=document.querySelector(".modal");
+      root.onclick=function(e){
+        var all=e.target.closest("[data-all]");
+        if(all){ open.forEach(function(k){ choice[k.id]=all.dataset.all; }); rebuild(); return; }
+        var b=e.target.closest("[data-pick]");
+        if(b){ choice[b.dataset.id]=b.dataset.pick;
+          var row=b.closest(".ds-row");
+          [].forEach.call(row.querySelectorAll("[data-pick]"),function(c){ c.setAttribute("aria-pressed",c===b); });
+          return; }
+        if(e.target.closest("[data-x]")) close();
+      };
+      var go=document.getElementById("ds-go");
+      if(go) go.onclick=function(){
+        var moved=0, done=0;
+        open.forEach(function(k){
+          var c=choice[k.id];
+          if(c==="done"){ k.status="done"; k.completedOn=k.day||t; done++; }
+          else if(c==="today"){ k.day=t; k.rollover=0; delete k.carriedFrom; moved++; }
+        });
+        save(); close(); render();
+        toast((moved?moved+" moved to today":"")+(moved&&done?" · ":"")+(done?done+" marked done":"")||"Nothing changed");
+      };
+    }
+    function rebuild(){ var m=document.querySelector(".modal"); if(m){ m.innerHTML=body(); wire(); } }
+    modal(body(),"wide"); wire();
+    return true;
+  }
   /* ---------- weekly review — celebrate, clear, choose ---------- */
   function openReviewModal(){
     function body(){
@@ -4450,7 +4625,7 @@
   });
   document.getElementById("search-btn").onclick=openSearchModal;
   // catch the day change if the app stays open past midnight (tab or home-screen app)
-  function checkDay(){ if(S.lastOpen!==today()){ viewDay=today(); onOpen(); render(); } }
+  function checkDay(){ if(S.lastOpen!==today()){ viewDay=today(); onOpen(); render(); if(dayStartFrom) openDayStartReview(dayStartFrom); } }
   document.addEventListener("visibilitychange",function(){ if(!document.hidden) checkDay(); });
   setInterval(checkDay,60000);
   // heartbeat: keep a local snapshot and retry cloud sync if a push is still pending/failed
@@ -4478,5 +4653,6 @@
   if(lockCfg()) showLock();
   if(bootDedupeCount>0){ save(); setTimeout(function(){ toast("Cleaned up "+bootDedupeCount+" duplicate item"+(bootDedupeCount===1?"":"s")+" (⌘Z to undo)"); },600); } // persist + push the de-duplicated data
   if(S.welcomed===false){ S.welcomed=true; save(); openWelcomeModal(); }
+  else if(dayStartFrom){ setTimeout(function(){ openDayStartReview(dayStartFrom); }, 400); }
 })();
 </script>
