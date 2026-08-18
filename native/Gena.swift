@@ -1,14 +1,14 @@
-// Daybook — native macOS wrapper (WKWebView, no Electron, no dependencies)
+// Gena — native macOS wrapper (WKWebView, no Electron, no dependencies)
 // Required Notice: Copyright (c) 2026 Mintay Misgano (https://github.com/skabone)
 // Licensed under the PolyForm Noncommercial License 1.0.0
 //
-// Loads the hosted Daybook so the app stays current and cloud sync works.
+// Loads the hosted Gena so the app stays current and cloud sync works.
 // The app keeps its own private storage, separate from any browser.
 
 import Cocoa
 import WebKit
 
-let APP_URL = "https://skabone.github.io/daybook/"
+let APP_URL = "https://skabone.github.io/gena/"
 let HOME_HOST = "skabone.github.io"
 
 final class WebController: NSViewController, WKNavigationDelegate, WKUIDelegate {
@@ -37,7 +37,7 @@ final class WebController: NSViewController, WKNavigationDelegate, WKUIDelegate 
 
     @objc func reload(_ sender: Any?) { web.reload() }
 
-    // Keep Daybook inside the app; send outside links to the real browser.
+    // Keep Gena inside the app; send outside links to the real browser.
     func webView(_ webView: WKWebView,
                  decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
@@ -72,9 +72,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             contentRect: NSRect(x: 0, y: 0, width: 1200, height: 820),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered, defer: false)
-        window.title = "Daybook"
+        window.title = "Gena"
         window.contentViewController = controller
-        window.setFrameAutosaveName("DaybookMainWindow")
+        window.setFrameAutosaveName("GenaMainWindow")
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -91,13 +91,13 @@ func buildMenu(_ delegate: AppDelegate) -> NSMenu {
     // App menu
     let appItem = NSMenuItem(); main.addItem(appItem)
     let appMenu = NSMenu()
-    appMenu.addItem(withTitle: "About Daybook", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+    appMenu.addItem(withTitle: "About Gena", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
     appMenu.addItem(.separator())
-    appMenu.addItem(withTitle: "Hide Daybook", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+    appMenu.addItem(withTitle: "Hide Gena", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
     let others = appMenu.addItem(withTitle: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
     others.keyEquivalentModifierMask = [.command, .option]
     appMenu.addItem(.separator())
-    appMenu.addItem(withTitle: "Quit Daybook", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+    appMenu.addItem(withTitle: "Quit Gena", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     appItem.submenu = appMenu
 
     // Edit menu (makes Cmd+C/V/X/A + undo work in the web view)
