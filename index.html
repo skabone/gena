@@ -5,7 +5,7 @@
   Licensed under the PolyForm Noncommercial License 1.0.0
   https://polyformproject.org/licenses/noncommercial/1.0.0
   Free for personal / noncommercial use. Keep this notice with every copy.
-  Commercial use requires written permission: https://github.com/skabone/daybook/issues
+  Commercial use requires written permission: https://github.com/skabone/gena/issues
 -->
 <html lang="en">
 <meta charset="utf-8">
@@ -770,7 +770,20 @@
   }
 
   /* ---------- storage ---------- */
-  var KEY = "daybook-v1";
+  var KEY = "gena-v1";
+  // The app was called Daybook until 2026-08. Copy anything stored under the old keys across once, and
+  // leave the originals untouched as a fallback — a rename must never be able to cost you your data.
+  (function migrateLegacyKeys(){
+    var pairs=[["daybook-v1","gena-v1"],["daybook-v1-lastgood","gena-v1-lastgood"],
+               ["daybook-v1-corrupt","gena-v1-corrupt"],["daybook-v1-snapshots","gena-v1-snapshots"],
+               ["daybook-gh","gena-gh"],["daybook-lock","gena-lock"]];
+    try{
+      pairs.forEach(function(pr){
+        var oldV=localStorage.getItem(pr[0]);
+        if(oldV!==null && localStorage.getItem(pr[1])===null) localStorage.setItem(pr[1],oldV);
+      });
+    }catch(e){}
+  })();
   var APP_BUILD = "2026-07-15";
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
@@ -980,7 +993,7 @@
       return d;
     }
   }
-  var SNAP_KEY="daybook-v1-snapshots";
+  var SNAP_KEY="gena-v1-snapshots";
   function substantive(d){ return !!(d && (d.tasks||[]).length>0); }
   function keepLocalBackups(){
     if(!substantive(S)) return; // never let an empty state become a "backup"
@@ -3303,7 +3316,7 @@
   }
 
   /* ---------- optional cloud sync via a GitHub gist (free, no server) ---------- */
-  var GH_KEY="daybook-gh", GH_FILE="daybook.json", GH_DESC="Gena sync";
+  var GH_KEY="gena-gh", GH_FILE="daybook.json", GH_DESC="Gena sync";   // gist filename kept: renaming it would orphan existing sync gists
   var GH=null, ghTimer=null, ghLastSync=null, ghError=null, ghBusy=false, ghDirty=false, ghEmptyWarned=false;
   try{ GH=JSON.parse(localStorage.getItem(GH_KEY))||null; }catch(e){ GH=null; }
   function ghSaveCfg(){ if(GH&&GH.token) localStorage.setItem(GH_KEY,JSON.stringify(GH)); else localStorage.removeItem(GH_KEY); }
@@ -3667,7 +3680,7 @@
         '</div><div class="modal-actions"><button class="btn primary" data-x>Got it</button></div>');
       document.querySelector("[data-x]").onclick=close;
     };
-    document.getElementById("x-reset").onclick=function(){ confirmModal("Reset everything?","Erases all Gena data on this device. This can't be undone.","Erase it all",function(){ localStorage.removeItem(KEY); S=seed(); save(); applyTheme(); fillProjSelect(); render(); }); };
+    document.getElementById("x-reset").onclick=function(){ confirmModal("Reset everything?","Erases all Gena data on this device. This can't be undone.","Erase it all",function(){ localStorage.removeItem(KEY); try{ localStorage.removeItem("daybook-v1"); }catch(e){} S=seed(); save(); applyTheme(); fillProjSelect(); render(); }); };
   };
 
   /* ---------- PEOPLE (follow-ups) ---------- */
@@ -4347,7 +4360,7 @@
   function beep(){ try{ var C=window.AudioContext||window.webkitAudioContext; var ctx=new C(); var o=ctx.createOscillator(), g=ctx.createGain(); o.connect(g); g.connect(ctx.destination); o.frequency.value=880; g.gain.setValueAtTime(.001,ctx.currentTime); g.gain.exponentialRampToValueAtTime(.2,ctx.currentTime+.02); g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.9); o.start(); o.stop(ctx.currentTime+1); }catch(e){} }
 
   /* ---------- optional passcode lock (device-only, screen lock — not encryption) ---------- */
-  var LOCK_KEY="daybook-lock";
+  var LOCK_KEY="gena-lock";
   function hashCode(s){ var h=5381; for(var i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))>>>0; } return "h"+h.toString(36); }
   function lockCfg(){ try{ return JSON.parse(localStorage.getItem(LOCK_KEY)); }catch(e){ return null; } }
   function showLock(){
