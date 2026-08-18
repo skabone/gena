@@ -314,6 +314,11 @@
     *,*::before,*::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important;
       transition-duration:.01ms !important; scroll-behavior:auto !important; }
   }
+  .grp-head{ display:flex; align-items:center; gap:7px; font-size:10.5px; font-weight:800; letter-spacing:.07em;
+    text-transform:uppercase; color:var(--ink-soft); margin:12px 0 5px; padding-top:8px; border-top:1px solid var(--line-soft); }
+  .grp-head:first-child{ margin-top:2px; padding-top:0; border-top:none; }
+  .grp-head .pdot{ width:9px; height:9px; border-radius:50%; flex:none; }
+  .grp-head .cnt{ margin-left:auto; color:var(--ink-faint); font-weight:700; }
   /* Phase 20: collapse a task's subtasks in place, and reorder them without a drag */
   .subs-caret{ background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:11px;
     padding:0 5px 0 0; line-height:1; }
@@ -327,14 +332,15 @@
   li.sub{ display:flex; align-items:center; gap:8px; }
   li.sub.sub-dragover{ outline:2px dashed var(--terra); outline-offset:-2px; border-radius:6px; }
   /* Day view: hour grid and the unscheduled list side by side, so dragging between them is one move */
-  .day-split{ display:flex; gap:16px; align-items:flex-start; }
-  .day-gridwrap{ flex:1 1 auto; min-width:0; }
-  .day-split .day-unsched{ flex:0 0 300px; margin-bottom:0; position:sticky; top:96px; max-height:calc(100vh - 130px); overflow-y:auto; }
+  /* grid rather than flex: guarantees the unscheduled column is exactly as tall as the hour grid */
+  .day-split{ display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:16px; align-items:stretch; }
+  .day-gridwrap{ min-width:0; }
+  .day-split .day-unsched{ margin-bottom:0; overflow-y:auto; max-height:100%; }
   /* narrow column: same reasoning as the right panel — drop the secondary row buttons so titles keep their width */
   .day-split .day-unsched .task-addsub, .day-split .day-unsched .task-focus, .day-split .day-unsched .task-star{ display:none; }
   @media (max-width:900px){
-    .day-split{ flex-direction:column-reverse; }
-    .day-split .day-unsched{ flex:1 1 auto; width:100%; position:static; max-height:none; margin-bottom:14px; }
+    .day-split{ grid-template-columns:minmax(0,1fr); }
+    .day-split .day-unsched{ width:100%; max-height:none; margin-bottom:14px; order:-1; }
   }
   /* [[wikilink]] chips + journal entries */
   .wl{ display:inline-block; font:inherit; font-size:12.5px; font-weight:700; padding:1px 8px;
@@ -1664,6 +1670,19 @@
       (p?'<div class="task-meta"><span class="pill proj" style="'+cbg(p.color)+'">'+esc(p.name)+'</span></div>':"")+'</div>'+
       '<div class="panel-move"><button data-act="sched" data-id="'+k.id+'" data-d="'+today()+'">📅 Today</button><button data-act="sched" data-id="'+k.id+'" data-d="'+addDays(today(),1)+'">→ Tmrw</button><button data-act="sched" data-id="'+k.id+'" data-d="pick">📅…</button></div></div>';
   }
+  // Group tasks under their project, "No project" last — used by the Carried-over card and anywhere
+  // else a long flat list needs to become scannable.
+  function groupByProject(list){
+    var by={}, order=[];
+    list.forEach(function(k){
+      var key=k.projectId||"__none";
+      if(!by[key]){ var pr=k.projectId?proj(k.projectId):null;
+        by[key]={id:key,name:pr?pr.name:"No project",color:pr?pr.color:"var(--ink-faint)",items:[]}; order.push(key); }
+      by[key].items.push(k);
+    });
+    order.sort(function(a,b){ if(a==="__none") return 1; if(b==="__none") return -1; return by[a].name.localeCompare(by[b].name); });
+    return order.map(function(k){ return by[k]; });
+  }
   function renderRightbar(){
     var rb=document.getElementById("rightbar"); if(!rb) return;
     var vd=(view==="today")?viewDay:today();
@@ -1677,11 +1696,15 @@
     var blAdd='<ul class="tasks" data-list="someday" style="padding:0;margin:0 0 4px"><li class="task inline-row" style="padding:6px 4px"><span class="inline-plus">+</span><input class="inline-add" data-block="someday" placeholder="Add to backlog…" aria-label="Add to backlog"/></li></ul>';
     var blBody=blAdd+(backlog.length?backlog.map(backlogSideRow).join(""):'<div class="empty">Backlog is empty</div>');
     var vdLabel = vd===today() ? "today" : niceDate(vd);
-    var cb=carried.length?carried.map(function(k){
-      var p=proj(k.projectId);
+    function carriedRow(k){
       return '<div class="panel-task" data-id="'+k.id+'"><div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title" style="font-size:13.5px">'+esc(k.title)+'</div>'+
-        '<div class="task-meta"><span class="pill aged">carried '+k.rollover+'d</span>'+(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+esc(p.name)+'</span>':"")+'</div></div>'+
+        '<div class="task-meta"><span class="pill aged">carried '+k.rollover+'d</span></div></div>'+
         '<div class="panel-move"><button class="pm-primary" data-act="sched" data-id="'+k.id+'" data-d="'+vd+'">➕ Add to '+esc(vdLabel)+'</button>'+MOVES.map(function(m){return '<button data-act="panel-move" data-to="'+m[0]+'" data-id="'+k.id+'">'+m[1]+'</button>';}).join("")+'</div></div>';
+    }
+    // grouped by project — the project name moves to a heading so it isn't repeated on every row
+    var cb=carried.length?groupByProject(carried).map(function(g){
+      return '<div class="grp-head"><span class="pdot" style="'+cbg(g.color)+'"></span>'+esc(g.name)+'<span class="cnt">'+g.items.length+'</span></div>'+
+        g.items.map(carriedRow).join("");
     }).join(""):'<div class="empty">Nothing carried over 🎉</div>';
     var db=doneV.length?'<ul class="tasks">'+doneV.map(taskLi).join("")+'</ul>':'<div class="empty">Nothing completed '+(vd===today()?"yet":"this day")+'</div>';
     var byDay={};
