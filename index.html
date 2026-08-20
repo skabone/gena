@@ -332,6 +332,8 @@
   .subs-caret:hover{ color:var(--terra-deep); }
   .sub-move{ display:inline-flex; gap:1px; margin-left:auto; opacity:0; transition:opacity .12s; flex:none; }
   li.sub:hover .sub-move{ opacity:1; }
+  .ie-sub .sub-move, .msub .sub-move{ opacity:.55; }
+  .ie-sub:hover .sub-move, .msub:hover .sub-move, .ie-sub:focus-within .sub-move, .msub:focus-within .sub-move{ opacity:1; }
   .sub-mv{ background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:11px;
     line-height:1; padding:2px 3px; border-radius:4px; }
   .sub-mv:hover:not(:disabled){ color:var(--terra-deep); background:var(--terra-bg); }
@@ -1438,15 +1440,20 @@
      Same two-column shape as the modal (writing left, scheduling right) but rendered as the row itself,
      so the list never disappears out from under you. Full-fat options (repeat, duplicate) still live in
      the modal, reachable from "More…". */
+  // One definition of an editor subtask row: inlineEditorLi renders it first, ieRenderSubs redraws it
+  // after every change, and the two must not drift apart.
+  function ieSubRow(sb,i,n){
+    return '<div class="ie-sub"><button type="button" class="chk '+(sb.done?"done":"")+'" data-ie="subtoggle" data-i="'+i+'" aria-label="Toggle subtask" aria-pressed="'+!!sb.done+'"></button>'+
+      '<input value="'+esc(sb.text)+'" data-ie="subtext" data-i="'+i+'" aria-label="Subtask"/>'+
+      '<span class="sub-move"><button type="button" class="sub-mv" data-ie="subup" data-i="'+i+'" '+(i===0?'disabled':'')+' aria-label="Move up" title="Move up">▴</button>'+
+      '<button type="button" class="sub-mv" data-ie="subdown" data-i="'+i+'" '+(i===n-1?'disabled':'')+' aria-label="Move down" title="Move down">▾</button></span>'+
+      '<button type="button" class="task-x" style="opacity:1" data-ie="subdel" data-i="'+i+'" aria-label="Remove subtask">✕</button></div>';
+  }
   function inlineEditorLi(k){
     var p=proj(k.projectId);
     var projOpts=S.projects.map(function(x){return '<option value="'+x.id+'" '+(x.id===k.projectId?"selected":"")+'>'+esc(x.name)+'</option>';}).join("");
     var BLKS=[["","Anytime"],["morning","Morning"],["afternoon","Afternoon"],["evening","Evening"]];
-    var subs=(k.subs||[]).map(function(sb,i){
-      return '<div class="ie-sub"><button type="button" class="chk '+(sb.done?"done":"")+'" data-ie="subtoggle" data-i="'+i+'" aria-label="Toggle subtask" aria-pressed="'+!!sb.done+'"></button>'+
-        '<input value="'+esc(sb.text)+'" data-ie="subtext" data-i="'+i+'" aria-label="Subtask"/>'+
-        '<button type="button" class="task-x" style="opacity:1" data-ie="subdel" data-i="'+i+'" aria-label="Remove subtask">✕</button></div>';
-    }).join("");
+    var subs=(k.subs||[]).map(function(sb,i,arr){ return ieSubRow(sb,i,arr.length); }).join("");
     return '<li class="task ie-row" data-id="'+k.id+'" data-editing="1">'+
       '<div class="ie-wrap">'+
         '<div class="ie-main">'+
@@ -2331,12 +2338,14 @@
       var iePeople=(function(){ var t=S.tasks.find(function(x){return x.id===ieId;}); return ((t&&t.personIds)||[]).slice(); })();
       var ieBlock=(function(){ var t=S.tasks.find(function(x){return x.id===ieId;}); return (t&&t.block)||""; })();
       var iePrio=(function(){ var t=S.tasks.find(function(x){return x.id===ieId;}); return !!(t&&t.priority); })();
-      function ieRenderSubs(){
-        document.getElementById("ie-subs").innerHTML=ieSubs.map(function(sb,i){
-          return '<div class="ie-sub"><button type="button" class="chk '+(sb.done?"done":"")+'" data-ie="subtoggle" data-i="'+i+'" aria-label="Toggle subtask" aria-pressed="'+!!sb.done+'"></button>'+
-            '<input value="'+esc(sb.text)+'" data-ie="subtext" data-i="'+i+'" aria-label="Subtask"/>'+
-            '<button type="button" class="task-x" style="opacity:1" data-ie="subdel" data-i="'+i+'" aria-label="Remove subtask">✕</button></div>';
-        }).join("");
+      // fi/which re-focus the arrow that was just pressed at its new index, so you can keep tapping;
+      // at either end that arrow is disabled, so the focus falls to its partner.
+      function ieRenderSubs(fi,which){
+        document.getElementById("ie-subs").innerHTML=ieSubs.map(function(sb,i){ return ieSubRow(sb,i,ieSubs.length); }).join("");
+        if(fi===undefined) return;
+        var pick=document.querySelector('#ie-subs [data-ie="'+which+'"][data-i="'+fi+'"]');
+        if(!pick||pick.disabled) pick=document.querySelector('#ie-subs [data-ie="'+(which==="subup"?"subdown":"subup")+'"][data-i="'+fi+'"]');
+        if(pick&&!pick.disabled) pick.focus();
       }
       function ieCollect(){
         var t=S.tasks.find(function(x){return x.id===ieId;}); if(!t) return null;
@@ -2385,6 +2394,9 @@
         var w=b.dataset.ie;
         if(w==="subtoggle"){ ieSubs[+b.dataset.i].done=!ieSubs[+b.dataset.i].done; ieRenderSubs(); return; }
         if(w==="subdel"){ ieSubs.splice(+b.dataset.i,1); ieRenderSubs(); return; }
+        if(w==="subup"||w==="subdown"){ var si0=+b.dataset.i, sj0=w==="subup"?si0-1:si0+1;
+          if(sj0>=0&&sj0<ieSubs.length){ var smv=ieSubs.splice(si0,1)[0]; ieSubs.splice(sj0,0,smv); ieRenderSubs(sj0,w); }
+          return; }
         if(b.dataset.pid!==undefined && b.closest("#ie-people")){ var at=iePeople.indexOf(b.dataset.pid);
           if(at>=0) iePeople.splice(at,1); else iePeople.push(b.dataset.pid);
           b.setAttribute("aria-pressed",iePeople.indexOf(b.dataset.pid)>=0); return; }
@@ -2985,11 +2997,21 @@
     mi.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; priorityV=b.dataset.i==="1"; [].forEach.call(mi.children,function(c){c.setAttribute("aria-pressed",(c.dataset.i==="1")===priorityV);}); };
     var subs=(base.subs||[]).map(function(s){return {id:s.id,text:s.text,done:!!s.done};});
     var ms=document.getElementById("m-subs"), msn=document.getElementById("m-sub-new");
-    function renderSubs(){
-      ms.innerHTML=subs.map(function(s,i){return '<div class="msub"><button type="button" class="chk '+(s.done?"done":"")+'" data-si="'+i+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><input value="'+esc(s.text)+'" data-st="'+i+'"/>'+(ed?'<button type="button" class="chip" data-sp="'+i+'" title="Promote to its own task" style="padding:3px 8px;flex:none">⤴ task</button>':'')+'<button type="button" class="task-x" style="opacity:1" data-sx="'+i+'" aria-label="Remove subtask">✕</button></div>';}).join("");
+    function renderSubs(fi,which){
+      ms.innerHTML=subs.map(function(s,i){return '<div class="msub"><button type="button" class="chk '+(s.done?"done":"")+'" data-si="'+i+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><input value="'+esc(s.text)+'" data-st="'+i+'"/>'+
+        '<span class="sub-move"><button type="button" class="sub-mv" data-sm="up" data-smi="'+i+'" '+(i===0?'disabled':'')+' aria-label="Move up" title="Move up">▴</button>'+
+        '<button type="button" class="sub-mv" data-sm="down" data-smi="'+i+'" '+(i===subs.length-1?'disabled':'')+' aria-label="Move down" title="Move down">▾</button></span>'+
+        (ed?'<button type="button" class="chip" data-sp="'+i+'" title="Promote to its own task" style="padding:3px 8px;flex:none">⤴ task</button>':'')+'<button type="button" class="task-x" style="opacity:1" data-sx="'+i+'" aria-label="Remove subtask">✕</button></div>';}).join("");
+      if(fi===undefined) return;
+      var pick=ms.querySelector('[data-sm="'+which+'"][data-smi="'+fi+'"]');
+      if(!pick||pick.disabled) pick=ms.querySelector('[data-sm="'+(which==="up"?"down":"up")+'"][data-smi="'+fi+'"]');
+      if(pick&&!pick.disabled) pick.focus();
     }
     renderSubs();
-    ms.onclick=function(e){ var b=e.target.closest("[data-si],[data-sx],[data-sp]"); if(!b)return;
+    ms.onclick=function(e){ var b=e.target.closest("[data-si],[data-sx],[data-sp],[data-sm]"); if(!b)return;
+      if(b.dataset.sm!==undefined){ var mi1=+b.dataset.smi, mj1=b.dataset.sm==="up"?mi1-1:mi1+1;
+        if(mj1>=0&&mj1<subs.length){ var mmv=subs.splice(mi1,1)[0]; subs.splice(mj1,0,mmv); renderSubs(mj1,b.dataset.sm); }
+        return; }
       if(b.dataset.sp!==undefined){ var ps=subs.splice(+b.dataset.sp,1)[0];
         if(ps&&ps.text.trim()){ S.tasks.push({id:uid(),title:ps.text.trim(),projectId:ed.projectId||null,status:ps.done?"done":"todo",completedOn:ps.done?today():null,day:ed.day,block:ed.block,at:null,priority:false,rollover:0,subs:[],created:today()});
           ed.subs=subs.filter(function(s){return (s.text||"").trim();}); save(); render(); toast("Promoted to its own task"); }
