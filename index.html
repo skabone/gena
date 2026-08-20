@@ -783,7 +783,7 @@
       document.head.appendChild(link); document.head.appendChild(ai);
     } else {
       // set the real paths up front so the manifest is correct the first time Chromium reads it
-      link.href="manifest.webmanifest"; ai.href="icon-192.png";
+      link.href="manifest.webmanifest"; ai.href="icon-180.png";
       document.head.appendChild(link); document.head.appendChild(ai);
       // if those files aren't actually there, quietly fall back
       fetch("manifest.webmanifest",{method:"HEAD"}).then(function(r){
@@ -1518,15 +1518,23 @@
       if(editingTaskId===k.id) return inlineEditorLi(k);
       var kp=k.projectId?proj(k.projectId):null;
       var done=k.status==="done";
-      var lpills='<span class="pill" style="background:var(--terra-bg);color:var(--terra-deep)">↑ task</span>'+
-        (kp?'<span class="pill proj" style="'+cbg(kp.color)+'">'+esc(kp.name)+'</span>':"")+
+      var lpills=(k.priority?'<span class="pill imp">★ important</span>':"")+
+        (kp?'<span class="pill proj" style="'+cbg(kp.color)+'">'+(kp.emoji?esc(kp.emoji)+" ":"")+esc(kp.name)+'</span>':"")+
         (k.day&&k.day!==viewDay?'<span class="pill block">'+niceDate(k.day)+'</span>':"")+
         (k.block?'<span class="pill block">'+k.block+'</span>':"")+
         (k.at?'<span class="pill block">🕒 '+fmtTime(k.at)+'</span>':"")+
-        (k.subs&&k.subs.length?'<span class="pill subs-n">☑ '+k.subs.filter(function(s){return s.done;}).length+'/'+k.subs.length+'</span>':"");
+        peoplePills(k);
+      var lsubRows="";
+      if(k.subs&&k.subs.length){
+        lpills+='<span class="pill subs-n">☑ '+k.subs.filter(function(s){return s.done;}).length+'/'+k.subs.length+'</span>';
+        lsubRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subkind="sub" data-subof="'+k.id+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-tid="'+k.id+'" data-sid="'+s.id+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("");
+      }
+      if(pendingSubAdd===k.id) lsubRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+k.id+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
+      var lsubsHtml=lsubRows?'<ul class="subs">'+lsubRows+'</ul>':'';
       return '<li class="task '+(done?"done":"")+'" data-id="'+f.id+'" data-focus="1" draggable="true">'+
         '<button class="chk '+(done?"done":"")+'" data-act="focus-tasktoggle" data-tid="'+k.id+'" aria-label="Complete task" aria-pressed="'+done+'"></button>'+
-        '<div class="task-main" data-act="focus-editlinked" data-tid="'+k.id+'" title="Tap to edit the task"><div class="task-title">'+esc(k.title)+'</div><div class="task-meta">'+lpills+'</div></div>'+
+        '<div class="task-main" data-act="focus-editlinked" data-tid="'+k.id+'" title="Tap to edit the task"><div class="task-title">'+subsCaret(k.id,(k.subs||[]).length)+esc(k.title)+'</div><div class="task-meta">'+lpills+'</div>'+lsubsHtml+'</div>'+
+        '<button class="task-addsub" data-act="sub-add" data-tid="'+k.id+'" aria-label="Add a subtask" title="Add a subtask">⤷+</button>'+
         '<button class="task-x" data-act="focus-del" aria-label="Remove from focus" title="Remove from focus (keeps the task)">✕</button></li>';
     }
     var p=f.projectId?proj(f.projectId):null;
@@ -1562,12 +1570,34 @@
     f.subs=f.subs||[]; f.subs.push({id:uid(),text:val,done:false});
     pendingSubAdd=fid; save(); render();
   }
+  // Typing into the Focus card creates a real task on the day you are looking at and promotes it, so a
+  // focus item you invent is the same object as one you promote — same row, same inline editor, and it
+  // can carry project, day, block, time, importance and people. Free-text focus items still render
+  // (older data, AI import); opening one upgrades it in place via focusItemToTask.
   function addFocusItem(val){
     val=(val||"").trim(); if(!val) return;
-    var at=parseAtTokens(val,true);
+    var p=nlParse(val);
+    S.tasks.push({id:uid(),title:p.title,projectId:p.projectId||null,status:"todo",
+      day:(p.day&&p.day!=="someday")?p.day:viewDay,block:p.block||null,at:p.at||null,
+      priority:false,rollover:0,subs:[],personIds:[],created:today()});
+    var nk=S.tasks[S.tasks.length-1];
     S.focus[viewDay]=S.focus[viewDay]||[];
-    S.focus[viewDay].push({id:uid(),text:at.title||val,projectId:at.projectId||null,done:false});
-    pendingFocus="focus"; save(); render();
+    S.focus[viewDay].push({id:uid(),taskId:nk.id});
+    if(S.expandOnAdd!==false){ pendingFocus=null; editingTaskId=nk.id; save(); render();
+      var ti=document.getElementById("ie-title"); if(ti){ ti.focus(); ti.setSelectionRange(ti.value.length,ti.value.length); } }
+    else { pendingFocus="focus"; save(); render(); }
+  }
+  // Older free-text focus items carry only text + subitems. Opening one turns it into a real task in
+  // place — nothing is lost, and it gets the same editor as everything else.
+  function focusItemToTask(f){
+    var k={id:uid(),title:f.text||"",projectId:f.projectId||null,status:f.done?"done":"todo",
+      day:viewDay,block:null,at:null,priority:false,rollover:0,personIds:[],created:today(),
+      subs:(f.subs||[]).map(function(s){return {id:s.id||uid(),text:s.text,done:!!s.done};})};
+    if(f.done) k.completedOn=viewDay;
+    S.tasks.push(k);
+    delete f.text; delete f.projectId; delete f.done; delete f.subs;
+    f.taskId=k.id;
+    return k;
   }
   /* ---------- time-blocking hour-grid Day view ---------- */
   function viewDayGrid(){
@@ -2543,9 +2573,9 @@
         if(wk==="project"){ S.filterProjects=[wid]; view="projects"; save(); syncNav(); render(); }
         else if(wk==="person"){ view="people"; syncNav(); render(); var pc=document.querySelector('.proj-card [data-act="editperson"][data-id="'+wid+'"]'); if(pc) pc.scrollIntoView({block:"center"}); }
         else { var wt=S.tasks.find(function(x){return x.id===wid;}); if(wt){ if(wt.day){ viewDay=wt.day; view="today"; } syncNav(); render(); toast("Jumped to “"+wt.title.slice(0,40)+"”"); } } }
-      else if(act==="subs-toggle"){ toggleSubs(id||anyId); }
+      else if(act==="subs-toggle"){ toggleSubs(a.dataset.id||id||anyId); }
       // subtask reordering — arrows here, drag handled alongside the task drag code
-      else if(act==="sub-up"||act==="sub-down"){ var mt=S.tasks.find(function(x){return x.id===(id||anyId);});
+      else if(act==="sub-up"||act==="sub-down"){ var mt=S.tasks.find(function(x){return x.id===(a.dataset.id||id||anyId);});
         if(mt&&mt.subs){ var mi=+a.dataset.i, mj=act==="sub-up"?mi-1:mi+1;
           if(mj>=0&&mj<mt.subs.length){ var mv=mt.subs.splice(mi,1)[0]; mt.subs.splice(mj,0,mv); save(); render(); } } }
       else if(act==="fsub-up"||act==="fsub-down"){ var mf=(S.focus[viewDay]||[]).find(function(x){return x.id===(id||anyId);});
@@ -2560,14 +2590,17 @@
       else if(act==="calview"){ S.calView=a.dataset.v; save(); render(); }
       else if(act==="focus-toggle"){ var fx=(S.focus[viewDay]||[]).find(function(x){return x.id===anyId;}); if(fx){ fx.done=!fx.done; save(); render(); } }
       else if(act==="focus-del"){ var arr=S.focus[viewDay]||[]; var fi=arr.findIndex(function(x){return x.id===anyId;}); if(fi>=0){ var fdel=arr[fi]; arr.splice(fi,1); save(); render(); toastUndo("Focus item deleted",function(){ arr.splice(Math.min(fi,arr.length),0,fdel); save(); render(); }); } }
-      else if(act==="focus-edit"){ var fitem=(S.focus[viewDay]||[]).find(function(x){return x.id===anyId;}); if(fitem) openFocusEditModal(fitem); }
+      else if(act==="focus-edit"){ var fitem=(S.focus[viewDay]||[]).find(function(x){return x.id===anyId;});
+        if(fitem){ var fk=fitem.taskId?S.tasks.find(function(x){return x.id===fitem.taskId;}):focusItemToTask(fitem);
+          if(fk){ editingTaskId=fk.id; save(); render();
+            var fti=document.getElementById("ie-title"); if(fti){ fti.focus(); fti.setSelectionRange(fti.value.length,fti.value.length); } } } }
       else if(act==="focus-tasktoggle"){ toggleTask(a.dataset.tid); }
       else if(act==="focus-editlinked"){ var lt=S.tasks.find(function(x){return x.id===a.dataset.tid;});
         if(!lt){}
         else if(a.closest("#rightbar")||a.closest(".proj-card")||a.closest(".modal")) openTaskModal({edit:lt});
         else { editingTaskId=lt.id; render(); var lti=document.getElementById("ie-title"); if(lti){ lti.focus(); lti.setSelectionRange(lti.value.length,lti.value.length); } } }
-      else if(act==="sub-toggle"){ var pk=S.tasks.find(function(x){return x.id===(id||anyId);}); if(pk){ var sb=(pk.subs||[]).find(function(x){return x.id===a.dataset.sid;}); if(sb){ sb.done=!sb.done; save(); render(); } } }
-      else if(act==="sub-add"){ pendingSubAdd=(id||anyId); render(); }
+      else if(act==="sub-toggle"){ var pk=S.tasks.find(function(x){return x.id===(a.dataset.tid||id||anyId);}); if(pk){ var sb=(pk.subs||[]).find(function(x){return x.id===a.dataset.sid;}); if(sb){ sb.done=!sb.done; save(); render(); } } }
+      else if(act==="sub-add"){ pendingSubAdd=(a.dataset.tid||id||anyId); render(); }
       else if(act==="fsub-add"){ pendingSubAdd=(id||anyId); render(); }
       else if(act==="fsub-toggle"){ var ff=(S.focus[viewDay]||[]).find(function(x){return x.id===(id||anyId);}); if(ff){ var fsb=(ff.subs||[]).find(function(x){return x.id===a.dataset.sid;}); if(fsb){ fsb.done=!fsb.done; save(); render(); } } }
       else if(act==="daynav"){ var dd0=+a.dataset.d; viewDay = dd0===0?today():addDays(viewDay,dd0); render(); }
@@ -2856,28 +2889,6 @@
       '<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="cf-ok">'+label+'</button></div>');
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("cf-ok").onclick=function(){ close(); onYes(); };
-  }
-  function openFocusEditModal(f){
-    modal('<h3>Edit focus</h3><div class="fld"><label>Focus item</label><input id="fe-t" value="'+esc(f.text)+'"/></div>'+
-      '<div class="fld"><label>Subitems</label><div id="fe-subs"></div><input id="fe-sub-new" placeholder="Add a subitem — press Enter"/></div>'+
-      '<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>');
-    document.querySelector("[data-x]").onclick=close;
-    var subs=(f.subs||[]).map(function(s){return {id:s.id,text:s.text,done:!!s.done};});
-    var fs=document.getElementById("fe-subs"), fsn=document.getElementById("fe-sub-new");
-    function renderFSubs(){
-      fs.innerHTML=subs.map(function(s,i){return '<div class="msub"><button type="button" class="chk '+(s.done?"done":"")+'" data-si="'+i+'" aria-label="Toggle subitem" aria-pressed="'+!!s.done+'"></button><input value="'+esc(s.text)+'" data-st="'+i+'"/><button type="button" class="task-x" style="opacity:1" data-sx="'+i+'" aria-label="Remove subitem">✕</button></div>';}).join("");
-    }
-    renderFSubs();
-    fs.onclick=function(e){ var b=e.target.closest("[data-si],[data-sx]"); if(!b)return;
-      if(b.dataset.sx!==undefined){ subs.splice(+b.dataset.sx,1); renderFSubs(); }
-      else { var sbb=subs[+b.dataset.si]; sbb.done=!sbb.done; renderFSubs(); } };
-    fs.oninput=function(e){ var si=e.target.dataset.st; if(si!==undefined) subs[+si].text=e.target.value; };
-    fsn.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); var sv=fsn.value.trim(); if(sv){ subs.push({id:uid(),text:sv,done:false}); fsn.value=""; renderFSubs(); } } });
-    var go=function(){ var nv=document.getElementById("fe-t").value.trim(); if(!nv){ toast("Write something"); return; }
-      if(fsn.value.trim()) subs.push({id:uid(),text:fsn.value.trim(),done:false});
-      f.text=nv; f.subs=subs.filter(function(s){return (s.text||"").trim();}); save(); close(); render(); };
-    document.getElementById("m-save").onclick=go;
-    document.getElementById("fe-t").addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); go(); } });
   }
   // The 7 theme-aware slots stay first (they restyle themselves per skin), then a fixed palette that
   // reads on both light and dark grounds. Any project/person can also hold a raw hex from the picker.
