@@ -17,8 +17,8 @@
     --line: #e2ddd1; --line-soft: #ede9df;
     --slate: #45573f; --slate-ink: #f2f0ea;
     --terra: #c99a3a; --terra-deep: #9c7420; --terra-bg: #f4e7c4;
-    --good: #4f6b52; --good-bg: #dfe8d9;
-    --warn: #a8472c; --warn-bg: #f6e0d6;
+    --good: #4f6b52; --good-deep: #3d5540; --good-bg: #dfe8d9;
+    --warn: #a8472c; --warn-deep: #8a3722; --warn-bg: #f6e0d6;
     --shadow: rgba(42,40,30,.10);
     --font: ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", "Nunito", system-ui, sans-serif;
     --p0:#c99a3a; --p1:#45573f; --p2:#4f6b52; --p3:#a8472c; --p4:#5b7fa6; --p5:#8a5a83; --p6:#b0603f;
@@ -31,7 +31,7 @@
       --line:#403d48; --line-soft:#33313b;
       --slate:#3c4a37; --slate-ink:#f0eee8;
       --terra:#e0b155; --terra-deep:#b8903a; --terra-bg:#3a2f14;
-      --good:#7c9a6d; --good-bg:#253023; --warn:#c4643c; --warn-bg:#3a2416;
+      --good:#7c9a6d; --good-deep:#688359; --good-bg:#253023; --warn:#c4643c; --warn-deep:#a5502f; --warn-bg:#3a2416;
       --shadow:rgba(0,0,0,.4);
       --p0:#e0b155; --p1:#7c9468; --p2:#7c9a6d; --p3:#c4643c; --p4:#7fa0c9; --p5:#b183a8; --p6:#cf7d5c;
       --scene:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201600%20900'%20preserveAspectRatio='xMidYMax%20slice'%3E%3Ccircle%20cx='1210'%20cy='185'%20r='140'%20fill='%237a6b45'%20opacity='.15'/%3E%3Ccircle%20cx='1210'%20cy='185'%20r='90'%20fill='%238a7a4a'%20opacity='.4'/%3E%3Ccircle%20cx='260'%20cy='120'%20r='3'%20fill='%235c5240'/%3E%3Ccircle%20cx='430'%20cy='190'%20r='2.5'%20fill='%235c5240'/%3E%3Ccircle%20cx='620'%20cy='105'%20r='2'%20fill='%235c5240'/%3E%3Ccircle%20cx='840'%20cy='170'%20r='2.5'%20fill='%235c5240'/%3E%3Ccircle%20cx='1010'%20cy='95'%20r='2'%20fill='%235c5240'/%3E%3Ccircle%20cx='1440'%20cy='120'%20r='2.5'%20fill='%235c5240'/%3E%3Cpath%20d='M0%20615%20Q300%20540%20640%20600%20T1600%20565%20V900%20H0%20Z'%20fill='%23201f16'/%3E%3Cpath%20d='M0%20715%20Q420%20640%20860%20705%20T1600%20685%20V900%20H0%20Z'%20fill='%23282417'/%3E%3Cpath%20d='M1148%20640%20q-4%20-70%20-2%20-105'%20stroke='%233c3527'%20stroke-width='11'%20fill='none'%20stroke-linecap='round'/%3E%3Cellipse%20cx='1146'%20cy='505'%20rx='64'%20ry='40'%20fill='%233a4530'/%3E%3Cellipse%20cx='1100'%20cy='533'%20rx='42'%20ry='27'%20fill='%23333d2b'/%3E%3Cellipse%20cx='1194'%20cy='537'%20rx='44'%20ry='27'%20fill='%232e3826'/%3E%3Cpath%20d='M0%20815%20Q500%20755%201000%20810%20T1600%20795%20V900%20H0%20Z'%20fill='%232c2717'/%3E%3C/svg%3E");
@@ -278,8 +278,14 @@
     .modal.wide .m-col-side{ border-left:none; padding-left:0; border-top:1px solid var(--line-soft); padding-top:6px; margin-top:14px; }
   }
   .btn{ font-family:inherit; font-size:14px; font-weight:700; border-radius:11px; padding:10px 18px; cursor:pointer; border:1.5px solid var(--line); background:var(--card); color:var(--ink); }
-  .btn.primary{ background:var(--terra); border-color:var(--terra); color:#fff; }
-  .btn.primary:hover{ background:var(--terra-deep); }
+  /* Affirmative actions (Save / Add / Apply) read green; destructive ones red. Both use the existing
+     --good / --warn tokens, so they follow every skin and both themes. */
+  .btn.primary{ background:var(--good); border-color:var(--good); color:#fff; }
+  .btn.primary:hover{ background:var(--good-deep); border-color:var(--good-deep); }
+  .btn.danger{ color:var(--warn); border-color:var(--warn-bg); }
+  .btn.danger:hover{ background:var(--warn-bg); border-color:var(--warn); color:var(--warn); }
+  .btn.primary.danger{ background:var(--warn); border-color:var(--warn); color:#fff; }
+  .btn.primary.danger:hover{ background:var(--warn-deep); border-color:var(--warn-deep); color:#fff; }
   .btn.ghost{ background:transparent; }
   .swatches{ display:flex; gap:8px; flex-wrap:wrap; }
   .sw{ width:30px; height:30px; border-radius:50%; cursor:pointer; border:3px solid transparent; }
@@ -327,9 +333,17 @@
   .grp-head .pdot{ width:9px; height:9px; border-radius:50%; flex:none; }
   .grp-head .cnt{ margin-left:auto; color:var(--ink-faint); font-weight:700; }
   /* Phase 20: collapse a task's subtasks in place, and reorder them without a drag */
-  .subs-caret{ background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:11px;
-    padding:0 5px 0 0; line-height:1; }
-  .subs-caret:hover{ color:var(--terra-deep); }
+  /* The caret sits inside .task-main, which opens the editor on click — so it needs a target big
+     enough that a near-miss doesn't open the task instead. Negative margins keep the 28px box from
+     changing the row's height. The ☑ n/m pill is the same toggle with an even bigger target. */
+  .subs-caret{ background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:12px;
+    padding:0; margin:-7px 2px -7px -3px; width:28px; height:28px; border-radius:8px; flex:none;
+    display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; }
+  .subs-caret:hover{ color:var(--terra-deep); background:var(--terra-bg); }
+  .pill.span{ background:var(--good-bg); color:var(--good); }
+  .ie-hint{ text-transform:none; letter-spacing:0; font-weight:600; color:var(--ink-faint); }
+  .pill.subs-n.tap{ cursor:pointer; }
+  .pill.subs-n.tap:hover{ background:var(--terra-bg); color:var(--terra-deep); }
   .sub-move{ display:inline-flex; gap:1px; margin-left:auto; opacity:0; transition:opacity .12s; flex:none; }
   li.sub:hover .sub-move{ opacity:1; }
   .ie-sub .sub-move, .msub .sub-move{ opacity:.55; }
@@ -1101,6 +1115,25 @@
   function parse(s){ var p=s.split("-"); return new Date(+p[0],+p[1]-1,+p[2]); }
   function addDays(s,n){ var d=parse(s); d.setDate(d.getDate()+n); return fmt(d); }
   function diffDays(a,b){ return Math.round((parse(a)-parse(b))/864e5); }
+  /* ---------- multi-day spans ----------
+     A task's `day` and an event's `date` are the FIRST day; `end` is the last, inclusive. A missing
+     `end` (or one on/before the start) means a single day, so everything written before spans existed
+     keeps behaving exactly as it did. onDay() is the only thing that decides membership — every view
+     goes through taskOnDay/evOnDay so a span can't show up in one place and not another. */
+  function onDay(start,end,d){
+    if(!start) return false;
+    if(!end||end<=start) return start===d;
+    return d>=start&&d<=end;
+  }
+  function taskOnDay(k,d){ return onDay(k.day,k.end,d); }
+  function evOnDay(e,d){ return onDay(e.date,e.end,d); }
+  function spanLen(start,end){ return (!start||!end||end<=start)?1:diffDays(end,start)+1; }
+  function lastDay(start,end){ return (end&&start&&end>start)?end:start; }
+  // Reference-free, so it reads the same in every view: how long it runs, exact dates on hover.
+  function spanPill(start,end){
+    var n=spanLen(start,end); if(n<2) return "";
+    return '<span class="pill span" title="Runs '+esc(niceDate(start))+' → '+esc(niceDate(end))+'">⇥ '+n+' days</span>';
+  }
   function dow(s){ return parse(s).getDay(); }
   var DOWNAMES=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -1150,9 +1183,14 @@
       // put on their original day and surface only in the Carried-over card, which you pull from by hand.
       S.tasks.forEach(function(k){
         if(k.tplId) return;                     // a repeat belongs on its own day, never dragged forward
-        if(k.status==="todo" && k.day && k.day<t){
-          k.rollover=(k.rollover||0)+diffDays(t,k.day);
-          if(S.autoCarry!==false) k.day=t; else k.carriedFrom=k.carriedFrom||k.day;
+        // A multi-day task isn't late while it's still running — age it from the last day of its span.
+        var kEnd=lastDay(k.day,k.end);
+        if(k.status==="todo" && kEnd && kEnd<t){
+          k.rollover=(k.rollover||0)+diffDays(t,kEnd);
+          if(S.autoCarry!==false){
+            if(k.end&&k.end>k.day){ var kLen=diffDays(k.end,k.day); k.day=t; k.end=addDays(t,kLen); }  // keep its length
+            else k.day=t;
+          } else k.carriedFrom=k.carriedFrom||k.day;
         }
       });
       generateRecurring(t);
@@ -1289,6 +1327,12 @@
   function subsCollapsed(id){ return !!(S.subsHidden&&S.subsHidden[id]); }
   function toggleSubs(id){ S.subsHidden=S.subsHidden||{}; if(S.subsHidden[id]) delete S.subsHidden[id]; else S.subsHidden[id]=1; save(); render(); }
   // caret shown only when there is something to hide
+  // Same toggle as the caret, on a much bigger target. Read-only subs-n pills elsewhere (day detail,
+  // the review screen) deliberately don't get this.
+  function subsPill(id,subs){
+    var dn=subs.filter(function(s){return s.done;}).length;
+    return '<span class="pill subs-n tap" data-act="subs-toggle" data-id="'+id+'" title="'+(subsCollapsed(id)?"Show":"Hide")+' subtasks">☑ '+dn+'/'+subs.length+'</span>';
+  }
   function subsCaret(id,n){
     if(!n) return "";
     return '<button class="subs-caret" data-act="subs-toggle" data-id="'+id+'" aria-expanded="'+(!subsCollapsed(id))+'" title="'+(subsCollapsed(id)?"Show":"Hide")+' subtasks">'+(subsCollapsed(id)?"▸":"▾")+'</button>';
@@ -1355,7 +1399,7 @@
     var sb=document.getElementById("sidebar"); if(!sb) return;
     var openCnt=function(pid){ return S.tasks.filter(function(k){return k.projectId===pid&&k.status==="todo";}).length; };
     var profCnt=function(prid){ return S.projects.filter(function(p){return p.profileId===prid;}).reduce(function(n,p){return n+openCnt(p.id);},0); };
-    var todayOpen=S.tasks.filter(function(k){return k.day===today()&&k.status!=="done"&&inScope(k.projectId);}).length;
+    var todayOpen=S.tasks.filter(function(k){return taskOnDay(k,today())&&k.status!=="done"&&inScope(k.projectId);}).length;
     var backlogOpen=S.tasks.filter(function(k){return !k.day&&k.status!=="done"&&inScope(k.projectId);}).length;
     var VIEWCNT={today:todayOpen, backlog:backlogOpen};
     var VIEWS=[["today","📅","Today"],["week","📆","Week"],["backlog","🗃","Backlog"],["hub","✨","Hub"],["projects","🗂","Projects"],["people","👥","People"],["calendar","🗓","Calendar"],["timeline","📈","Timeline"]];
@@ -1469,7 +1513,8 @@
           '<div class="ie-lbl">Project</div><select id="ie-proj" aria-label="Project"><option value="">None</option>'+projOpts+'<option value="__new">+ New project…</option></select>'+
           (S.people.length?'<div class="ie-lbl">People</div><div class="chips" id="ie-people">'+
             S.people.map(function(pp){return '<button type="button" class="chip" data-pid="'+pp.id+'" aria-pressed="'+((k.personIds||[]).indexOf(pp.id)>=0)+'">'+esc(pp.name)+'</button>';}).join("")+'</div>':'')+
-          '<div class="ie-lbl">Day</div><input type="date" id="ie-day" value="'+esc(k.day||"")+'" aria-label="Day"/>'+
+          '<div class="ie-lbl">Day</div><input type="date" id="ie-day" value="'+esc(k.day||"")+'" aria-label="First day"/>'+
+          '<div class="ie-lbl">Ends <span class="ie-hint">(leave blank for one day)</span></div><input type="date" id="ie-end" value="'+esc(k.end||"")+'" aria-label="Last day"/>'+
           '<div class="ie-lbl">Block</div><div class="chips" id="ie-block">'+
             BLKS.map(function(b){return '<button type="button" class="chip" data-b="'+b[0]+'" aria-pressed="'+((k.block||"")===b[0])+'">'+b[1]+'</button>';}).join("")+'</div>'+
           '<div class="ie-lbl">Time</div><input type="time" id="ie-time" value="'+esc(k.at||"")+'" aria-label="Time"/>'+
@@ -1479,7 +1524,7 @@
         '</div>'+
       '</div>'+
       '<div class="ie-acts">'+
-        '<button class="btn ghost" data-ie="del" style="margin-right:auto;color:var(--terra-deep)">Delete</button>'+
+        '<button class="btn ghost danger" data-ie="del" style="margin-right:auto">Delete</button>'+
         '<button class="btn" data-ie="more">More…</button>'+
         '<button class="btn" data-ie="focus" title="Add to Today\u2019s Focus">◎ Focus</button>'+
         '<button class="btn ghost" data-ie="cancel">Cancel</button>'+
@@ -1494,6 +1539,7 @@
     if(k.tplId) pills+='<span class="pill rec">↻ repeats</span>';
     if(k.rollover>=1) pills+='<span class="pill aged">carried '+k.rollover+'d</span>';
     if(k.dueLabel) pills+='<span class="pill block">'+esc(k.dueLabel)+'</span>';
+    pills+=spanPill(k.day,k.end);
     if(k.block) pills+='<span class="pill block">'+k.block+'</span>';
     if(k.at) pills+='<span class="pill block">🕒 '+fmtTime(k.at)+'</span>';
     if(k.notes) pills+='<span class="pill block" title="'+esc(htmlToText(k.notes))+'">📝</span>';
@@ -1508,7 +1554,7 @@
     var subRows="";
     if(k.subs&&k.subs.length){
       var sdn=k.subs.filter(function(s){return s.done;}).length;
-      pills+='<span class="pill subs-n">☑ '+sdn+'/'+k.subs.length+'</span>';
+      pills+=subsPill(k.id,k.subs);
       subRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subkind="sub" data-subof="'+k.id+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-sid="'+s.id+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("");
     }
     if(ieOpensHere(k.id)) return inlineEditorLi(k);
@@ -1538,13 +1584,14 @@
       var done=k.status==="done";
       var lpills=(k.priority?'<span class="pill imp">★ important</span>':"")+
         (kp?'<span class="pill proj" style="'+cbg(kp.color)+'">'+(kp.emoji?esc(kp.emoji)+" ":"")+esc(kp.name)+'</span>':"")+
-        (k.day&&k.day!==viewDay?'<span class="pill block">'+niceDate(k.day)+'</span>':"")+
+        (k.day&&!taskOnDay(k,viewDay)?'<span class="pill block">'+niceDate(k.day)+'</span>':"")+
+        spanPill(k.day,k.end)+
         (k.block?'<span class="pill block">'+k.block+'</span>':"")+
         (k.at?'<span class="pill block">🕒 '+fmtTime(k.at)+'</span>':"")+
         peoplePills(k);
       var lsubRows="";
       if(k.subs&&k.subs.length){
-        lpills+='<span class="pill subs-n">☑ '+k.subs.filter(function(s){return s.done;}).length+'/'+k.subs.length+'</span>';
+        lpills+=subsPill(k.id,k.subs);
         lsubRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subkind="sub" data-subof="'+k.id+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-tid="'+k.id+'" data-sid="'+s.id+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("");
       }
       if(pendingSubAdd===k.id) lsubRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+k.id+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
@@ -1560,7 +1607,7 @@
     var subRows="";
     if(f.subs&&f.subs.length){
       var sdn=f.subs.filter(function(s){return s.done;}).length;
-      pills+='<span class="pill subs-n">☑ '+sdn+'/'+f.subs.length+'</span>';
+      pills+=subsPill(f.id,f.subs);
       subRows=subsCollapsed(f.id)?"":f.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subkind="fsub" data-subof="'+f.id+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="fsub-toggle" data-sid="'+s.id+'" aria-label="Toggle subitem" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(f.id,i,f.subs.length,"fsub")+'</li>';}).join("");
     }
     if(pendingSubAdd===f.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-fsubfor="'+f.id+'" placeholder="Add a subitem… (Esc to close)" aria-label="Add a subitem"/></li>';
@@ -1623,13 +1670,13 @@
     var START=6, END=23;                       // 6am–11pm rows
     // Done tasks stay on the grid (taskLi strikes them through) instead of vanishing — you lose the
     // record of what the day actually held otherwise.
-    var all=S.tasks.filter(function(k){ return k.day===d && inScope(k.projectId); });
+    var all=S.tasks.filter(function(k){ return taskOnDay(k,d) && inScope(k.projectId); });
     var isTimed=function(k){ return /^\d{2}:\d{2}$/.test(k.at||""); };
     var timed=all.filter(isTimed), unsched=all.filter(function(k){ return !isTimed(k); });
     var earliest=timed.reduce(function(m,k){ return Math.min(m,+k.at.slice(0,2)); }, START);
     var latest=timed.reduce(function(m,k){ return Math.max(m,+k.at.slice(0,2)); }, END);
     var lo=Math.min(START,earliest), hi=Math.max(END,latest);
-    var evs=S.events.filter(function(e){ return e.date===d; });
+    var evs=S.events.filter(function(e){ return evOnDay(e,d); });
     var head='<div class="day-head">'+
       '<button class="icon-btn" data-act="daynav" data-d="-1" aria-label="Previous day" title="Previous day">‹</button>'+
       '<h2 class="day-title">'+esc(niceDate(d))+(isToday?' · today':'')+'</h2>'+
@@ -1661,7 +1708,7 @@
     var focusItems=(S.focus[vd]||[]).filter(function(f){
       if(f.taskId){ var lk=S.tasks.find(function(x){return x.id===f.taskId;}); return lk && inScope(lk.projectId); }
       return !f.projectId||inScope(f.projectId); });
-    var open=S.tasks.filter(function(k){return k.day===vd && k.status!=="done" && inScope(k.projectId);});
+    var open=S.tasks.filter(function(k){return taskOnDay(k,vd) && k.status!=="done" && inScope(k.projectId);});
     var doneV=S.tasks.filter(function(k){return k.status==="done" && k.completedOn===vd && inScope(k.projectId);});
     var blocks=["morning","afternoon","evening"];
     var sugg=isToday?computeSuggestions():[];
@@ -1801,7 +1848,7 @@
     // A carried task that's already been placed into a block on the day you're looking at is done being
     // triaged — showing it here too just duplicates the day list. Unplaced ones stay, since this card is
     // where you actually put them somewhere.
-    var carried=S.tasks.filter(function(k){return k.status==="todo" && (k.rollover||0)>=1 && !k.tplId && inScope(k.projectId) && !(k.day===vd && k.block);});
+    var carried=S.tasks.filter(function(k){return k.status==="todo" && (k.rollover||0)>=1 && !k.tplId && inScope(k.projectId) && !(taskOnDay(k,vd) && k.block);});
     var doneV=S.tasks.filter(function(k){return k.status==="done" && k.completedOn===vd && inScope(k.projectId);});
     var MOVES=[["morning","☀️ Morning"],["afternoon","🌤 Afternoon"],["evening","🌙 Evening"],["anytime","⏳ Anytime"],["someday","💭 Someday"]];
     var blAdd='<ul class="tasks" data-list="someday" style="padding:0;margin:0 0 4px"><li class="task inline-row" style="padding:6px 4px"><span class="inline-plus">+</span><input class="inline-add" data-block="someday" placeholder="Add to backlog…" aria-label="Add to backlog"/></li></ul>';
@@ -1840,13 +1887,13 @@
   function computeSuggestions(){
     var t=today(), out=[], d=S.dismissed;
     // 1. aged tasks
-    S.tasks.filter(function(k){return k.status==="todo"&&k.day===t&&(k.rollover||0)>=3;}).slice(0,1).forEach(function(k){
+    S.tasks.filter(function(k){return k.status==="todo"&&taskOnDay(k,t)&&(k.rollover||0)>=3;}).slice(0,1).forEach(function(k){
       var id="aged-"+k.id; if(d.indexOf(id)<0) out.push({id:id,text:'<b>“'+esc(k.title)+'”</b> has carried '+k.rollover+' days. Break it into a smaller next step, or let it go?'});
     });
     // 2. frequently completed titles not present today
     var freq={};
     S.tasks.filter(function(k){return k.status==="done";}).forEach(function(k){ var n=norm(k.title); if(n) freq[n]=(freq[n]||0)+1; });
-    var todayTitles=S.tasks.filter(function(k){return k.day===t;}).map(function(k){return norm(k.title);});
+    var todayTitles=S.tasks.filter(function(k){return taskOnDay(k,t);}).map(function(k){return norm(k.title);});
     Object.keys(freq).filter(function(n){return freq[n]>=3 && todayTitles.indexOf(n)<0;})
       .sort(function(a,b){return freq[b]-freq[a];}).slice(0,1).forEach(function(n){
         var id="rep-"+n; if(d.indexOf(id)<0){
@@ -1902,9 +1949,9 @@
     html+='<div class="stack">';
     for(var i=0;i<7;i++){
       var d=addDays(t,i);
-      var open=orderTasks(S.tasks.filter(function(k){return k.day===d&&k.status!=="done"&&inScope(k.projectId);}),false);
+      var open=orderTasks(S.tasks.filter(function(k){return taskOnDay(k,d)&&k.status!=="done"&&inScope(k.projectId);}),false);
       var done=S.tasks.filter(function(k){return k.status==="done"&&k.completedOn===d&&inScope(k.projectId);}).length;
-      var evs=S.events.filter(function(e){return e.date===d&&sourceEnabled(e)&&!(e.projectId&&!inScope(e.projectId));});
+      var evs=S.events.filter(function(e){return evOnDay(e,d)&&sourceEnabled(e)&&!(e.projectId&&!inScope(e.projectId));});
       html+='<div class="card"><div class="wk-day-head"><h3>'+(i===0?"Today":(i===1?"Tomorrow":WDFULL[dow(d)]))+'</h3><span class="sub">'+MONTHS[+d.slice(5,7)-1].slice(0,3)+' '+(+d.slice(8))+'</span>'+foldProg(done,open.length+done)+
         '<button class="chip" style="margin-left:auto;padding:3px 9px" data-act="panel-goday" data-d="'+d+'">open day →</button></div>';
       if(evs.length) html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 2px">'+evs.map(function(e){var c=e.color||(e.projectId?projColor(e.projectId):null);return '<span class="cal-ev '+(c?"":"evt")+'" style="'+(c?"background:"+c:"")+'">'+esc(e.title)+'</span>';}).join("")+'</div>';
@@ -2032,7 +2079,7 @@
       '<div class="fld"><label>Name</label><input id="r-name" value="'+esc(r.name||"")+'" placeholder="e.g. Class-prep checklist"/></div></div>'+
       emojiPickerHtml("r-emoji")+
       '<div class="fld"><label>Tasks</label><textarea id="r-items" rows="8" placeholder="* Finalize slides @9am\n  - check clicker\n  - upload to Canvas\nPost the reading quiz\nEmail the TA">'+esc(routineItemsToText(r))+'</textarea></div>'+
-      '<div class="modal-actions">'+(editing?'<button class="btn ghost" id="r-del" style="margin-right:auto;color:var(--terra-deep)">Delete</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="r-save">Save</button></div>');
+      '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="r-del" style="margin-right:auto">Delete</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="r-save">Save</button></div>');
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("r-save").onclick=function(){
       var name=document.getElementById("r-name").value.trim(); if(!name){ toast("Name your routine"); return; }
@@ -2046,7 +2093,7 @@
   }
   function saveTodayAsRoutine(){
     var t=today();
-    var todays=S.tasks.filter(function(k){ return k.day===t && k.status!=="done" && inScope(k.projectId); });
+    var todays=S.tasks.filter(function(k){ return taskOnDay(k,t) && k.status!=="done" && inScope(k.projectId); });
     if(!todays.length){ toast("No open tasks today to save"); return; }
     var items=orderTasks(todays,false).map(function(k){ return {title:k.title,priority:!!k.priority,at:k.at||null,block:k.block||null,subs:(k.subs||[]).map(function(s){return s.text;})}; });
     var r={id:uid(),name:"Routine from "+niceDate(t),emoji:"📋",items:items};
@@ -2084,8 +2131,8 @@
   function calAnchorDate(){ return S.calAnchor||today(); }
   function dayItems(ds){
     var items=[];
-    S.tasks.forEach(function(k){ if(k.day===ds&&inScope(k.projectId)) items.push({t:k.title,c:projColor(k.projectId),done:k.status==="done",imp:!!k.priority,at:k.at||null,block:k.block||null}); });
-    S.events.forEach(function(ev){ if(ev.date!==ds||!sourceEnabled(ev)) return; if(ev.projectId&&!inScope(ev.projectId)) return; var c=ev.color||(ev.projectId?projColor(ev.projectId):null); items.push({t:ev.title,c:c,evt:!c}); });
+    S.tasks.forEach(function(k){ if(taskOnDay(k,ds)&&inScope(k.projectId)) items.push({t:k.title,c:projColor(k.projectId),done:k.status==="done",imp:!!k.priority,at:k.at||null,block:k.block||null}); });
+    S.events.forEach(function(ev){ if(!evOnDay(ev,ds)||!sourceEnabled(ev)) return; if(ev.projectId&&!inScope(ev.projectId)) return; var c=ev.color||(ev.projectId?projColor(ev.projectId):null); items.push({t:ev.title,c:c,evt:!c}); });
     return items;
   }
   function spanDays(cv,a){
@@ -2162,7 +2209,9 @@
   function yearGridHtml(y){
     var busy={};
     S.tasks.forEach(function(k){ if(k.day&&k.day.slice(0,4)===String(y)&&inScope(k.projectId)) busy[k.day]=1; });
-    S.events.forEach(function(e){ if(e.date&&e.date.slice(0,4)===String(y)&&sourceEnabled(e)&&!(e.projectId&&!inScope(e.projectId))) busy[e.date]=1; });
+    S.events.forEach(function(e){ if(!e.date||!sourceEnabled(e)||(e.projectId&&!inScope(e.projectId))) return;
+      for(var ed0=e.date, last0=lastDay(e.date,e.end); ed0<=last0; ed0=addDays(ed0,1)){ if(ed0.slice(0,4)===String(y)) busy[ed0]=1; }
+    });
     var t=today();
     var html='<div class="yr-grid">';
     for(var m=0;m<12;m++){
@@ -2355,7 +2404,9 @@
         t.projectId=document.getElementById("ie-proj").value||null;
         t.personIds=iePeople.slice();
         var dv=document.getElementById("ie-day").value||null;
+        var evv=(document.getElementById("ie-end")||{}).value||null;
         t.day=dv; if(!dv) t.block=null; else t.block=ieBlock||null;
+        t.end=(dv&&evv&&evv>dv)?evv:null;   // no start, or an end that isn't later, means a single day
         t.at=document.getElementById("ie-time").value||null;
         t.priority=iePrio;
         t.subs=ieSubs.filter(function(sb){return (sb.text||"").trim();});
@@ -2913,8 +2964,11 @@
   function close(){ onModalDismiss=null; var root=document.getElementById("modal-root"); root.innerHTML=""; root.onkeydown=null;
     if(lastFocus && document.contains(lastFocus)){ try{ lastFocus.focus(); }catch(e){} } lastFocus=null; }
   function confirmModal(title,msg,label,onYes){
+    // Most confirms here are destructive, but a few ("Load it", "Restore") are not — so the button
+    // takes its colour from what it says. Anything unrecognised stays green.
+    var risky=/delete|remove|erase|replace|archive|discard/i.test(label);
     modal('<h3>'+title+'</h3><p class="sub" style="margin-top:8px">'+msg+'</p>'+
-      '<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="cf-ok">'+label+'</button></div>');
+      '<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary'+(risky?" danger":"")+'" id="cf-ok">'+label+'</button></div>');
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("cf-ok").onclick=function(){ close(); onYes(); };
   }
@@ -2971,6 +3025,7 @@
         '<div class="fld"><label>Project</label><select id="m-proj"><option value="">None</option>'+projOpts+'<option value="__new">+ New project…</option></select></div>'+
         (S.people.length?'<div class="fld"><label>People</label><div class="chips" id="m-people">'+S.people.map(function(pp){return '<button type="button" class="chip" data-pid="'+pp.id+'" aria-pressed="'+(selPeople.indexOf(pp.id)>=0)+'">'+esc(pp.name)+'</button>';}).join("")+'</div><div class="sub" style="font-size:11px;margin-top:6px">Tagged people see this task on their card in People.</div></div>':'')+
         '<div class="fld"><label>Day <span style="text-transform:none;letter-spacing:0;font-weight:600">(empty = someday)</span></label><input id="m-day" type="date" value="'+(ed?(base.day||""):(base.day||today()))+'"/></div>'+
+        '<div class="fld"><label>Ends <span style="text-transform:none;letter-spacing:0;font-weight:600">(blank = one day)</span></label><input id="m-end" type="date" value="'+esc(base.end||"")+'"/></div>'+
         '<div class="fld"><label>'+(ed?"Schedule":"Schedule — pick one or several")+'</label><div class="chips" id="m-block">'+
           BLKS.map(function(b){return '<button class="chip" data-b="'+b[0]+'" aria-pressed="'+(!!selBlocks[b[0]])+'">'+b[1]+'</button>';}).join("")+'</div></div>'+
         '<div class="fld"><label>Time</label><input id="m-time" type="time" value="'+(base.at||"")+'"/></div>'+
@@ -2982,7 +3037,7 @@
           '<div id="m-ropts" style="margin-top:10px"></div>'+(etp?'<div class="sub" style="font-size:11px;margin-top:6px">This task repeats — changes here update the whole series. Pick “Once” to stop it repeating.</div>':(ed?'<div class="sub" style="font-size:11px;margin-top:6px">Pick a repeat to turn this into a recurring task going forward.</div>':""))+'</div>'+
       '</div></div>'+
       '<div class="modal-actions">'+
-      (ed?'<button class="btn ghost" id="m-del" style="margin-right:auto;color:var(--terra-deep)">Delete</button><button class="btn" id="m-tofocus" title="Add to Today\'s Focus">◎ Focus</button><button class="btn" id="m-focus" title="Start a 25-minute focus timer on this task">⏱</button><button class="btn" id="m-dup">Duplicate</button>':'')+
+      (ed?'<button class="btn ghost danger" id="m-del" style="margin-right:auto">Delete</button><button class="btn" id="m-tofocus" title="Add to Today\'s Focus">◎ Focus</button><button class="btn" id="m-focus" title="Start a 25-minute focus timer on this task">⏱</button><button class="btn" id="m-dup">Duplicate</button>':'')+
       '<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">'+(ed?"Save":"Add task")+'</button></div>',"wide");
     var mb=document.getElementById("m-block");
     mb.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; var val=b.dataset.b;
@@ -3063,6 +3118,7 @@
       var title=document.getElementById("m-title").value.trim(); if(!title){ if(dismiss){close();} else {toast("Add a title");} return; }
       var pid=document.getElementById("m-proj").value||null; if(pid==="__new") pid=null;
       var day=document.getElementById("m-day").value||null;
+      var endD=(document.getElementById("m-end")||{}).value||null;
       var chosen=Object.keys(selBlocks).map(function(b){return b==="allday"?null:b;});
       if(!chosen.length) chosen=[null];
       var tv=document.getElementById("m-time").value||null;
@@ -3071,19 +3127,21 @@
       if(pt.title) title=pt.title;
       if(pt.projectId) pid=pt.projectId;
       if(pt.day) day=(pt.day==="someday")?null:pt.day;
+      if(!(day&&endD&&endD>day)) endD=null;
+      if(freq!=="once") endD=null;   // a repeat fires on single days; a span there is meaningless
       if(pt.block) chosen=[pt.block];
       if(pt.at&&(!tv||tv===(base.at||null))) tv=pt.at;
       if(freq==="weekly"&&!weekdays.length){ if(dismiss){freq="once";} else {toast("Pick at least one weekday");return;} }
       if(msn&&msn.value.trim()) subs.push({id:uid(),text:msn.value.trim(),done:false});
       var cleanSubs=subs.filter(function(s){return (s.text||"").trim();});
       var ntv=rteValue("m-notes")||null;
-      if(ed){ ed.title=title; ed.projectId=pid; ed.day=day; ed.block=chosen[0]; ed.at=tv; ed.priority=priorityV; ed.subs=cleanSubs; ed.notes=ntv; ed.personIds=selPeople.slice();
+      if(ed){ ed.title=title; ed.projectId=pid; ed.day=day; ed.end=endD; ed.block=chosen[0]; ed.at=tv; ed.priority=priorityV; ed.subs=cleanSubs; ed.notes=ntv; ed.personIds=selPeople.slice();
         if(etp){
           if(freq==="once"){ S.templates=S.templates.filter(function(x){return x.id!==etp.id;}); delete ed.tplId; }
           else { etp.title=title; etp.projectId=pid; etp.block=chosen[0]; etp.freq=freq; etp.weekdays=weekdays; etp.interval=+(document.getElementById("m-int")||{}).value||intervalV; etp.priority=priorityV; }
         } else if(freq!=="once"){ var ntp={id:uid(),title:title,projectId:pid,block:chosen[0],freq:freq,start:day||today(),weekdays:weekdays,interval:+(document.getElementById("m-int")||{}).value||2,priority:priorityV}; S.templates.push(ntp); ed.tplId=ntp.id; generateRecurring(today()); }
         save(); close(); render(); toast(etp?(freq==="once"?"Saved — repeat stopped":"Saved — series updated"):(freq!=="once"?"Saved — now repeats":"Saved")); return; }
-      if(freq==="once"){ chosen.forEach(function(bl){ S.tasks.push({id:uid(),title:title,projectId:pid,personIds:selPeople.slice(),status:"todo",day:day,block:bl,at:tv,priority:priorityV,rollover:0,notes:ntv,subs:cleanSubs.map(function(s){return {id:uid(),text:s.text,done:s.done};}),created:today()}); }); }
+      if(freq==="once"){ chosen.forEach(function(bl){ S.tasks.push({id:uid(),title:title,projectId:pid,personIds:selPeople.slice(),status:"todo",day:day,end:endD,block:bl,at:tv,priority:priorityV,rollover:0,notes:ntv,subs:cleanSubs.map(function(s){return {id:uid(),text:s.text,done:s.done};}),created:today()}); }); }
       else { var tp={id:uid(),title:title,projectId:pid,block:chosen[0],freq:freq,start:day||today(),weekdays:weekdays,interval:+(document.getElementById("m-int")||{}).value||2,priority:priorityV};
         S.templates.push(tp); generateRecurring(today()); }
       save(); close(); render(); if(!dismiss) toast(freq==="once"&&chosen.length>1?chosen.length+" tasks added":"Task added");
@@ -3126,7 +3184,7 @@
       '<div class="fld"><label>Color</label><div class="swatches" id="p-sw">'+COLORS.map(function(c){return '<button class="sw" style="background:'+c+'" data-c="'+c+'" aria-pressed="'+(c===p.color)+'"></button>';}).join("")+'<input type="color" class="sw-custom" id="p-sw-hex" value="'+esc(/^#/.test(p.color||"")?p.color:"#c99a3a")+'" title="Any colour you like" aria-label="Custom colour"/>'+'</div></div>'+
       '<div class="row"><div class="fld"><label>Profile</label><select id="p-prof">'+profOpts+'</select></div>'+
       '<div class="fld"><label>Favorite</label><div class="chips"><button type="button" class="chip" id="p-fav" aria-pressed="'+!!p.fav+'">'+(p.fav?"★":"☆")+' Favorite</button></div></div></div>'+
-      '<div class="modal-actions">'+(editing?'<button class="btn ghost" id="p-del" style="margin-right:auto;color:var(--terra-deep)">Delete</button>':'')+
+      '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="p-del" style="margin-right:auto">Delete</button>':'')+
       '<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>');
     var color=p.color; var sw=document.getElementById("p-sw");
     var hexIn=document.getElementById("p-sw-hex");
@@ -3158,7 +3216,7 @@
       '<div class="fld"><label>Projects in this profile</label><div class="chips" id="pf-projs">'+
         (S.projects.length?S.projects.map(function(p){return '<button type="button" class="chip" data-pid="'+p.id+'" aria-pressed="'+!!assigned[p.id]+'">'+esc(p.name)+'</button>';}).join(""):'<span class="sub">No projects yet</span>')+'</div>'+
       (editing?'':'<div class="sub" style="font-size:11px;margin-top:6px">Tip: a project can live in one profile at a time.</div>')+'</div>'+
-      '<div class="modal-actions">'+(editing?'<button class="btn ghost" id="pf-del" style="margin-right:auto;color:var(--terra-deep)">Delete</button>':'')+
+      '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="pf-del" style="margin-right:auto">Delete</button>':'')+
       '<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>');
     document.querySelector("[data-x]").onclick=close;
     var pp=document.getElementById("pf-projs");
@@ -3215,7 +3273,7 @@
     modal('<h3>'+(editing?"Edit habit":"New habit")+'</h3>'+
       '<div class="fld"><label>Name</label><input id="h-n" value="'+esc(base.name)+'" placeholder="e.g. Read"/></div>'+
       '<div class="fld"><label>Daily goal (how many)</label><input id="h-g" type="number" min="1" max="12" value="'+base.goal+'"/></div>'+
-      '<div class="modal-actions">'+(editing?'<button class="btn ghost" id="h-del" style="margin-right:auto;color:var(--terra-deep)">Delete</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">'+(editing?"Save":"Add")+'</button></div>');
+      '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="h-del" style="margin-right:auto">Delete</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">'+(editing?"Save":"Add")+'</button></div>');
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("m-save").onclick=function(){ var n=document.getElementById("h-n").value.trim(); if(!n){toast("Name?");return;}
       var g=Math.max(1,Math.min(12,+document.getElementById("h-g").value||1));
@@ -3309,8 +3367,8 @@
   }
 
   function openDayModal(ds){
-    var tasks=S.tasks.filter(function(k){return k.day===ds;});
-    var evs=S.events.filter(function(e){return e.date===ds && sourceEnabled(e);});
+    var tasks=S.tasks.filter(function(k){return taskOnDay(k,ds);});
+    var evs=S.events.filter(function(e){return evOnDay(e,ds) && sourceEnabled(e);});
     var body='<h3>'+niceDate(ds)+'</h3>';
     body+='<div class="fld"><label>Tasks</label><ul class="tasks">'+
       (tasks.length?tasks.map(function(k){var p=proj(k.projectId);var mp=(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+(k.at?'<span class="pill block">🕒 '+fmtTime(k.at)+'</span>':"")+(k.subs&&k.subs.length?'<span class="pill subs-n">☑ '+k.subs.filter(function(s){return s.done;}).length+'/'+k.subs.length+'</span>':"");return '<li class="task '+(k.status==="done"?"done":"")+'" data-id="'+k.id+'"><button class="chk '+(k.status==="done"?"done":"")+'" data-dact="toggle" aria-label="done" aria-pressed="'+(k.status==="done")+'"></button><div class="task-main"><div class="task-title">'+esc(k.title)+'</div>'+(mp?'<div class="task-meta">'+mp+'</div>':"")+'</div><button class="task-x" data-dact="deltask" style="opacity:1" aria-label="delete">✕</button></li>';}).join(""):'<div class="empty">No tasks</div>')+'</ul></div>';
@@ -3342,13 +3400,15 @@
     var projOpts=S.projects.map(function(p){return '<option value="'+p.id+'" '+(p.id===base.projectId?"selected":"")+'>'+esc(p.name)+'</option>';}).join("");
     modal('<h3>'+(editing?"Edit event":"New event")+'</h3><p class="sub">A dated marker shown on the calendar.</p>'+
       '<div class="fld"><label>Title</label><input id="ev-t" value="'+esc(base.title)+'" placeholder="e.g. Dentist, Launch day"/></div>'+
-      '<div class="row"><div class="fld"><label>Date</label><input id="ev-d" type="date" value="'+(base.date||today())+'"/></div>'+
-      '<div class="fld"><label>Color</label><select id="ev-p"><option value="">Neutral</option>'+projOpts+'</select></div></div>'+
-      '<div class="modal-actions">'+(editing?'<button class="btn ghost" id="ev-del" style="margin-right:auto;color:var(--terra-deep)">Delete</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">'+(editing?"Save":"Add")+'</button></div>');
+      '<div class="row"><div class="fld"><label>Starts</label><input id="ev-d" type="date" value="'+(base.date||today())+'"/></div>'+
+      '<div class="fld"><label>Ends <span style="text-transform:none;letter-spacing:0;font-weight:600">(blank = one day)</span></label><input id="ev-e" type="date" value="'+esc(base.end||"")+'"/></div></div>'+
+      '<div class="fld"><label>Color</label><select id="ev-p"><option value="">Neutral</option>'+projOpts+'</select></div>'+
+      '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="ev-del" style="margin-right:auto">Delete</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">'+(editing?"Save":"Add")+'</button></div>');
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("m-save").onclick=function(){ var t=document.getElementById("ev-t").value.trim(); if(!t){toast("Title?");return;}
       var pid=document.getElementById("ev-p").value||null; var dt=document.getElementById("ev-d").value||today();
-      if(editing){ ev.title=t; ev.date=dt; ev.projectId=pid; } else { S.events.push({id:uid(),title:t,date:dt,projectId:pid,source:"manual"}); }
+      var evEnd=document.getElementById("ev-e").value||null; if(!(evEnd&&evEnd>dt)) evEnd=null;
+      if(editing){ ev.title=t; ev.date=dt; ev.end=evEnd; ev.projectId=pid; } else { S.events.push({id:uid(),title:t,date:dt,end:evEnd,projectId:pid,source:"manual"}); }
       save(); close(); render(); toast(editing?"Event saved":"Event added"); };
     if(editing) document.getElementById("ev-del").onclick=function(){ confirmModal("Delete this event?","It disappears from the calendar.","Delete",function(){ S.events=S.events.filter(function(x){return x.id!==ev.id;}); save(); render(); }); };
   }
@@ -3493,7 +3553,7 @@
         '<div class="stack">'+
         '<button class="btn" id="gh-now">↻ Sync now</button>'+
         '<button class="btn" id="gh-hist">🕓 Version history…</button>'+
-        '<button class="btn ghost" id="gh-off" style="color:var(--terra-deep)">Disconnect (forget the token on this device)</button>'+
+        '<button class="btn ghost danger" id="gh-off" >Disconnect (forget the token on this device)</button>'+
         '</div><div class="modal-actions"><button class="btn primary" data-x>Done</button></div>');
       document.querySelector("[data-x]").onclick=close;
       document.getElementById("gh-now").onclick=function(){ toast("Syncing…"); ghSync("manual"); };
@@ -3710,7 +3770,7 @@
       '<button class="btn" id="x-archive">🗄 Archive done tasks older than 60 days'+(archN?' ('+archN+')':'')+'</button>'+
       '<button class="btn" id="x-install">📱 Add to phone home screen</button>'+
       '<button class="btn" id="x-host">🌐 Put it online (GitHub Pages)</button>'+
-      '<button class="btn ghost" id="x-reset" style="color:var(--terra-deep)">Reset everything</button>'+
+      '<button class="btn ghost danger" id="x-reset" >Reset everything</button>'+
       '</div>'+
       '<div class="sub" style="font-size:10.5px;margin-top:14px;text-align:center">Gena · build '+APP_BUILD+' · © Mintay Misgano · PolyForm Noncommercial · press ? for shortcuts</div>'+
       '<div class="modal-actions"><button class="btn primary" id="set-done">Done</button></div>');
@@ -3860,7 +3920,7 @@
       '<div class="fld"><label>Next follow-up</label><input id="pe-next" type="date" value="'+(p.next||"")+'"/></div></div>'+
       '<div class="fld"><label>Notes</label>'+richTextHtml(null,p.notes||"","How you know them, what to remember, what to ask next…",64,"pe-notes","rte-compact")+'</div>'+
       '<div class="fld"><label>Color</label><div class="swatches" id="pe-sw">'+COLORS.map(function(c){return '<button class="sw" style="background:'+c+'" data-c="'+c+'" aria-pressed="'+(c===p.color)+'"></button>';}).join("")+'<input type="color" class="sw-custom" id="pe-sw-hex" value="'+esc(/^#/.test(p.color||"")?p.color:"#c99a3a")+'" title="Any colour you like" aria-label="Custom colour"/>'+'</div></div>'+
-      '<div class="modal-actions">'+(editing?'<button class="btn ghost" id="pe-del" style="margin-right:auto;color:var(--terra-deep)">Delete</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>');
+      '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="pe-del" style="margin-right:auto">Delete</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>');
     var color=p.color; var sw=document.getElementById("pe-sw");
     var hexIn=document.getElementById("pe-sw-hex");
     sw.onclick=function(e){ var b=e.target.closest(".sw"); if(!b)return; color=b.dataset.c; [].forEach.call(sw.querySelectorAll(".sw"),function(c){c.setAttribute("aria-pressed",c===b);}); };
@@ -3987,7 +4047,7 @@
       '<div class="fld"><label>Link</label><input id="j-link" value="'+esc(j.link)+'" placeholder="https://…"/></div>'+
       '<div class="fld"><label>Checklist <span class="sub" style="font-weight:400">— one per line, use [x] for done</span></label><textarea id="j-check" rows="4" placeholder="[ ] Tailor resume\n[ ] Research the team\n[x] Submit application">'+esc(checklistToText(j.checklist))+'</textarea></div>'+
       '<div class="fld"><label>Notes</label>'+richTextHtml(null,j.notes||"","",60,"j-notes","rte-compact")+'</div>'+
-      '<div class="modal-actions">'+(editing?'<button class="btn ghost" id="j-del" style="margin-right:auto;color:var(--terra-deep)">Delete</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>');
+      '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="j-del" style="margin-right:auto">Delete</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>');
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("m-save").onclick=function(){ var co=document.getElementById("j-co").value.trim(); if(!co){toast("Company name?");return;}
       var data={company:co,role:document.getElementById("j-role").value.trim(),stage:document.getElementById("j-stage").value,next:document.getElementById("j-next").value.trim(),nextDate:document.getElementById("j-nextdate").value||null,link:document.getElementById("j-link").value.trim(),notes:rteValue("j-notes"),checklist:parseChecklist(document.getElementById("j-check").value, j.checklist)};
@@ -4492,7 +4552,7 @@
   function openLockModal(){
     var has=!!lockCfg();
     modal('<h3>🔒 App lock</h3><p class="sub">Shows a passcode screen when Gena opens on this device. Note: this hides the screen, it does not encrypt your data — someone with deep browser access could still read it. Good for casual privacy.</p>'+
-      (has?'<div class="stack"><button class="btn" id="lk-change">Change passcode</button><button class="btn" id="lk-lock">🔒 Lock now</button><button class="btn ghost" id="lk-remove" style="color:var(--terra-deep)">Remove passcode</button></div><div class="modal-actions"><button class="btn primary" data-x>Done</button></div>'
+      (has?'<div class="stack"><button class="btn" id="lk-change">Change passcode</button><button class="btn" id="lk-lock">🔒 Lock now</button><button class="btn ghost danger" id="lk-remove" >Remove passcode</button></div><div class="modal-actions"><button class="btn primary" data-x>Done</button></div>'
           :'<div class="fld"><label>New passcode (3+ characters)</label><input id="lk-new" type="password" inputmode="numeric" autocomplete="off" placeholder="e.g. a PIN"/></div><div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="lk-set">Set passcode</button></div>'));
     document.querySelector("[data-x]").onclick=close;
     if(has){
@@ -4533,18 +4593,20 @@
   function buildICS(alarms){
     var L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Gena//Gena Planner//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:Gena","X-WR-CALDESC:Gena tasks & deadlines"];
     var horizon=addDays(today(),-1); // keep it lean: only today-forward
-    S.tasks.forEach(function(k){ if(!k.day || k.status==="done" || k.day<horizon) return;
+    S.tasks.forEach(function(k){ if(!k.day || k.status==="done" || lastDay(k.day,k.end)<horizon) return;
       var timed=/^\d{2}:\d{2}$/.test(k.at||"");
       L.push("BEGIN:VEVENT","UID:task-"+k.id+"@daybook","SUMMARY:"+icsEsc(k.title));
       if(timed){ L.push("DTSTART:"+k.day.replace(/-/g,"")+"T"+k.at.replace(":","")+"00","DURATION:PT30M"); }
-      else { L.push("DTSTART;VALUE=DATE:"+k.day.replace(/-/g,"")); }
+      else { L.push("DTSTART;VALUE=DATE:"+k.day.replace(/-/g,""));
+        if(k.end&&k.end>k.day) L.push("DTEND;VALUE=DATE:"+addDays(k.end,1).replace(/-/g,"")); }   // DTEND is exclusive
       if(k.notes){ var n=htmlToText(k.notes); if(n) L.push("DESCRIPTION:"+icsEsc(n)); }
       if(alarms){ L.push("BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+icsEsc(k.title),
         "TRIGGER"+(timed?":-PT30M":";RELATED=START:PT8H"),"END:VALARM"); } // timed: 30m before; all-day: 8am day-of
       L.push("END:VEVENT");
     });
-    S.events.forEach(function(ev){ if(!ev.date || ev.date<horizon) return;
+    S.events.forEach(function(ev){ if(!ev.date || lastDay(ev.date,ev.end)<horizon) return;
       L.push("BEGIN:VEVENT","UID:ev-"+ev.id+"@daybook","DTSTART;VALUE=DATE:"+ev.date.replace(/-/g,""),"SUMMARY:"+icsEsc(ev.title));
+      if(ev.end&&ev.end>ev.date) L.push("DTEND;VALUE=DATE:"+addDays(ev.end,1).replace(/-/g,""));
       if(alarms){ L.push("BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+icsEsc(ev.title),"TRIGGER;RELATED=START:PT8H","END:VALARM"); }
       L.push("END:VEVENT");
     });
