@@ -626,13 +626,18 @@
   .task:hover .task-addsub{ opacity:1; }
   .task-addsub:hover{ color:var(--good); background:var(--good-bg); }
   /* promote straight into Today's Focus without opening the task */
-  .task-bump{ flex:none; background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:14px; padding:2px 5px; border-radius:6px; opacity:0; transition:opacity .15s; line-height:1; }
+  .task-bump{ flex:none; background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:14px; padding:2px 5px; border-radius:6px; opacity:.5; transition:opacity .15s; line-height:1; }
   .task:hover .task-bump{ opacity:1; }
   .task-bump:hover{ color:var(--good); background:var(--good-bg); }
   .task-focus{ flex:none; background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:14px; padding:2px 4px; border-radius:6px; opacity:0; transition:opacity .15s; line-height:1; }
   .task:hover .task-focus, .panel-task:hover .task-focus{ opacity:1; }
   .task-focus:hover{ color:var(--terra-deep); background:var(--terra-bg); }
   .task-focus.on{ opacity:1; color:var(--terra); }
+  /* No hover on a touch screen, so the hover-revealed row buttons never appeared there at all.
+     They already occupy their space at opacity 0, so showing them costs no layout. */
+  @media (hover: none){
+    .task .task-x, .task .task-addsub, .task .task-focus, .task .task-bump{ opacity:1; }
+  }
   .sub .inline-add{ font-size:13px; padding:2px 0; }
   .ac{ position:fixed; z-index:70; background:var(--card); border:1.5px solid var(--line); border-radius:12px; box-shadow:0 14px 34px -12px rgba(0,0,0,.35); min-width:220px; max-width:320px; max-height:262px; overflow-y:auto; }
   .ac-item{ padding:8px 12px; font-size:13.5px; display:flex; gap:8px; align-items:center; cursor:pointer; }
