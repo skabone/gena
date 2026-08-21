@@ -367,7 +367,7 @@
   .day-split .day-unsched .day-unsched-h{ flex:none; }
   .day-split .day-unsched > .tasks, .day-split .day-unsched > .day-tray{ flex:1 1 auto; min-height:0; overflow-y:auto; }
   /* narrow column: same reasoning as the right panel — drop the secondary row buttons so titles keep their width */
-  .day-split .day-unsched .task-addsub, .day-split .day-unsched .task-focus, .day-split .day-unsched .task-star{ display:none; }
+  .day-split .day-unsched .task-addsub, .day-split .day-unsched .task-focus, .day-split .day-unsched .task-star, .day-split .day-unsched .task-bump{ display:none; }
   @media (max-width:900px){
     .day-split{ grid-template-columns:minmax(0,1fr); }
     .day-split .day-unsched{ width:100%; max-height:none; margin-bottom:14px; order:-1; }
@@ -383,7 +383,7 @@
 
   /* The right panel is only ~220px wide — five row buttons there squeeze the title down to a couple of
      characters per line. Keep the checkbox and delete; the rest of the actions live in the main list. */
-  #rightbar li.task .task-addsub, #rightbar li.task .task-focus, #rightbar li.task .task-star{ display:none; }
+  #rightbar li.task .task-addsub, #rightbar li.task .task-focus, #rightbar li.task .task-star, #rightbar li.task .task-bump{ display:none; }
 
   /* inline task editor — the row becomes the form, so the list never vanishes underneath you */
   li.task.ie-row{ display:block; padding:14px; background:var(--sheet); border:1.5px solid var(--terra);
@@ -626,6 +626,9 @@
   .task:hover .task-addsub{ opacity:1; }
   .task-addsub:hover{ color:var(--good); background:var(--good-bg); }
   /* promote straight into Today's Focus without opening the task */
+  .task-bump{ flex:none; background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:14px; padding:2px 5px; border-radius:6px; opacity:0; transition:opacity .15s; line-height:1; }
+  .task:hover .task-bump{ opacity:1; }
+  .task-bump:hover{ color:var(--good); background:var(--good-bg); }
   .task-focus{ flex:none; background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:14px; padding:2px 4px; border-radius:6px; opacity:0; transition:opacity .15s; line-height:1; }
   .task:hover .task-focus, .panel-task:hover .task-focus{ opacity:1; }
   .task-focus:hover{ color:var(--terra-deep); background:var(--terra-bg); }
@@ -1329,6 +1332,25 @@
   // caret shown only when there is something to hide
   // Same toggle as the caret, on a much bigger target. Read-only subs-n pills elsewhere (day detail,
   // the review screen) deliberately don't get this.
+  // Reschedule a task. A span moves whole — the end shifts by the same number of days, so pushing a
+  // 5-day thing to tomorrow keeps it 5 days. Shared by the row button, the Carried card and the
+  // panel's move controls so they can't drift apart.
+  function rescheduleTask(k,to){
+    if(!k||!to) return;
+    var from=k.day||to;
+    var len=(k.end&&k.end>from)?diffDays(k.end,from):0;
+    k.day=to; k.end=len?addDays(to,len):null;
+    k.rollover=0; delete k.carriedFrom;
+  }
+  // One click to reschedule from the row. Looking at a past day, the move you want is "bring it to
+  // today"; anywhere else it's "push it on a day". One context-aware button, so the row doesn't grow
+  // another control.
+  function bumpBtn(k){
+    var past=viewDay<today();
+    var to=past?today():addDays(k.day||viewDay,1);
+    var lbl=past?"Move to today":"Move to "+niceDate(to);
+    return '<button class="task-bump" data-act="bump" data-id="'+k.id+'" data-d="'+to+'" aria-label="'+esc(lbl)+'" title="'+esc(lbl)+'">'+(past?"↩":"→")+'</button>';
+  }
   function subsPill(id,subs){
     var dn=subs.filter(function(s){return s.done;}).length;
     return '<span class="pill subs-n tap" data-act="subs-toggle" data-id="'+id+'" title="'+(subsCollapsed(id)?"Show":"Hide")+' subtasks">☑ '+dn+'/'+subs.length+'</span>';
@@ -1565,6 +1587,7 @@
       '<div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title">'+subsCaret(k.id,(k.subs||[]).length)+esc(k.title)+'</div>'+
       (pills?'<div class="task-meta">'+pills+'</div>':'')+subsHtml+'</div>'+
       '<button class="task-addsub" data-act="sub-add" aria-label="Add a subtask" title="Add a subtask">⤷+</button>'+
+      bumpBtn(k)+
       '<button class="task-focus'+(inFocus(k.id)?" on":"")+'" data-act="tofocus" aria-label="Add to Today’s Focus" title="Add to Today’s Focus">◎</button>'+
       '<button class="task-star '+(k.priority?"on":"")+'" data-act="star" aria-label="Toggle important" aria-pressed="'+!!k.priority+'">'+(k.priority?"★":"☆")+'</button>'+
       '<button class="task-x" data-act="del" aria-label="Delete">✕</button></li>';
@@ -1600,6 +1623,7 @@
         '<button class="chk '+(done?"done":"")+'" data-act="focus-tasktoggle" data-tid="'+k.id+'" aria-label="Complete task" aria-pressed="'+done+'"></button>'+
         '<div class="task-main" data-act="focus-editlinked" data-tid="'+k.id+'" title="Tap to edit the task"><div class="task-title">'+subsCaret(k.id,(k.subs||[]).length)+esc(k.title)+'</div><div class="task-meta">'+lpills+'</div>'+lsubsHtml+'</div>'+
         '<button class="task-addsub" data-act="sub-add" data-tid="'+k.id+'" aria-label="Add a subtask" title="Add a subtask">⤷+</button>'+
+        bumpBtn(k)+
         '<button class="task-x" data-act="focus-del" aria-label="Remove from focus" title="Remove from focus (keeps the task)">✕</button></li>';
     }
     var p=f.projectId?proj(f.projectId):null;
@@ -2666,6 +2690,9 @@
         if(inFocus(tf)){ var fa=S.focus[viewDay]||[], fx2=fa.findIndex(function(x){return x.taskId===tf;});
           if(fx2>=0){ fa.splice(fx2,1); save(); render(); toast("Removed from Today’s Focus"); } }
         else addTaskToFocus(tf); }
+      else if(act==="bump"){ var bk=S.tasks.find(function(x){return x.id===a.dataset.id;});
+        if(bk){ var bto=a.dataset.d; rescheduleTask(bk,bto); save(); render();
+          toast(bto===today()?"Moved to today":"Moved to "+niceDate(bto)); } }
       else if(act==="calview"){ S.calView=a.dataset.v; save(); render(); }
       else if(act==="focus-toggle"){ var fx=(S.focus[viewDay]||[]).find(function(x){return x.id===anyId;}); if(fx){ fx.done=!fx.done; save(); render(); } }
       else if(act==="focus-del"){ var arr=S.focus[viewDay]||[]; var fi=arr.findIndex(function(x){return x.id===anyId;}); if(fi>=0){ var fdel=arr[fi]; arr.splice(fi,1); save(); render(); toastUndo("Focus item deleted",function(){ arr.splice(Math.min(fi,arr.length),0,fdel); save(); render(); }); } }
@@ -2685,11 +2712,11 @@
       else if(act==="daynav"){ var dd0=+a.dataset.d; viewDay = dd0===0?today():addDays(viewDay,dd0); render(); }
       else if(act==="panel-toggle"){ toggleRightbar(); render(); }
       else if(act==="panel-goday"){ viewDay=a.dataset.d; view="today"; syncNav(); render(); window.scrollTo({top:0,behavior:"smooth"}); }
-      else if(act==="sched"){ var sk=S.tasks.find(function(x){return x.id===a.dataset.id;}); if(sk){ if(a.dataset.d==="pick"){ openDatePickModal(sk); } else { sk.day=a.dataset.d; sk.rollover=0; save(); render(); toast(a.dataset.d===today()?"Scheduled for today":"Scheduled for "+niceDate(a.dataset.d)); } } }
+      else if(act==="sched"){ var sk=S.tasks.find(function(x){return x.id===a.dataset.id;}); if(sk){ if(a.dataset.d==="pick"){ openDatePickModal(sk); } else { rescheduleTask(sk,a.dataset.d); save(); render(); toast(a.dataset.d===today()?"Scheduled for today":"Scheduled for "+niceDate(a.dataset.d)); } } }
       else if(act==="panel-move"){ var mk=S.tasks.find(function(x){return x.id===a.dataset.id;}); if(mk){ var to=a.dataset.to;
-        if(to==="someday"){ mk.day=null; mk.block=null; }
-        else if(to==="anytime"){ mk.day=viewDay; mk.block=null; mk.rollover=0; }
-        else { mk.day=viewDay; mk.block=to; mk.rollover=0; }
+        if(to==="someday"){ mk.day=null; mk.end=null; mk.block=null; }
+        else if(to==="anytime"){ rescheduleTask(mk,viewDay); mk.block=null; }
+        else { rescheduleTask(mk,viewDay); mk.block=to; }
         save(); render(); toast(to==="someday"?"Moved to Someday":"Moved to "+to); } }
       else if(act==="tlview"){ S.tlView=a.dataset.v; save(); render(); }
       else if(act==="tl-day"){ viewDay=a.dataset.d; view="today"; syncNav(); render(); window.scrollTo({top:0,behavior:"smooth"}); }
