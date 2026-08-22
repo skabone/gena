@@ -24,8 +24,11 @@ self.addEventListener("fetch", function (e) {
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // let cross-origin (GitHub API, etc.) pass through untouched
 
+  // GitHub Pages sends cache-control: max-age=600, so a plain fetch() can serve a copy up to ten
+  // minutes stale — which made "network-first" still miss a fresh push. "no-cache" revalidates with
+  // the server on every request: a 304 when nothing changed (cheap), the new build when it did.
   e.respondWith(
-    fetch(req)
+    fetch(req, { cache: "no-cache" })
       .then(function (res) {
         if (res && res.ok) {
           var copy = res.clone();

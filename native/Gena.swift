@@ -30,12 +30,30 @@ final class WebController: NSViewController, WKNavigationDelegate, WKUIDelegate 
         self.view = web
     }
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        if let u = URL(string: APP_URL) { web.load(URLRequest(url: u)) }
+    // Revalidate rather than trusting the HTTP cache — GitHub Pages sends max-age=600, so a plain
+    // load could show a build up to ten minutes old, and a long-running window far older than that.
+    private var lastLoad = Date.distantPast
+
+    func loadApp() {
+        guard let u = URL(string: APP_URL) else { return }
+        web.load(URLRequest(url: u, cachePolicy: .reloadRevalidatingCacheData, timeoutInterval: 30))
+        lastLoad = Date()
     }
 
-    @objc func reload(_ sender: Any?) { web.reload() }
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        loadApp()
+        // Coming back to the app after a while is the natural moment to pick up a push. Gated on five
+        // minutes so switching windows mid-sentence never reloads under you.
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            if Date().timeIntervalSince(self.lastLoad) > 300 { self.loadApp() }
+        }
+    }
+
+    @objc func reload(_ sender: Any?) { loadApp() }
 
     // Keep Gena inside the app; send outside links to the real browser.
     func webView(_ webView: WKWebView,
