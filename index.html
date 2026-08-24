@@ -127,7 +127,9 @@
   .icon-btn:hover { background: rgba(255,255,255,.22); }
   .icon-btn:focus-visible { outline: 2px solid var(--terra); outline-offset:2px; }
 
-  .nav { display:flex; gap:4px; background: rgba(0,0,0,.14); padding:4px; border-radius: 12px; overflow-x:auto; }
+  .nav { display:flex; gap:4px; background: rgba(0,0,0,.14); padding:4px; border-radius: 12px; overflow-x:auto;
+    scrollbar-width:none; }             /* it still scrolls on narrow screens — without the grey strip */
+  .nav::-webkit-scrollbar{ display:none; }
   .nav button {
     border:none; background:transparent; color: rgba(255,255,255,.7); cursor:pointer;
     padding: 7px 15px; border-radius: 9px; font-size: 13.5px; font-weight:600; white-space:nowrap; transition: all .15s;
@@ -935,7 +937,7 @@
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-08-24 14:45";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-08-24 15:17";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
