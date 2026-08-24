@@ -180,6 +180,8 @@
   .pill.aged.hot{ background: var(--warn-bg); color: var(--warn); padding:2px 8px; }
   .pill.rec{ background:transparent; color:var(--terra-deep); padding-left:0; padding-right:6px; }
   .pill.block{ background:transparent; color:var(--ink-faint); padding-left:0; padding-right:6px; }
+  .pill.due{ background:transparent; color:var(--slate-2,var(--ink-soft)); font-weight:800; padding-left:0; padding-right:6px; }
+  .pill.due.hot{ background:var(--warn-bg); color:var(--warn); padding:2px 8px; }
   .pill.more{ background:var(--line-soft); color:var(--ink-soft); cursor:default; }
   /* carried card: one primary action, the rest behind a native fold — 33 items × 6 buttons was a wall */
   .pm-fold{ display:inline-block; }
@@ -345,6 +347,15 @@
     padding:0; width:112px; cursor:pointer; }
   .rv-proj{ font-family:inherit; font-size:12px; border:1.5px solid var(--line); border-radius:999px;
     padding:3px 8px; background:var(--card); color:var(--ink); max-width:150px; }
+  li.task.swp-r{ background:var(--good-bg); }
+  li.task.swp-l{ background:var(--terra-bg); }
+  .brief-head{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .brief-head h3{ margin:0; font-size:15.5px; }
+  .card.brief{ margin-bottom:14px; }
+  .sg-box{ background:var(--terra-bg); border-radius:12px; padding:10px 12px; }
+  .sg-row{ display:flex; gap:10px; align-items:baseline; padding:4px 0; }
+  .sg-title{ flex:1; font-weight:650; font-size:13.5px; min-width:0; }
+  .sg-why{ flex:none; font-size:11px; font-weight:700; color:var(--terra-deep); }
   .rv-extra{ display:inline-block; }
   .rv-extra summary{ list-style:none; cursor:pointer; display:inline-flex; align-items:center;
     font-size:12px; font-weight:800; color:var(--ink-faint); border:1.5px solid var(--line); border-radius:999px;
@@ -924,7 +935,7 @@
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-08-24 12:01";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-08-24 14:45";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1117,13 +1128,36 @@
     IDLISTS.forEach(function(key){ (d[key]||[]).forEach(function(x){ if(x&&x.id&&!x._m) x._m=_base; }); }); // backfill legacy items
     dedupeSeededEntities(d);                              // collapse device-duplicated starter profiles/projects/habits
     return mergeSpuCoursePlan(d); }
+  // Set when boot-time normalize() shrinks the store suspiciously; the boot code shows the offer.
+  // Declared WITHOUT an initializer on purpose: `var S=load()` runs before this line, and load() is
+  // what sets the flag — an `=null` here would wipe it after the fact (the RTE_ALLOWED hoisting trap,
+  // which is exactly the bug class this feature exists to catch).
+  var INTEGRITY_WARN;
+  function storeCounts(d){
+    return { tasks:(d.tasks||[]).length, projects:(d.projects||[]).length, people:(d.people||[]).length,
+             events:(d.events||[]).length, notes:Object.keys(d.notes||{}).length,
+             focus:Object.keys(d.focus||{}).reduce(function(n,k){return n+((d.focus[k]||[]).length);},0) };
+  }
   function load(){
     var raw=null, d=null;
     try{ raw=localStorage.getItem(KEY); }catch(e){}
     if(!raw) return seed();
     try{ d=JSON.parse(raw); }catch(e){ try{ localStorage.setItem(KEY+"-corrupt",raw); }catch(e2){} return seed(); }
     if(!d||!d.version) return seed();
-    try{ return normalize(d); }
+    // The RTE_ALLOWED incident: a migration bug made load() fall back to seed() and a refresh ate the
+    // store. normalize() no longer seeds on failure, but it can still MUTATE wrongly — so count the big
+    // collections before and after, and if anything shrank hard, keep the untouched original and offer
+    // it back instead of trusting the migration.
+    var before=storeCounts(d);
+    try{ var out=normalize(d);
+      var after=storeCounts(out);
+      var lost=Object.keys(before).filter(function(k){ return before[k]>=5 && after[k]<before[k]*0.8; });
+      if(lost.length){
+        try{ localStorage.setItem(KEY+"-guard",raw); }catch(e5){}
+        INTEGRITY_WARN={lost:lost.map(function(k){return k+" "+before[k]+"→"+after[k];}).join(", ")};
+      }
+      return out;
+    }
     catch(e){
       // A bug in a migration must not cost you your data. Keep the raw copy, tell you loudly, and carry
       // on with the un-migrated state rather than starting from a blank seed.
@@ -1633,6 +1667,7 @@
             S.people.map(function(pp){return '<button type="button" class="chip" data-pid="'+pp.id+'" aria-pressed="'+((k.personIds||[]).indexOf(pp.id)>=0)+'">'+esc(pp.name)+'</button>';}).join("")+'</div>':'')+
           '<div class="ie-lbl">Day</div><input type="date" id="ie-day" value="'+esc(k.day||"")+'" aria-label="First day"/>'+
           '<div class="ie-lbl">Ends <span class="ie-hint">(leave blank for one day)</span></div><input type="date" id="ie-end" value="'+esc(k.end||"")+'" aria-label="Last day"/>'+
+          '<div class="ie-lbl">Due <span class="ie-hint">(deadline — separate from the day you plan it)</span></div><input type="date" id="ie-due" value="'+esc(k.due||"")+'" aria-label="Due date"/>'+
           '<div class="ie-lbl">Block</div><div class="chips" id="ie-block">'+
             BLKS.map(function(b){return '<button type="button" class="chip" data-b="'+b[0]+'" aria-pressed="'+((k.block||"")===b[0])+'">'+b[1]+'</button>';}).join("")+'</div>'+
           '<div class="ie-lbl">Time</div><input type="time" id="ie-time" value="'+esc(k.at||"")+'" aria-label="Time"/>'+
@@ -1659,6 +1694,7 @@
     if(k.tplId) pl.push('<span class="pill rec">↻ repeats</span>');
     if(k.rollover>=1) pl.push('<span class="pill aged'+(k.rollover>=7?" hot":"")+'">carried '+k.rollover+'d</span>');
     if(k.dueLabel) pl.push('<span class="pill block">'+esc(k.dueLabel)+'</span>');
+    var dpl=duePill(k); if(dpl) pl.push(dpl);
     var spn=spanPill(k.day,k.end); if(spn) pl.push(spn);
     if(k.block) pl.push('<span class="pill block">'+k.block+'</span>');
     if(k.at) pl.push('<span class="pill block">🕒 '+fmtTime(k.at)+'</span>');
@@ -1866,6 +1902,7 @@
 
     html+='<div class="today-main">';
     if(isToday) html+=spuCourseDashboardHtml();
+    if(isToday) html+=projectBriefsHtml();
 
     if(sugg.length){
       html+='<div class="stack">';
@@ -2012,6 +2049,34 @@
       fold("panel-log","🗂 Completed log",lb);
   }
 
+  /* The hand-coded SPU dashboard is the best-loved card in the app and dies with the semester.
+     This is the same idea for any project you pin: note, progress, nearest deadline, next three. */
+  function projectBriefsHtml(){
+    var pinned=S.projects.filter(function(p){return p.pinned&&inScope(p.id);});
+    if(!pinned.length) return "";
+    return pinned.map(function(p){
+      var ts=S.tasks.filter(function(k){return k.projectId===p.id;});
+      var open=ts.filter(function(k){return k.status!=="done";});
+      var done=ts.length-open.length;
+      var pct=ts.length?Math.round(100*done/ts.length):0;
+      var next=open.slice().sort(byUrgency).slice(0,3);
+      var nearest=open.filter(function(k){return k.due;}).sort(function(a,b){return a.due.localeCompare(b.due);})[0];
+      var note=htmlToText(p.notes||"").split("\n")[0].trim();
+      return '<div class="card brief"><div class="brief-head">'+
+        '<span class="pdot" style="'+cbg(p.color)+'"></span><h3>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</h3>'+
+        '<span class="sub" style="margin:0">'+open.length+' open</span>'+
+        (nearest?duePill(nearest):"")+
+        '<button class="chip" data-act="pinproj" data-pid="'+p.id+'" style="margin-left:auto;padding:2px 9px" title="Unpin from Today">📌</button></div>'+
+        (note?'<p class="sub" style="margin:2px 0 6px">'+esc(note)+'</p>':"")+
+        '<div class="prog-row"><div class="prog"><span style="width:'+pct+'%;background:'+p.color+'"></span></div><span class="prog-pct">'+pct+'%</span></div>'+
+        (next.length?'<ul class="tasks">'+next.map(function(k){
+          return '<li class="task" data-id="'+k.id+'"><button class="chk" data-act="toggle" aria-label="Done" aria-pressed="false"></button>'+
+            '<div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title">'+esc(k.title)+'</div>'+
+            '<div class="task-meta">'+duePill(k)+(k.day?'<span class="pill block">'+esc(niceDate(k.day))+'</span>':"")+'</div></div></li>';
+        }).join("")+'</ul>':'<div class="empty">Nothing open 🎉</div>')+
+        '</div>';
+    }).join("");
+  }
   function spuCourseDashboardHtml(){ return ""; }
 
   /* ---------- suggestions engine (local, explainable) ---------- */
@@ -2179,7 +2244,8 @@
       if(ts.filter(function(k){return k.status==="todo";}).length>6) html+='<div class="cal-more">+'+(ts.filter(function(k){return k.status==="todo";}).length-6)+' more</div>';
       html+='</ul>';
       html+=richTextHtml("proj:"+p.id,p.notes||"","Project notes…",70,null,"rte-compact");
-      html+='<div style="display:flex;gap:8px;margin-top:8px"><button class="chip" data-act="editproj" data-pid="'+p.id+'">edit</button>'+
+      html+='<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="chip" data-act="editproj" data-pid="'+p.id+'">edit</button>'+
+        '<button class="chip" data-act="pinproj" data-pid="'+p.id+'" aria-pressed="'+!!p.pinned+'">'+(p.pinned?"📌 Unpin from Today":"📌 Pin to Today")+'</button>'+
         '<button class="chip" data-act="milestone" data-pid="'+p.id+'">+ milestone</button>'+
         '<button class="chip" data-act="phase" data-pid="'+p.id+'">+ phase</button></div>';
       html+='</div></div>';
@@ -2289,6 +2355,19 @@
   function calAnchorDate(){ return S.calAnchor||today(); }
   // Which part of a multi-day run this day is: bars square off the side the run continues on, so a
   // span reads as one strip across the calendar instead of the same title repeated per cell.
+  /* `day` is when you PLAN to do a thing; `due` is when the world needs it done. Conflating them is
+     why a task planned optimistically in July reads as "carried 41d" in August when its real deadline
+     is Wednesday. due is optional; absent means "whenever". */
+  function duePill(k){
+    if(!k.due) return "";
+    var t=today(), d=diffDays(k.due,t);
+    var lbl = d<0 ? "overdue "+(-d)+"d" : d===0 ? "due today" : d===1 ? "due tomorrow" : "due "+niceDate(k.due);
+    return '<span class="pill due'+(d<=1?" hot":"")+'" title="Due '+esc(niceDate(k.due))+'">⚑ '+lbl+'</span>';
+  }
+  // sort helper: real deadlines first (earliest), then most-carried — the review and briefs share it
+  function byUrgency(a,b){
+    return (a.due||"9999").localeCompare(b.due||"9999") || (b.rollover||0)-(a.rollover||0) || (a.day||"9999").localeCompare(b.day||"9999");
+  }
   function spanPos(start,end,ds){
     if(!end||end<=start) return null;
     return ds===start?"start":(ds===end?"end":"mid");
@@ -2574,6 +2653,7 @@
         var evv=(document.getElementById("ie-end")||{}).value||null;
         t.day=dv; if(!dv) t.block=null; else t.block=ieBlock||null;
         t.end=(dv&&evv&&evv>dv)?evv:null;   // no start, or an end that isn't later, means a single day
+        t.due=(document.getElementById("ie-due")||{}).value||null;
         t.at=document.getElementById("ie-time").value||null;
         t.priority=iePrio;
         t.subs=ieSubs.filter(function(sb){return (sb.text||"").trim();});
@@ -2919,6 +2999,8 @@
         else if(s&&s.act==="archive"){ S.dismissed.push(s.id); save(); confirmArchiveOldDone(); }
         else if(s&&s.data){ addTask(s.data.title,s.data.projectId,null); S.dismissed.push(s.id); save(); render(); toast("Added"); } }
       else if(act==="sugg-x"){ S.dismissed.push(a.dataset.sid); save(); render(); }
+      else if(act==="pinproj"){ var pp0=proj(a.dataset.pid); if(pp0){ pp0.pinned=!pp0.pinned; save(); render();
+        toast(pp0.pinned?"Pinned to Today — its brief shows at the top":"Unpinned"); } }
       else if(act==="newproj"){ openProjModal(); }
       else if(act==="editproj"){ openProjModal(proj(a.dataset.pid)); }
       else if(act==="milestone"){ openMilestoneModal(a.dataset.pid); }
@@ -3198,6 +3280,7 @@
         (S.people.length?'<div class="fld"><label>People</label><div class="chips" id="m-people">'+S.people.map(function(pp){return '<button type="button" class="chip" data-pid="'+pp.id+'" aria-pressed="'+(selPeople.indexOf(pp.id)>=0)+'">'+esc(pp.name)+'</button>';}).join("")+'</div><div class="sub" style="font-size:11px;margin-top:6px">Tagged people see this task on their card in People.</div></div>':'')+
         '<div class="fld"><label>Day <span style="text-transform:none;letter-spacing:0;font-weight:600">(empty = someday)</span></label><input id="m-day" type="date" value="'+(ed?(base.day||""):(base.day||today()))+'"/></div>'+
         '<div class="fld"><label>Ends <span style="text-transform:none;letter-spacing:0;font-weight:600">(blank = one day)</span></label><input id="m-end" type="date" value="'+esc(base.end||"")+'"/></div>'+
+        '<div class="fld"><label>Due <span style="text-transform:none;letter-spacing:0;font-weight:600">(deadline — separate from the planned day)</span></label><input id="m-due" type="date" value="'+esc(base.due||"")+'"/></div>'+
         '<div class="fld"><label>'+(ed?"Schedule":"Schedule — pick one or several")+'</label><div class="chips" id="m-block">'+
           BLKS.map(function(b){return '<button class="chip" data-b="'+b[0]+'" aria-pressed="'+(!!selBlocks[b[0]])+'">'+b[1]+'</button>';}).join("")+'</div></div>'+
         '<div class="fld"><label>Time</label><input id="m-time" type="time" value="'+(base.at||"")+'"/></div>'+
@@ -3291,6 +3374,7 @@
       var pid=document.getElementById("m-proj").value||null; if(pid==="__new") pid=null;
       var day=document.getElementById("m-day").value||null;
       var endD=(document.getElementById("m-end")||{}).value||null;
+      var dueD=(document.getElementById("m-due")||{}).value||null;
       var chosen=Object.keys(selBlocks).map(function(b){return b==="allday"?null:b;});
       if(!chosen.length) chosen=[null];
       var tv=document.getElementById("m-time").value||null;
@@ -3307,13 +3391,13 @@
       if(msn&&msn.value.trim()) subs.push({id:uid(),text:msn.value.trim(),done:false});
       var cleanSubs=subs.filter(function(s){return (s.text||"").trim();});
       var ntv=rteValue("m-notes")||null;
-      if(ed){ ed.title=title; ed.projectId=pid; ed.day=day; ed.end=endD; ed.block=chosen[0]; ed.at=tv; ed.priority=priorityV; ed.subs=cleanSubs; ed.notes=ntv; ed.personIds=selPeople.slice();
+      if(ed){ ed.title=title; ed.projectId=pid; ed.day=day; ed.end=endD; ed.due=dueD; ed.block=chosen[0]; ed.at=tv; ed.priority=priorityV; ed.subs=cleanSubs; ed.notes=ntv; ed.personIds=selPeople.slice();
         if(etp){
           if(freq==="once"){ S.templates=S.templates.filter(function(x){return x.id!==etp.id;}); delete ed.tplId; }
           else { etp.title=title; etp.projectId=pid; etp.block=chosen[0]; etp.freq=freq; etp.weekdays=weekdays; etp.interval=+(document.getElementById("m-int")||{}).value||intervalV; etp.priority=priorityV; }
         } else if(freq!=="once"){ var ntp={id:uid(),title:title,projectId:pid,block:chosen[0],freq:freq,start:day||today(),weekdays:weekdays,interval:+(document.getElementById("m-int")||{}).value||2,priority:priorityV}; S.templates.push(ntp); ed.tplId=ntp.id; generateRecurring(today()); }
         save(); close(); render(); toast(etp?(freq==="once"?"Saved — repeat stopped":"Saved — series updated"):(freq!=="once"?"Saved — now repeats":"Saved")); return; }
-      if(freq==="once"){ chosen.forEach(function(bl){ S.tasks.push({id:uid(),title:title,projectId:pid,personIds:selPeople.slice(),status:"todo",day:day,end:endD,block:bl,at:tv,priority:priorityV,rollover:0,notes:ntv,subs:cleanSubs.map(function(s){return {id:uid(),text:s.text,done:s.done};}),created:today()}); }); }
+      if(freq==="once"){ chosen.forEach(function(bl){ S.tasks.push({id:uid(),title:title,projectId:pid,personIds:selPeople.slice(),status:"todo",day:day,end:endD,due:dueD,block:bl,at:tv,priority:priorityV,rollover:0,notes:ntv,subs:cleanSubs.map(function(s){return {id:uid(),text:s.text,done:s.done};}),created:today()}); }); }
       else { var tp={id:uid(),title:title,projectId:pid,block:chosen[0],freq:freq,start:day||today(),weekdays:weekdays,interval:+(document.getElementById("m-int")||{}).value||2,priority:priorityV};
         S.templates.push(tp); generateRecurring(today()); }
       save(); close(); render(); if(!dismiss) toast(freq==="once"&&chosen.length>1?chosen.length+" tasks added":"Task added");
@@ -4642,7 +4726,24 @@
       h+='<div class="ins-tiles" style="margin-top:6px">'+tiles().map(function(x){
         return '<div class="ins-tile"><b>'+x[0]+'</b><span>'+x[1]+'</span></div>'; }).join("")+'</div>';
 
+      if(scope==="morning" && loose.length>=4){
+        // three proposals, three different reasons: the hard deadline, the oldest drag, the quick win
+        var sg=[], used={};
+        var byDue=loose.filter(function(k){return k.due;}).sort(function(a,b){return a.due.localeCompare(b.due);})[0];
+        if(byDue){ sg.push({k:byDue,why:byDue.due<t?"overdue":"nearest deadline"}); used[byDue.id]=1; }
+        var byCarry=loose.filter(function(k){return !used[k.id];}).sort(function(a,b){return (b.rollover||0)-(a.rollover||0);})[0];
+        if(byCarry&&(byCarry.rollover||0)>=2){ sg.push({k:byCarry,why:"carried longest — "+byCarry.rollover+"d"}); used[byCarry.id]=1; }
+        var byQuick=loose.filter(function(k){return !used[k.id]&&!(k.subs||[]).length;}).sort(function(a,b){return a.title.length-b.title.length;})[0];
+        if(byQuick){ sg.push({k:byQuick,why:"a quick win"}); used[byQuick.id]=1; }
+        if(sg.length>=2){
+          h+='<div class="fld sg-box"><label>Suggested for today</label>'+
+            sg.map(function(x){ return '<div class="sg-row"><div class="sg-title">'+esc(x.k.title)+'</div><span class="sg-why">'+esc(x.why)+'</span></div>'; }).join("")+
+            '<div class="modal-actions" style="justify-content:flex-start;margin:8px 0 0">'+
+            '<button class="btn primary" data-sg-accept="'+sg.map(function(x){return x.k.id;}).join(",")+'" style="padding:7px 14px">◎ Make these today’s focus</button></div></div>';
+        }
+      }
       h+='<div class="fld"><label>'+(isDay?"Loose ends":"Carried over")+' — decide, don’t drag</label>';
+      loose.sort(byUrgency);
       if(loose.length){
         h+='<div class="modal-actions" style="justify-content:flex-start;margin:2px 0 6px">'+
           picks.filter(function(m){ return m[0]!=="drop"&&m[0]!=="someday"; }).map(function(m){
@@ -4654,7 +4755,7 @@
           g.items.forEach(function(k){
             var w=whereWasIt(k,fromDay);
             h+='<div class="ds-row" data-id="'+k.id+'"><div class="ds-main"><div class="ds-title">'+esc(k.title)+'</div>'+
-              '<div class="task-meta"><span class="pill '+w.cls+'">'+esc(w.label)+'</span>'+
+              '<div class="task-meta">'+duePill(k)+'<span class="pill '+w.cls+'">'+esc(w.label)+'</span>'+
                 '<span class="pill block">'+esc(niceDate(k.day))+'</span>'+spanPill(k.day,k.end)+
                 ((k.rollover||0)>=1?'<span class="pill aged'+(k.rollover>=7?" hot":"")+'">carried '+k.rollover+'d</span>':"")+'</div></div>'+
               '<div class="ds-pick">'+picks.slice(0,3).map(function(m){
@@ -4747,6 +4848,17 @@
           });
           return; }
         if(e.target.closest("[data-rvdate],[data-rvproj]")) return;   // handled on change, not click
+        var sg=e.target.closest("[data-sg-accept]");
+        if(sg){ var n=0;
+          sg.dataset.sgAccept.split(",").forEach(function(id){
+            var k=S.tasks.find(function(x){return x.id===id;}); if(!k) return;
+            rescheduleTask(k,t);
+            S.focus[t]=S.focus[t]||[];
+            if(!S.focus[t].some(function(f){return f.taskId===id;})) S.focus[t].push({id:uid(),taskId:id});
+            n++;
+          });
+          save(); rebuild(); toast(n+" moved to today and into Focus");
+          return; }
         var tf=e.target.closest("[data-tmfocus]");
         if(tf){ var tmd=addDays(t,1), fa=S.focus[tmd]=S.focus[tmd]||[];
           var fi=fa.findIndex(function(f){return f.taskId===tf.dataset.tmfocus;});
@@ -5136,6 +5248,61 @@
     if(S.lastOpen!==today()){ viewDay=today(); onOpen(); render(); if(dayStartFrom) openDayStartReview(dayStartFrom); return; }
     checkEveningReview();
   }
+  /* ---------- swipe on task rows (touch screens) ----------
+     Right = done. Left = the same context-aware move as the → button (past day → today, else next
+     day). The row follows the finger, a hint fades in behind it, and letting go before the threshold
+     snaps back. Focus rows resolve to their backing task. */
+  (function(){
+    var v=document.getElementById("view");
+    var el=null, taskId=null, sx=0, sy=0, dx=0, swiping=false, decided=false;
+    var THRESH=72;
+    function taskFor(li){
+      if(li.dataset.focus){ var f=(S.focus[viewDay]||[]).find(function(x){return x.id===li.dataset.id;});
+        return f&&f.taskId?S.tasks.find(function(k){return k.id===f.taskId;}):null; }
+      return S.tasks.find(function(k){return k.id===li.dataset.id;});
+    }
+    function reset(anim){
+      if(el){ if(anim){ el.style.transition="transform .18s ease"; } el.style.transform="";
+        var e0=el; setTimeout(function(){ e0.style.transition=""; e0.classList.remove("swp-l","swp-r"); },200); }
+      el=null; taskId=null; swiping=false; decided=false; dx=0;
+    }
+    v.addEventListener("touchstart",function(e){
+      if(e.touches.length!==1) return;
+      if(!matchMedia("(hover: none)").matches) return;   // checked per-gesture — cheap, and survives mode flips
+      var li=e.target.closest&&e.target.closest("li.task[data-id]");
+      // every card on Today is a <details> fold, so guard only the *control* folds, not all of them
+      if(!li || li.classList.contains("ie-row") || e.target.closest("input,textarea,select,button,a,[contenteditable=true],summary,.pm-fold,.rv-extra")) return;
+      var k=taskFor(li); if(!k) return;
+      el=li; taskId=k.id; var t=e.touches[0]; sx=t.clientX; sy=t.clientY; dx=0; swiping=false; decided=false;
+    },{passive:true});
+    v.addEventListener("touchmove",function(e){
+      if(!el) return;
+      if(document.querySelector(".touch-dragging")){ reset(false); return; }   // long-press drag owns it
+      var t=e.touches[0]; dx=t.clientX-sx; var dy=t.clientY-sy;
+      if(!decided){
+        if(Math.abs(dy)>14 && Math.abs(dy)>Math.abs(dx)){ reset(false); return; }  // it's a scroll
+        if(Math.abs(dx)>18 && Math.abs(dx)>Math.abs(dy)*1.6){ decided=true; swiping=true; }
+        else return;
+      }
+      e.preventDefault();
+      el.style.transform="translateX("+dx+"px)";
+      el.classList.toggle("swp-r",dx>THRESH);
+      el.classList.toggle("swp-l",dx<-THRESH);
+    },{passive:false});
+    function end(){
+      if(!el||!swiping){ reset(false); return; }
+      var k=S.tasks.find(function(x){return x.id===taskId;});
+      if(k && dx>THRESH){ reset(false); toggleTask(k.id); }
+      else if(k && dx<-THRESH){
+        var past=viewDay<today();
+        var to=past?today():addDays(k.day||viewDay,1);
+        reset(false); rescheduleTask(k,to); save(); render();
+        toast(to===today()?"Moved to today":"Moved to "+niceDate(to));
+      } else reset(true);
+    }
+    v.addEventListener("touchend",end);
+    v.addEventListener("touchcancel",function(){ reset(true); });
+  })();
   (function(){
     var bn=document.getElementById("bottomnav");
     if(bn) bn.onclick=function(e){
@@ -5173,5 +5340,11 @@
   if(bootDedupeCount>0){ save(); setTimeout(function(){ toast("Cleaned up "+bootDedupeCount+" duplicate item"+(bootDedupeCount===1?"":"s")+" (⌘Z to undo)"); },600); } // persist + push the de-duplicated data
   if(S.welcomed===false){ S.welcomed=true; save(); openWelcomeModal(); }
   else if(dayStartFrom){ setTimeout(function(){ openDayStartReview(dayStartFrom); }, 400); }
+  if(INTEGRITY_WARN) setTimeout(function(){
+    confirmModal("⚠️ Data check — something shrank while loading",
+      "Loading your data removed more than it should have ("+INTEGRITY_WARN.lost+"). The untouched copy from before this load is saved. Restore it, or keep going with what loaded?",
+      "Restore the untouched copy",
+      function(){ try{ var g=localStorage.getItem(KEY+"-guard"); if(g){ localStorage.setItem(KEY,g); location.reload(); } }catch(e){} });
+  }, 700);
 })();
 </script>
