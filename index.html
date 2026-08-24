@@ -236,6 +236,11 @@
   .cal-cell.today .cal-daynum{ color: var(--terra-deep); }
   .cal-ev{ font-size:10.5px; margin-top:3px; padding:2px 5px; border-radius:5px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .cal-ev.evt{ background: var(--slate); }
+  /* multi-day runs: bleed to the cell edge and square the side the run continues on, so the eye reads
+     one strip across the row; only the first day carries the title */
+  .cal-ev.sp-start{ border-top-right-radius:0; border-bottom-right-radius:0; margin-right:-8px; }
+  .cal-ev.sp-end{ border-top-left-radius:0; border-bottom-left-radius:0; margin-left:-8px; }
+  .cal-ev.sp-mid{ border-radius:0; margin-left:-8px; margin-right:-8px; min-height:15px; }
   .cal-more{ font-size:10px; color:var(--ink-faint); margin-top:2px; }
 
   /* timeline */
@@ -344,8 +349,6 @@
   .prog-row{ display:flex; align-items:center; gap:8px; margin-bottom:2px; }
   .prog-row .prog{ flex:1; margin:0; }
   .prog-pct{ font-size:11.5px; font-weight:700; color:var(--ink-faint); flex:none; }
-  .day-prog{ height:6px; max-width:360px; border-radius:999px; background:var(--line-soft); margin:8px 0 2px; overflow:hidden; }
-  .day-prog span{ display:block; height:100%; border-radius:999px; background:var(--good); transition:width .35s ease; }
   .ds-pick .chip[aria-pressed="true"]{ background:var(--terra); border-color:var(--terra); color:#fff; }
   .grp-head{ display:flex; align-items:center; gap:7px; font-size:10.5px; font-weight:800; letter-spacing:.07em;
     text-transform:uppercase; color:var(--ink-soft); margin:12px 0 5px; padding-top:8px; border-top:1px solid var(--line-soft); }
@@ -543,6 +546,23 @@
   details.fold[data-fold="focus"]{ border-left:4px solid var(--terra); }
   details.fold>summary:hover .fold-label{ color:var(--ink); }
   .day-prog{ height:6px; max-width:360px; border-radius:999px; background:var(--line-soft); overflow:hidden; margin:10px 0 16px; }
+  /* Phone-only bottom nav: the top chips are the hardest thing to reach one-handed. Hidden on wide
+     screens, in print, and in the read-only snapshot view. */
+  #bottomnav{ display:none; }
+  @media (max-width:760px){
+    #bottomnav{ position:fixed; left:0; right:0; bottom:0; z-index:60; display:flex;
+      background:var(--sheet); border-top:1.5px solid var(--line);
+      padding:4px max(6px,env(safe-area-inset-left)) max(6px,env(safe-area-inset-bottom)); }
+    #bottomnav button{ flex:1; background:transparent; border:none; font-family:inherit; cursor:pointer;
+      display:flex; flex-direction:column; align-items:center; gap:1px; padding:6px 2px 4px;
+      font-size:10.5px; font-weight:700; color:var(--ink-faint); border-radius:10px; }
+    #bottomnav button span{ font-size:17px; line-height:1.15; }
+    #bottomnav button[aria-current="true"]{ color:var(--terra); background:var(--terra-bg); }
+    body{ padding-bottom:66px; }
+    .toast{ bottom:78px; }
+  }
+  @media print{ #bottomnav{ display:none !important; } }
+  body[data-snapshot] #bottomnav{ display:none !important; }
   .day-prog span{ display:block; height:100%; border-radius:999px; background:var(--good); transition:width .4s ease; }
   .streak-pill{ font-size:12px; font-weight:800; color:var(--terra-deep); background:var(--terra-bg); padding:3px 10px; border-radius:999px; white-space:nowrap; }
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
@@ -789,6 +809,13 @@
 <div id="sb-scrim"></div>
 <div id="rb-scrim"></div>
 <div id="modal-root"></div>
+<nav id="bottomnav" aria-label="Quick navigation">
+  <button data-view="today"><span>📅</span>Today</button>
+  <button data-view="day"><span>🕒</span>Day</button>
+  <button data-view="week"><span>🗓</span>Week</button>
+  <button data-view="calendar"><span>📆</span>Calendar</button>
+  <button data-act="bn-review"><span>🌅</span>Review</button>
+</nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -860,7 +887,7 @@
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-08-24 10:51";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-08-24 11:31";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1441,7 +1468,11 @@
     if(S.filterProjects.length) bits.push(S.filterProjects.length+" project"+(S.filterProjects.length===1?"":"s"));
     return bits.join(" · ");
   }
-  function syncNav(){ [].forEach.call(nav.children,function(c){ c.setAttribute("aria-current",c.dataset.view===view?"true":"false"); }); }
+  function syncNav(){
+    [].forEach.call(nav.children,function(c){ c.setAttribute("aria-current",c.dataset.view===view?"true":"false"); });
+    var bn=document.getElementById("bottomnav");
+    if(bn) [].forEach.call(bn.querySelectorAll("[data-view]"),function(c){ c.setAttribute("aria-current",c.dataset.view===view?"true":"false"); });
+  }
   function renderSidebar(){
     var sb=document.getElementById("sidebar"); if(!sb) return;
     var openCnt=function(pid){ return S.tasks.filter(function(k){return k.projectId===pid&&k.status==="todo";}).length; };
@@ -1935,6 +1966,18 @@
 
   /* ---------- suggestions engine (local, explainable) ---------- */
   function norm(s){ return (s||"").trim().toLowerCase(); }
+  // Shared by the ⋯ button and the Hub suggestion — the store syncs to a gist and localStorage tops
+  // out around 5MB, so old done tasks should leave the working set before that ever matters.
+  function confirmArchiveOldDone(){
+    var cut=addDays(today(),-60);
+    var old=S.tasks.filter(function(k){return k.status==="done"&&k.completedOn&&k.completedOn<cut;});
+    if(!old.length){ toast("Nothing old enough to archive yet"); return; }
+    confirmModal("Archive "+old.length+" old completed task"+(old.length===1?"":"s")+"?","They leave the lists and log but stay in your data, backups and search. This keeps the app fast as years accumulate.","Archive",function(){
+      S.archive=S.archive.concat(old);
+      S.tasks=S.tasks.filter(function(k){return old.indexOf(k)<0;});
+      save(); render(); toast(old.length+" archived");
+    });
+  }
   function computeSuggestions(){
     var t=today(), out=[], d=S.dismissed;
     // 1. aged tasks
@@ -1973,6 +2016,11 @@
     var wd0=dow(t);
     if(wd0===0||wd0===1){ var wkid="review-"+addDays(t,-wd0);
       if(d.indexOf(wkid)<0) out.push({id:wkid,text:'A fresh week — run a <b>2-minute weekly review</b> to clear carried tasks and pick what matters.',action:"Review",act:"review"});
+    }
+    // 6b. archive nudge — once a month, only when there is a real pile
+    var archOld=S.tasks.filter(function(k){return k.status==="done"&&k.completedOn&&k.completedOn<addDays(t,-60);}).length;
+    if(archOld>=25){ var aid="arch-"+t.slice(0,7);
+      if(d.indexOf(aid)<0) out.push({id:aid,text:archOld+' completed tasks are over two months old. <b>Archive</b> them to keep the app fast — they stay in your data and search.',action:"Archive",act:"archive"});
     }
     // 7. backup reminder — only when no sync is safeguarding the data
     var synced = (GH&&GH.gistId) || syncHandle;
@@ -2189,10 +2237,19 @@
 
   /* ---------- CALENDAR ---------- */
   function calAnchorDate(){ return S.calAnchor||today(); }
+  // Which part of a multi-day run this day is: bars square off the side the run continues on, so a
+  // span reads as one strip across the calendar instead of the same title repeated per cell.
+  function spanPos(start,end,ds){
+    if(!end||end<=start) return null;
+    return ds===start?"start":(ds===end?"end":"mid");
+  }
   function dayItems(ds){
     var items=[];
-    S.tasks.forEach(function(k){ if(taskOnDay(k,ds)&&inScope(k.projectId)) items.push({t:k.title,c:projColor(k.projectId),done:k.status==="done",imp:!!k.priority,at:k.at||null,block:k.block||null}); });
-    S.events.forEach(function(ev){ if(!evOnDay(ev,ds)||!sourceEnabled(ev)) return; if(ev.projectId&&!inScope(ev.projectId)) return; var c=ev.color||(ev.projectId?projColor(ev.projectId):null); items.push({t:ev.title,c:c,evt:!c}); });
+    S.tasks.forEach(function(k){ if(taskOnDay(k,ds)&&inScope(k.projectId)) items.push({t:k.title,c:projColor(k.projectId),done:k.status==="done",imp:!!k.priority,at:k.at||null,block:k.block||null,sp:spanPos(k.day,k.end,ds)}); });
+    S.events.forEach(function(ev){ if(!evOnDay(ev,ds)||!sourceEnabled(ev)) return; if(ev.projectId&&!inScope(ev.projectId)) return; var c=ev.color||(ev.projectId?projColor(ev.projectId):null); items.push({t:ev.title,c:c,evt:!c,sp:spanPos(ev.date,ev.end,ds)}); });
+    // spans first, in a stable order — if a middle day is busy and the cell truncates, the bar must
+    // survive the cut or the strip breaks visually
+    items.sort(function(a,b){ return (b.sp?1:0)-(a.sp?1:0) || (a.t<b.t?-1:1); });
     return items;
   }
   function spanDays(cv,a){
@@ -2236,7 +2293,7 @@
       var ds=y+"-"+String(mo+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");
       var items=dayItems(ds).filter(function(it){return !it.done;});
       var cells="";
-      items.slice(0,3).forEach(function(it){ cells+='<div class="cal-ev '+(it.evt?"evt":"")+'" style="'+(it.c&&!it.evt?"background:"+it.c:"")+'">'+(it.imp?"★ ":"")+esc(it.t)+'</div>'; });
+      items.slice(0,3).forEach(function(it){ cells+='<div class="cal-ev '+(it.evt?"evt":"")+(it.sp?" sp-"+it.sp:"")+'" style="'+(it.c&&!it.evt?"background:"+it.c:"")+'">'+(it.imp?"★ ":"")+(it.sp&&it.sp!=="start"?"":esc(it.t))+'</div>'; });
       if(items.length>3) cells+='<div class="cal-more">+'+(items.length-3)+' more</div>';
       html+='<div class="cal-cell '+(ds===t?"today":"")+'" data-act="calday" data-d="'+ds+'"><div class="cal-daynum">'+day+'</div>'+cells+'</div>';
     }
@@ -2244,7 +2301,7 @@
   }
   function weekGridHtml(cv,a){
     var days=spanDays(cv,a); var t=today();
-    function evHtml(it){ return '<div class="cal-ev '+(it.evt?"evt":"")+'" style="'+(it.c&&!it.evt?"background:"+it.c:"")+(it.done?";opacity:.45;text-decoration:line-through":"")+'">'+(it.imp?"★ ":"")+esc(it.t)+'</div>'; }
+    function evHtml(it){ return '<div class="cal-ev '+(it.evt?"evt":"")+(it.sp?" sp-"+it.sp:"")+'" style="'+(it.c&&!it.evt?"background:"+it.c:"")+(it.done?";opacity:.45;text-decoration:line-through":"")+'">'+(it.imp?"★ ":"")+(it.sp&&it.sp!=="start"?"&nbsp;":esc(it.t))+'</div>'; }
     var html='<div class="wk-cols" style="grid-template-columns:repeat('+days.length+',1fr)">';
     days.forEach(function(ds){
       var d=parse(ds); var items=dayItems(ds);
@@ -2809,6 +2866,7 @@
         if(s&&s.act==="sync"){ if(syncHandle&&syncHandle.requestPermission) syncHandle.requestPermission({mode:"readwrite"}).then(function(p){ if(p==="granted"){ syncReconnect=false; syncRead(); render(); toast("Sync reconnected"); } }); }
         else if(s&&s.act==="export"){ exportBackup(); S.dismissed.push(s.id); save(); render(); }
         else if(s&&s.act==="review"){ S.dismissed.push(s.id); save(); openReviewModal(); }
+        else if(s&&s.act==="archive"){ S.dismissed.push(s.id); save(); confirmArchiveOldDone(); }
         else if(s&&s.data){ addTask(s.data.title,s.data.projectId,null); S.dismissed.push(s.id); save(); render(); toast("Added"); } }
       else if(act==="sugg-x"){ S.dismissed.push(a.dataset.sid); save(); render(); }
       else if(act==="newproj"){ openProjModal(); }
@@ -3817,17 +3875,21 @@
         [["rounded","Rounded"],["system","System"],["serif","Serif"],["mono","Mono"]].map(function(fv){return '<button class="chip" data-f="'+fv[0]+'" aria-pressed="'+((S.font||"rounded")===fv[0])+'">'+fv[1]+'</button>';}).join("")+'</div></div></div>'+
       '<div class="fld"><label>Your name (for the greeting)</label><input id="set-name" value="'+esc(S.name||"")+'" placeholder="e.g. Sam"/></div>'+
       '<div class="stack">'+
+      '<p class="label" style="margin:4px 0 0">Protect &amp; move your data</p>'+
       '<button class="btn" id="x-export">⤒ Export backup (.json)</button>'+
       '<button class="btn" id="x-csv">⤒ Export tasks (.csv — for Excel/Sheets)</button>'+
       '<button class="btn" id="x-ics">⤒ Export calendar (.ics)</button>'+
       '<button class="btn" id="x-import">⤓ Import backup (.json)</button>'+
       '<button class="btn" id="x-restore">🛟 Restore from a local backup</button>'+
       (window.showSaveFilePicker?'<button class="btn" id="x-sync">🔗 '+(syncName?"Sync file: "+esc(syncName):"Link a sync file (auto-save)")+'</button>'+(syncName?'<button class="btn ghost" id="x-unsync">Unlink sync file</button>':""):"")+
+      '<p class="label" style="margin:10px 0 0">Sync &amp; reminders</p>'+
       '<button class="btn" id="x-gh">☁️ '+(GH&&GH.gistId?"Cloud sync: connected":"Cloud sync via GitHub (cross-device)")+'</button>'+
       '<button class="btn" id="x-remind">🔔 Task-time reminders: '+(S.remind?"on":"off")+'</button>'+
+      '<p class="label" style="margin:10px 0 0">Behaviour</p>'+
       '<button class="btn" id="x-autocarry" title="On: unfinished tasks move onto today by themselves. Off: they stay on their original day and wait in the Carried-over card until you place them.">⏳ Carry unfinished onto today: '+(S.autoCarry===false?"off":"on")+'</button>'+
       '<button class="btn" id="x-evening" title="A nudge in the evening to close the day out — tick off what you did and decide where the rest goes.">🌙 Evening review nudge: '+(S.eveningHour===false?"off":(((S.eveningHour+11)%12+1)+(S.eveningHour<12?"am":"pm")))+'</button>'+
       '<button class="btn" id="x-expandadd" title="On: adding a task opens its editor so you can fill in details straight away. Off: it just adds the line and keeps the cursor ready for the next one.">📝 Open the editor when I add a task: '+(S.expandOnAdd===false?"off":"on")+'</button>'+
+      '<p class="label" style="margin:10px 0 0">Share &amp; capture</p>'+
       '<button class="btn" id="x-feed">📡 Reminder calendar feed (subscribe)</button>'+
       '<button class="btn" id="x-share">🔗 Share a read-only snapshot</button>'+
       '<button class="btn" id="x-capture">⚡ Quick capture (bookmarklet / share)</button>'+
@@ -3857,31 +3919,28 @@
       } else { S.remind=false; save(); close(); toast("Reminders off"); }
     };
     document.getElementById("x-evening").onclick=function(){
-      // a short cycle through the hours an evening nudge could sensibly land on, then off
+      // a short cycle through the hours an evening nudge could sensibly land on, then off.
+      // Updates in place — closing the modal per tap meant reopening ⋯ five times to reach "off".
       var OPTS=[18,19,20,21,22], i=OPTS.indexOf(S.eveningHour);
       S.eveningHour = (S.eveningHour===false) ? OPTS[0]
                     : (i<0) ? 20
                     : (i===OPTS.length-1) ? false
                     : OPTS[i+1];
-      save(); close();
-      toast(S.eveningHour===false?"Evening nudge off":"Evening nudge at "+(((S.eveningHour+11)%12+1)+(S.eveningHour<12?"am":"pm")));
+      save();
+      this.textContent="🌙 Evening review nudge: "+(S.eveningHour===false?"off":(((S.eveningHour+11)%12+1)+(S.eveningHour<12?"am":"pm")));
     };
     document.getElementById("x-expandadd").onclick=function(){
-      S.expandOnAdd=(S.expandOnAdd===false); save(); close();
-      toast(S.expandOnAdd?"New tasks open their editor":"New tasks just get added");
+      S.expandOnAdd=(S.expandOnAdd===false); save();
+      this.textContent="📝 Open the editor when I add a task: "+(S.expandOnAdd===false?"off":"on");
     };
     document.getElementById("x-autocarry").onclick=function(){
-      S.autoCarry=(S.autoCarry===false); save(); close(); render();
+      S.autoCarry=(S.autoCarry===false); save(); render();
+      this.textContent="⏳ Carry unfinished onto today: "+(S.autoCarry?"on":"off");
       toast(S.autoCarry?"Unfinished tasks will move onto today":"Unfinished tasks stay put — pull them in from Carried over");
     };
     document.getElementById("x-archive").onclick=function(){
       if(!archN){ toast("Nothing old enough to archive yet"); return; }
-      confirmModal("Archive "+archN+" old completed task"+(archN===1?"":"s")+"?","They leave the lists and log but stay in your data and backups. This keeps the app fast as years accumulate.","Archive",function(){
-        var moved=S.tasks.filter(function(k){return k.status==="done"&&k.completedOn&&k.completedOn<archCut;});
-        S.archive=S.archive.concat(moved);
-        S.tasks=S.tasks.filter(function(k){return !(k.status==="done"&&k.completedOn&&k.completedOn<archCut);});
-        save(); render(); toast(moved.length+" archived");
-      });
+      confirmArchiveOldDone();
     };
     var nm=document.getElementById("set-name"); if(nm) nm.oninput=function(){ S.name=nm.value.trim(); save(); renderGlobalHead(); };
     var sr=document.getElementById("skin-row");
@@ -4298,6 +4357,7 @@
       S.projects.forEach(function(p){ if(rows.length<40 && (norm(p.name)+" "+norm(p.notes)).indexOf(q)>=0) rows.push(row("project",p.id,p.name,"")); });
       S.events.forEach(function(ev){ if(rows.length<40 && sourceEnabled(ev) && norm(ev.title).indexOf(q)>=0) rows.push(row("event",ev.id,ev.title,ev.date?niceDate(ev.date):"")); });
       S.emails.forEach(function(em){ if(rows.length<40 && (norm(em.subject)+" "+norm(em.sender)).indexOf(q)>=0) rows.push(row("email",em.id,em.subject,em.sender||"")); });
+      (S.archive||[]).forEach(function(k){ if(rows.length<40 && norm(k.title+" "+htmlToText(k.notes)).indexOf(q)>=0) rows.push(row("archived",k.id,k.title,"done "+(k.completedOn?niceDate(k.completedOn):""))); });
       Object.keys(S.notes).forEach(function(dk){ if(rows.length<40 && norm(S.notes[dk]).indexOf(q)>=0) rows.push(row("note",dk,S.notes[dk].slice(0,70),niceDate(dk))); });
       out.innerHTML=rows.length?rows.join(""):'<div class="empty">No matches</div>';
     };
@@ -4307,6 +4367,12 @@
       else if(kind==="job"){ var jb=S.jobs.find(function(x){return x.id===key;}); if(jb){ close(); openJobModal(jb); } }
       else if(kind==="project"){ var pr=proj(key); if(pr){ close(); openProjModal(pr); } }
       else if(kind==="event"){ var ev=S.events.find(function(x){return x.id===key;}); if(ev){ close(); openDayModal(ev.date); } }
+      else if(kind==="archived"){ var ak=(S.archive||[]).find(function(x){return x.id===key;});
+        if(ak){ close(); confirmModal("Bring “"+ak.title.slice(0,40)+"” back?","It returns to your To-do as an open task for today.","Restore",function(){
+          S.archive=S.archive.filter(function(x){return x.id!==ak.id;});
+          ak.status="todo"; delete ak.completedOn; ak.day=today(); ak.rollover=0;
+          S.tasks.push(ak); save(); render(); toast("Restored to today");
+        }); } }
       else if(kind==="note"){ close(); openDayModal(key); }
       else if(kind==="email"){ close(); view="hub"; [].forEach.call(nav.children,function(c){c.setAttribute("aria-current",c.dataset.view==="hub"?"true":"false");}); render(); }
     };
@@ -4610,7 +4676,22 @@
         var sc=e.target.closest("[data-scope]");
         if(sc){ markReviewed(); close(); openReviewModal(sc.dataset.scope, fromDay); return; }
         var all=e.target.closest("[data-all]");
-        if(all){ looseEnds().forEach(function(k){ apply(k,all.dataset.all); }); save(); rebuild(); return; }
+        if(all){
+          var hit=looseEnds();
+          // one tap can move thirty tasks — keep the same escape hatch every single delete has
+          var before=hit.map(function(k){ return {k:k, day:k.day, end:k.end, block:k.block, rollover:k.rollover,
+            status:k.status, completedOn:k.completedOn, carriedFrom:k.carriedFrom}; });
+          hit.forEach(function(k){ apply(k,all.dataset.all); }); save(); rebuild();
+          toastUndo(hit.length+" task"+(hit.length===1?"":"s")+" — "+all.textContent.trim(), function(){
+            before.forEach(function(b){ var k=b.k;
+              if(S.tasks.indexOf(k)<0) S.tasks.push(k);           // "All done" never removes, but stay safe
+              k.day=b.day; k.end=b.end; k.block=b.block; k.rollover=b.rollover; k.status=b.status;
+              if(b.completedOn===undefined) delete k.completedOn; else k.completedOn=b.completedOn;
+              if(b.carriedFrom===undefined) delete k.carriedFrom; else k.carriedFrom=b.carriedFrom;
+            });
+            save(); rebuild(); render();
+          });
+          return; }
         if(e.target.closest("[data-rvdate],[data-rvproj]")) return;   // handled on change, not click
         var tf=e.target.closest("[data-tmfocus]");
         if(tf){ var tmd=addDays(t,1), fa=S.focus[tmd]=S.focus[tmd]||[];
@@ -4995,6 +5076,15 @@
     if(S.lastOpen!==today()){ viewDay=today(); onOpen(); render(); if(dayStartFrom) openDayStartReview(dayStartFrom); return; }
     checkEveningReview();
   }
+  (function(){
+    var bn=document.getElementById("bottomnav");
+    if(bn) bn.onclick=function(e){
+      var b=e.target.closest("button"); if(!b) return;
+      if(b.dataset.act==="bn-review"){ openReviewModal(new Date().getHours()>=14?"evening":"morning", S.lastOpen); return; }
+      view=b.dataset.view; if(view==="today") viewDay=today();
+      syncNav(); render(); window.scrollTo({top:0});
+    };
+  })();
   document.addEventListener("visibilitychange",function(){ if(!document.hidden) checkDay(); });
   setInterval(checkDay,60000);
   // heartbeat: keep a local snapshot and retry cloud sync if a push is still pending/failed
