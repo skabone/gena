@@ -840,7 +840,7 @@
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-08-21";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-08-24";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -4283,6 +4283,7 @@
       ["🧭","Show / hide the sidebar",function(){ if(window.innerWidth>1000){ S.sbOpen=!S.sbOpen; save(); applySidebarState(); } else document.body.classList.toggle("sb-open"); }],
       ["◐","Toggle light / dark",function(){ document.getElementById("theme-btn").onclick(); }],
       ["🔍","Search everything",function(){ openSearchModal(); }],
+      ["🌅","Daily review",function(){ if(!openReviewModal("day",S.lastOpen)) toast("Nothing left hanging 🎉"); }],
       ["🧹","Weekly review",function(){ openReviewModal(); }],
       ["⏱","Focus timer — 25 minutes",function(){ startFocusTimer("",25); }],
       ["☑","Select multiple tasks (bulk edit)",function(){ view="today"; syncNav(); bulkMode=true; bulkIds={}; render(); toast("Tap tasks to select them"); }],
@@ -4397,118 +4398,137 @@
     if(!k.day) return {label:"Backlog",cls:"block"};
     return {label:"To-do",cls:"block"};
   }
-  function openDayStartReview(fromDay){
-    var t=today();
-    var open=S.tasks.filter(function(k){
-      return k.status==="todo" && k.day && k.day<t && inScope(k.projectId) && !k.tplId;
-    });
-    if(!open.length) return false;
-    var choice={};                       // id -> "done" | "today" | "leave"
-    open.forEach(function(k){ choice[k.id]="today"; });
+  /* ---------- review — celebrate, clear, choose ----------
+     One component, two scopes. "week" is the sweep; "day" runs on the first open of a new day. They
+     differ in what they count and which tasks they pull in, not in shape — the weekly one was the one
+     worth keeping, so the daily review is now the same thing scoped to a day, and the weekly one picked
+     up the daily one's project grouping and where-it-lived pills. Actions apply immediately and the
+     modal redraws, which is what makes it feel like clearing rather than filling in a form. */
+  function fmtMins(m){ var h=Math.floor(m/60), r=m%60; return h?(h+"h"+(r?" "+r+"m":"")):(m+"m"); }
+  // The next occurrence of a weekday, always strictly ahead — "next Monday" on a Monday means the one
+  // coming, not today.
+  function nextDow(n){ var d=addDays(today(),1); while(dow(d)!==n) d=addDays(d,1); return d; }
+  // Buttons carry the real weekday and date, so "end of week" can't be misread.
+  function reviewPicks(){
+    var eow=nextDow(0), nw=nextDow(1);          // Sunday closes the week; Monday opens the next one
+    return [["done","✓ Did it",null],
+            ["today","📅 Today",today()],
+            ["tomorrow","→ Tomorrow",addDays(today(),1)],
+            ["eow","🌤 "+DOWNAMES[dow(eow)]+" "+(+eow.slice(8)),eow],
+            ["nextweek","⏭ "+DOWNAMES[dow(nw)]+" "+(+nw.slice(8)),nw],
+            ["someday","💭 Someday",null],
+            ["drop","✕ Drop",null]];
+  }
+  function openReviewModal(scope, fromDay){
+    var isDay=scope==="day", t=today();
+    function looseEnds(){
+      return isDay
+        // a span isn't a loose end while it's still running, so measure from its last day
+        ? S.tasks.filter(function(k){ return k.status==="todo" && k.day && lastDay(k.day,k.end)<t && inScope(k.projectId) && !k.tplId; })
+        : S.tasks.filter(function(k){ return k.status==="todo" && (k.rollover||0)>=1 && !k.tplId && inScope(k.projectId); });
+    }
+    if(isDay && !looseEnds().length) return false;   // nothing to review — don't interrupt the morning
+
+    function tiles(){
+      var out=[];
+      if(isDay){
+        var y=fromDay||addDays(t,-1), wasYesterday=(y===addDays(t,-1));
+        out.push(["✅ "+S.tasks.filter(function(k){return k.completedOn===y;}).length,
+                  "done "+(wasYesterday?"yesterday":"on "+niceDate(y))]);
+        out.push(["🔥 "+doneStreak(),"day streak"]);
+        var my=focusMinutes(y);
+        if(my) out.push(["⏱ "+fmtMins(my),"focused "+(wasYesterday?"yesterday":"that day")]);
+        out.push(["📅 "+S.tasks.filter(function(k){return k.status==="todo"&&taskOnDay(k,t)&&inScope(k.projectId);}).length,
+                  "on today’s plate"]);
+      } else {
+        var wk=addDays(t,-6);
+        var doneWk=S.tasks.filter(function(k){return k.completedOn&&k.completedOn>=wk;});
+        var byDay={}; doneWk.forEach(function(k){ byDay[k.completedOn]=(byDay[k.completedOn]||0)+1; });
+        var best=Object.keys(byDay).sort(function(a,b){return byDay[b]-byDay[a];})[0];
+        out.push(["✅ "+doneWk.length,"done · last 7 days"]);
+        out.push(["🔥 "+doneStreak(),"day streak"]);
+        var mw=(S.sessions||[]).filter(function(x){return x.day>=wk;}).reduce(function(a,x){return a+(x.mins||0);},0);
+        if(mw) out.push(["⏱ "+fmtMins(mw),"focused · last 7 days"]);
+        if(best) out.push(["🏆 "+DOWNAMES[dow(best)],"best day · "+byDay[best]+" done"]);
+      }
+      return out;
+    }
     function body(){
-      var groups=groupByProject(open);
-      var h='<h3>🌅 Good morning — yesterday\u2019s loose ends</h3>'+
-        '<p class="sub">'+open.length+' thing'+(open.length===1?"":"s")+' didn\u2019t get finished'+(fromDay?' since '+esc(niceDate(fromDay)):"")+
-        '. Tick off what you actually did, and choose what comes to today.</p>'+
-        '<div class="modal-actions" style="justify-content:flex-start;margin:10px 0 4px">'+
-          '<button class="chip" data-all="today">All to today</button>'+
-          '<button class="chip" data-all="done">All done</button>'+
-          '<button class="chip" data-all="leave">Leave all</button></div>';
-      h+='<div class="ds-list">';
-      groups.forEach(function(g){
-        h+='<div class="grp-head"><span class="pdot" style="'+cbg(g.color)+'"></span>'+esc(g.name)+'<span class="cnt">'+g.items.length+'</span></div>';
-        g.items.forEach(function(k){
-          var w=whereWasIt(k,fromDay);
-          h+='<div class="ds-row" data-id="'+k.id+'">'+
-            '<div class="ds-main"><div class="ds-title">'+esc(k.title)+'</div>'+
-            '<div class="task-meta"><span class="pill '+w.cls+'">'+esc(w.label)+'</span>'+
-              '<span class="pill block">'+esc(niceDate(k.day))+'</span>'+
-              ((k.rollover||0)>=1?'<span class="pill aged">carried '+k.rollover+'d</span>':"")+'</div></div>'+
-            '<div class="ds-pick">'+
-              ['["done","\u2713 Did it"]','["today","\u2192 Today"]','["leave","Leave"]'].map(function(x){ var o=JSON.parse(x);
-                return '<button class="chip" data-pick="'+o[0]+'" data-id="'+k.id+'" aria-pressed="'+(choice[k.id]===o[0])+'">'+o[1]+'</button>'; }).join("")+
-            '</div></div>';
+      var loose=looseEnds(), picks=reviewPicks();
+      var someday=S.tasks.filter(function(k){ return !k.day && k.status!=="done" && inScope(k.projectId); }).slice(0,6);
+      var hr=new Date().getHours();
+      var greet=hr<12?"Good morning":(hr<17?"Good afternoon":"Good evening");
+      var h = isDay
+        ? '<h3>🌅 '+greet+(S.name?", "+esc(S.name):"")+' — yesterday’s loose ends</h3>'+
+          '<p class="sub">A minute: celebrate, clear, choose.'+(fromDay?' Last here '+esc(niceDate(fromDay))+'.':'')+'</p>'
+        : '<h3>🧹 Weekly review</h3><p class="sub">Two minutes: celebrate, clear, choose.</p>';
+      h+='<div class="ins-tiles" style="margin-top:6px">'+tiles().map(function(x){
+        return '<div class="ins-tile"><b>'+x[0]+'</b><span>'+x[1]+'</span></div>'; }).join("")+'</div>';
+
+      h+='<div class="fld"><label>'+(isDay?"Loose ends":"Carried over")+' — decide, don’t drag</label>';
+      if(loose.length){
+        h+='<div class="modal-actions" style="justify-content:flex-start;margin:2px 0 6px">'+
+          picks.filter(function(m){ return m[0]!=="drop"&&m[0]!=="someday"; }).map(function(m){
+            var lbl=m[0]==="done" ? "All done" : "All → "+m[1].replace(/^\S+\s/,"");
+            return '<button class="chip" data-all="'+m[0]+'"'+(m[2]?' title="Move everything to '+esc(niceDate(m[2]))+'"':'')+'>'+lbl+'</button>'; }).join("")+
+          '</div><div class="ds-list">';
+        groupByProject(loose).forEach(function(g){
+          h+='<div class="grp-head"><span class="pdot" style="'+cbg(g.color)+'"></span>'+esc(g.name)+'<span class="cnt">'+g.items.length+'</span></div>';
+          g.items.forEach(function(k){
+            var w=whereWasIt(k,fromDay);
+            h+='<div class="ds-row" data-id="'+k.id+'"><div class="ds-main"><div class="ds-title">'+esc(k.title)+'</div>'+
+              '<div class="task-meta"><span class="pill '+w.cls+'">'+esc(w.label)+'</span>'+
+                '<span class="pill block">'+esc(niceDate(k.day))+'</span>'+spanPill(k.day,k.end)+
+                ((k.rollover||0)>=1?'<span class="pill aged">carried '+k.rollover+'d</span>':"")+'</div></div>'+
+              '<div class="ds-pick">'+picks.map(function(m){
+                return '<button class="chip" data-rv="'+m[0]+'" data-id="'+k.id+'"'+
+                  (m[2]?' title="Move to '+esc(niceDate(m[2]))+'"':'')+'>'+m[1]+'</button>'; }).join("")+'</div></div>';
+          });
         });
-      });
-      h+='</div><div class="modal-actions"><button class="btn ghost" data-x>Not now</button><button class="btn primary" id="ds-go">Start the day</button></div>';
+        h+='</div>';
+      } else h+='<div class="empty">'+(isDay?"Nothing left hanging 🎉":"Nothing carried 🎉")+'</div>';
+      h+='</div>';
+
+      h+='<div class="fld"><label>Someday shelf — anything ready to schedule?</label>'+
+        (someday.length?someday.map(function(k){
+          return '<div class="panel-task"><div class="task-title" style="font-size:13.5px">'+esc(k.title)+'</div>'+
+            '<div class="panel-move">'+picks.filter(function(m){ return !!m[2]; }).map(function(m){
+              return '<button data-rv="'+m[0]+'" data-id="'+k.id+'" title="Move to '+esc(niceDate(m[2]))+'">'+m[1]+'</button>'; }).join("")+'</div></div>';
+        }).join(""):'<div class="empty">The shelf is clear</div>')+'</div>';
+      h+='<div class="modal-actions"><button class="btn primary" data-x>'+(isDay?"Start the day":"Done — feels lighter")+'</button></div>';
       return h;
+    }
+    function apply(k,m){
+      if(m==="today") rescheduleTask(k,t);
+      else if(m==="tomorrow") rescheduleTask(k,addDays(t,1));
+      else if(m==="eow") rescheduleTask(k,nextDow(0));
+      else if(m==="nextweek") rescheduleTask(k,nextDow(1));
+      else if(m==="someday"){ k.day=null; k.end=null; k.block=null; k.rollover=0; delete k.carriedFrom; }
+      else if(m==="done"){ k.status="done"; k.completedOn=k.completedOn||k.day||t; }
+      else if(m==="drop"){
+        var i=S.tasks.indexOf(k); if(i<0) return;
+        S.tasks.splice(i,1);
+        // dropping deletes a task outright, so it gets the same undo every other delete here has
+        toastUndo("“"+k.title.slice(0,32)+"” dropped", function(){
+          S.tasks.splice(Math.min(i,S.tasks.length),0,k); save(); rebuild(); render(); });
+      }
     }
     function wire(){
       var root=document.querySelector(".modal");
       root.onclick=function(e){
+        if(e.target.closest("[data-x]")){ close(); render(); return; }
         var all=e.target.closest("[data-all]");
-        if(all){ open.forEach(function(k){ choice[k.id]=all.dataset.all; }); rebuild(); return; }
-        var b=e.target.closest("[data-pick]");
-        if(b){ choice[b.dataset.id]=b.dataset.pick;
-          var row=b.closest(".ds-row");
-          [].forEach.call(row.querySelectorAll("[data-pick]"),function(c){ c.setAttribute("aria-pressed",c===b); });
-          return; }
-        if(e.target.closest("[data-x]")) close();
-      };
-      var go=document.getElementById("ds-go");
-      if(go) go.onclick=function(){
-        var moved=0, done=0;
-        open.forEach(function(k){
-          var c=choice[k.id];
-          if(c==="done"){ k.status="done"; k.completedOn=k.day||t; done++; }
-          else if(c==="today"){ k.day=t; k.rollover=0; delete k.carriedFrom; moved++; }
-        });
-        save(); close(); render();
-        toast((moved?moved+" moved to today":"")+(moved&&done?" · ":"")+(done?done+" marked done":"")||"Nothing changed");
+        if(all){ looseEnds().forEach(function(k){ apply(k,all.dataset.all); }); save(); rebuild(); return; }
+        var b=e.target.closest("[data-rv]"); if(!b) return;
+        var k=S.tasks.find(function(x){return x.id===b.dataset.id;}); if(!k) return;
+        apply(k,b.dataset.rv); save(); rebuild();
       };
     }
     function rebuild(){ var m=document.querySelector(".modal"); if(m){ m.innerHTML=body(); wire(); } }
     modal(body(),"wide"); wire();
     return true;
   }
-  /* ---------- weekly review — celebrate, clear, choose ---------- */
-  function openReviewModal(){
-    function body(){
-      var t=today(), wk=addDays(t,-6);
-      var doneWk=S.tasks.filter(function(k){return k.completedOn&&k.completedOn>=wk;});
-      var byDay={}; doneWk.forEach(function(k){ byDay[k.completedOn]=(byDay[k.completedOn]||0)+1; });
-      var best=Object.keys(byDay).sort(function(a,b){return byDay[b]-byDay[a];})[0];
-      var carried=S.tasks.filter(function(k){return k.status==="todo"&&(k.rollover||0)>=1;}).slice(0,8);
-      var someday=S.tasks.filter(function(k){return !k.day&&k.status!=="done";}).slice(0,6);
-      var h='<h3>🧹 Weekly review</h3><p class="sub">Two minutes: celebrate, clear, choose.</p>';
-      h+='<div class="ins-tiles" style="margin-top:6px">'+
-        '<div class="ins-tile"><b>✅ '+doneWk.length+'</b><span>done · last 7 days</span></div>'+
-        '<div class="ins-tile"><b>🔥 '+doneStreak()+'</b><span>day streak</span></div>'+
-        (function(){ var mins=(S.sessions||[]).filter(function(x){return x.day>=wk;}).reduce(function(a,x){return a+(x.mins||0);},0);
-          if(!mins) return '';
-          var hrs=Math.floor(mins/60), rem=mins%60;
-          return '<div class="ins-tile"><b>⏱ '+(hrs?hrs+"h"+(rem?" "+rem+"m":""):mins+"m")+'</b><span>focused · last 7 days</span></div>'; })()+
-        (best?'<div class="ins-tile"><b>🏆 '+DOWNAMES[dow(best)]+'</b><span>best day · '+byDay[best]+' done</span></div>':'')+'</div>';
-      h+='<div class="fld"><label>Carried over — decide, don\'t drag</label>'+
-        (carried.length?carried.map(function(k){
-          return '<div class="panel-task"><div class="task-title" style="font-size:13.5px">'+esc(k.title)+' <span class="pill aged">'+k.rollover+'d</span></div>'+
-            '<div class="panel-move">'+[["today","📅 Today"],["tomorrow","→ Tomorrow"],["someday","💭 Someday"],["done","✓ Done"],["drop","✕ Drop"]].map(function(m){return '<button data-rv="'+m[0]+'" data-id="'+k.id+'">'+m[1]+'</button>';}).join("")+'</div></div>';
-        }).join(""):'<div class="empty">Nothing carried 🎉</div>')+'</div>';
-      h+='<div class="fld"><label>Someday shelf — anything ready to schedule?</label>'+
-        (someday.length?someday.map(function(k){
-          return '<div class="panel-task"><div class="task-title" style="font-size:13.5px">'+esc(k.title)+'</div>'+
-            '<div class="panel-move">'+[["today","📅 Today"],["tomorrow","→ Tomorrow"]].map(function(m){return '<button data-rv="'+m[0]+'" data-id="'+k.id+'">'+m[1]+'</button>';}).join("")+'</div></div>';
-        }).join(""):'<div class="empty">The shelf is clear</div>')+'</div>';
-      h+='<div class="modal-actions"><button class="btn primary" data-x>Done — feels lighter</button></div>';
-      return h;
-    }
-    function wire(){
-      document.querySelector("[data-x]").onclick=function(){ close(); render(); };
-      document.querySelector(".modal").onclick=function(e){
-        var b=e.target.closest("[data-rv]"); if(!b) return;
-        var k=S.tasks.find(function(x){return x.id===b.dataset.id;}); if(!k) return;
-        var m=b.dataset.rv;
-        if(m==="today"){ k.day=today(); k.rollover=0; }
-        else if(m==="tomorrow"){ k.day=addDays(today(),1); k.rollover=0; }
-        else if(m==="someday"){ k.day=null; k.block=null; k.rollover=0; }
-        else if(m==="done"){ k.status="done"; k.completedOn=today(); }
-        else if(m==="drop"){ S.tasks=S.tasks.filter(function(x){return x.id!==k.id;}); }
-        save(); rebuild();
-      };
-    }
-    function rebuild(){ var m=document.querySelector(".modal"); if(m){ m.innerHTML=body(); wire(); } }
-    modal(body()); wire();
-  }
+  function openDayStartReview(fromDay){ return openReviewModal("day",fromDay); }
 
   /* ---------- task-time reminders (browser notifications while open) ---------- */
   var notified={};
