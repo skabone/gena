@@ -422,7 +422,12 @@
      shrink below its content so overflow-y takes effect; max-height:100% does not resolve here. */
   .day-split .day-unsched{ margin-bottom:0; align-self:stretch; min-height:0; display:flex; flex-direction:column; }
   .day-split .day-unsched .day-unsched-h{ flex:none; }
-  .day-split .day-unsched > .tasks, .day-split .day-unsched > .day-tray{ flex:1 1 auto; min-height:0; overflow-y:auto; }
+  /* Desktop: the panel grows as tall as its items — the page scrolls, not a 230px inner box */
+  .day-split .day-unsched > .tasks, .day-split .day-unsched > .day-tray{ flex:1 1 auto; }
+  @media (min-width:761px){
+    .day-split ul.day-tray{ max-height:none; overflow:visible; }   /* outweighs the base 230px cap below */
+    .day-split{ align-items:start; }
+  }
   /* narrow column: same reasoning as the right panel — drop the secondary row buttons so titles keep their width */
   .day-split .day-unsched .task-addsub, .day-split .day-unsched .task-focus, .day-split .day-unsched .task-star, .day-split .day-unsched .task-bump{ display:none; }
   @media (max-width:900px){
@@ -622,7 +627,21 @@
   .day-tray.empty-tray{ color:var(--ink-faint); font-size:13px; padding:6px 2px; }
   .day-tray.drag-over{ outline:2px dashed var(--terra); outline-offset:3px; border-radius:10px; }
   .day-grid{ background:var(--sheet); border:1px solid var(--line-soft); border-radius:14px; overflow:hidden; }
-  .hour-row{ display:flex; align-items:stretch; border-top:1px solid var(--line-soft); min-height:46px; }
+  .hour-row{ display:flex; align-items:stretch; border-top:1px solid var(--line-soft); height:48px; }
+  .day-grid{ position:relative; }
+  /* the block layer floats over the slot column; during a drag it goes transparent so the hour slots
+     underneath keep receiving the drop */
+  .tb-layer{ position:absolute; top:0; bottom:0; left:63px; right:4px; pointer-events:none; }
+  .tblock{ position:absolute; pointer-events:auto; border-radius:8px; padding:3px 8px; overflow:hidden;
+    cursor:pointer; font-size:12px; color:#fff; box-shadow:0 1px 3px rgba(0,0,0,.12); z-index:2;
+    display:flex; flex-direction:column; gap:0; border-left:3px solid rgba(0,0,0,.18); }
+  .tblock.plain{ background:var(--card); color:var(--ink); border:1.5px solid var(--line); border-left:3px solid var(--terra); }
+  .tblock.done{ opacity:.5; }
+  .tblock.done .tb-title{ text-decoration:line-through; }
+  .tblock:hover{ filter:brightness(1.05); z-index:4; }
+  .tb-time{ font-size:10px; font-weight:700; opacity:.85; line-height:1.3; }
+  .tb-title{ font-weight:650; line-height:1.25; }
+  .dragging .tblock{ pointer-events:none; }
   .hour-row:first-child{ border-top:0; }
   .hour-label{ flex:0 0 62px; padding:7px 10px; font-size:11px; color:var(--ink-faint); text-align:right; border-right:1px solid var(--line-soft); user-select:none; }
   .hourslot{ position:relative; flex:1 1 auto; min-width:0; padding:4px 8px; }
@@ -937,7 +956,7 @@
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-08-24 15:17";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-08-24 15:25";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1647,6 +1666,8 @@
       '<button type="button" class="sub-mv" data-ie="subdown" data-i="'+i+'" '+(i===n-1?'disabled':'')+' aria-label="Move down" title="Move down">▾</button></span>'+
       '<button type="button" class="task-x" style="opacity:1" data-ie="subdel" data-i="'+i+'" aria-label="Remove subtask">✕</button></div>';
   }
+  var DUR_OPTS=[["","1 hour"],["15","15 min"],["30","30 min"],["45","45 min"],["90","1.5 hours"],
+                ["120","2 hours"],["180","3 hours"],["240","4 hours"],["360","6 hours"],["480","8 hours"]];
   function inlineEditorLi(k){
     var p=proj(k.projectId);
     var projOpts=S.projects.map(function(x){return '<option value="'+x.id+'" '+(x.id===k.projectId?"selected":"")+'>'+esc(x.name)+'</option>';}).join("");
@@ -1673,6 +1694,8 @@
           '<div class="ie-lbl">Block</div><div class="chips" id="ie-block">'+
             BLKS.map(function(b){return '<button type="button" class="chip" data-b="'+b[0]+'" aria-pressed="'+((k.block||"")===b[0])+'">'+b[1]+'</button>';}).join("")+'</div>'+
           '<div class="ie-lbl">Time</div><input type="time" id="ie-time" value="'+esc(k.at||"")+'" aria-label="Time"/>'+
+          '<div class="ie-lbl">Length</div><select id="ie-dur" aria-label="How long">'+DUR_OPTS.map(function(o){
+            return '<option value="'+o[0]+'"'+((k.dur||"")==o[0]?" selected":"")+'>'+o[1]+'</option>'; }).join("")+'</select>'+
           '<div class="ie-lbl">Importance</div><div class="chips" id="ie-imp">'+
             '<button type="button" class="chip" data-i="0" aria-pressed="'+(!k.priority)+'">Normal</button>'+
             '<button type="button" class="chip" data-i="1" aria-pressed="'+(!!k.priority)+'">★ Important</button></div>'+
@@ -1833,14 +1856,43 @@
   function viewDayGrid(){
     var d=viewDay, isToday=d===today();
     var START=6, END=23;                       // 6am–11pm rows
-    // Done tasks stay on the grid (taskLi strikes them through) instead of vanishing — you lose the
-    // record of what the day actually held otherwise.
+    var HOURH=48;                              // px per hour — every block position derives from this
+    // Done TIMED tasks stay on the grid struck-through (the day's record); done UNTIMED ones leave the
+    // Unscheduled tray — a to-triage list is no place for finished work.
     var all=S.tasks.filter(function(k){ return taskOnDay(k,d) && inScope(k.projectId); });
     var isTimed=function(k){ return /^\d{2}:\d{2}$/.test(k.at||""); };
-    var timed=all.filter(isTimed), unsched=all.filter(function(k){ return !isTimed(k); });
+    var timed=all.filter(isTimed), unsched=all.filter(function(k){ return !isTimed(k) && k.status!=="done"; });
+    var mins=function(at){ return +at.slice(0,2)*60 + +at.slice(3,5); };
     var earliest=timed.reduce(function(m,k){ return Math.min(m,+k.at.slice(0,2)); }, START);
-    var latest=timed.reduce(function(m,k){ return Math.max(m,+k.at.slice(0,2)); }, END);
+    var latest=timed.reduce(function(m,k){ return Math.max(m, Math.ceil((mins(k.at)+(k.dur||60))/60)-1); }, END);
     var lo=Math.min(START,earliest), hi=Math.max(END,latest);
+    // ---- overlap layout, the way calendar apps do it: overlapping blocks form a cluster and share
+    // the width in columns; a long block and the short ones inside its window sit side by side ----
+    var blocks=timed.map(function(k){ var st=mins(k.at); return {k:k, s:st, e:st+(k.dur||60)}; })
+      .sort(function(a,b){ return a.s-b.s || (b.e-b.s)-(a.e-a.s); });
+    (function(){
+      var cluster=[], cols=[], clusterEnd=-1;
+      function flush(){ cluster.forEach(function(b){ b.cols=cols.length; }); cluster=[]; cols=[]; }
+      blocks.forEach(function(b){
+        if(cluster.length && b.s>=clusterEnd) flush();
+        var i=0; while(i<cols.length && cols[i]>b.s) i++;
+        b.col=i; cols[i]=b.e; cluster.push(b);
+        clusterEnd=Math.max(clusterEnd,b.e);
+      });
+      flush();
+    })();
+    var layer=blocks.map(function(b){
+      var k=b.k, p=k.projectId?proj(k.projectId):null;
+      var top=((b.s-lo*60)/60*HOURH).toFixed(1);
+      var hpx=Math.max(24,((b.e-b.s)/60*HOURH)-3).toFixed(1);
+      var w=(100/b.cols), l=(b.col*w);
+      var endT=String(Math.floor(b.e/60)%24).padStart(2,"0")+":"+String(b.e%60).padStart(2,"0");
+      return '<div class="tblock'+(k.status==="done"?" done":"")+(p?"":" plain")+'" draggable="true" data-id="'+k.id+'" data-act="tb-edit" '+
+        'style="top:'+top+'px;height:'+hpx+'px;left:calc('+l+'% + 2px);width:calc('+w+'% - 5px);'+(p?cbg(p.color):"")+'" '+
+        'title="'+esc(k.title)+' · '+fmtTime(k.at)+'–'+fmtTime(endT)+'">'+
+        '<span class="tb-time">'+fmtTime(k.at)+'–'+fmtTime(endT)+'</span>'+
+        '<span class="tb-title">'+(k.priority?"★ ":"")+esc(k.title)+'</span></div>';
+    }).join("");
     var evs=S.events.filter(function(e){ return evOnDay(e,d); });
     var head='<div class="day-head">'+
       '<button class="icon-btn" data-act="daynav" data-d="-1" aria-label="Previous day" title="Previous day">‹</button>'+
@@ -1857,15 +1909,13 @@
     var rows='';
     for(var h=lo; h<=hi; h++){
       var hh=String(h).padStart(2,"0");
-      var slot=timed.filter(function(k){ return +k.at.slice(0,2)===h; }).sort(function(a,b){ return a.at.localeCompare(b.at); });
       var label=(h%12||12)+(h<12?'am':'pm');
       var line=(isToday&&nowH===h)?'<div class="now-line" style="top:'+(nowM/60*100).toFixed(1)+'%"></div>':'';
       rows+='<div class="hour-row"><div class="hour-label">'+label+'</div>'+
-        '<div class="hourslot" data-hour="'+hh+'">'+line+
-          (slot.length?'<ul class="tasks">'+slot.map(taskLi).join("")+'</ul>':'')+
-        '</div></div>';
+        '<div class="hourslot" data-hour="'+hh+'">'+line+'</div></div>';
     }
-    return head+evBanner+'<div class="day-split"><div class="day-gridwrap"><div class="day-grid">'+rows+'</div></div>'+tray+'</div>';
+    return head+evBanner+'<div class="day-split"><div class="day-gridwrap"><div class="day-grid">'+rows+
+      '<div class="tb-layer">'+layer+'</div></div></div>'+tray+'</div>';
   }
   function viewToday(){
     var t=today(), vd=viewDay;
@@ -2657,6 +2707,7 @@
         t.end=(dv&&evv&&evv>dv)?evv:null;   // no start, or an end that isn't later, means a single day
         t.due=(document.getElementById("ie-due")||{}).value||null;
         t.at=document.getElementById("ie-time").value||null;
+        t.dur=+((document.getElementById("ie-dur")||{}).value)||null;
         t.priority=iePrio;
         t.subs=ieSubs.filter(function(sb){return (sb.text||"").trim();});
         var nv=(document.getElementById("ie-notes").value||"").trim();
@@ -2760,6 +2811,10 @@
         dragSub={owner:sub.dataset.subof, i:+sub.dataset.si, kind:sub.dataset.subkind||"sub"};
         e.dataTransfer.effectAllowed="move"; try{ e.dataTransfer.setData("text/plain",sub.dataset.subof); }catch(err){}
         sub.classList.add("sub-dragging"); return; }
+      var tb=e.target.closest&&e.target.closest(".tblock[data-id]");
+      if(tb){ dragTaskId=tb.dataset.id; v.classList.add("dragging");
+        e.dataTransfer.effectAllowed="move"; try{ e.dataTransfer.setData("text/plain",tb.dataset.id); }catch(err){}
+        showDragDock(); return; }
       var li=e.target.closest&&e.target.closest(".task[data-id]");
       var jc=e.target.closest&&e.target.closest(".job-card[data-id]");
       if(li && li.dataset.focus){ dragFocusId=li.dataset.id; e.dataTransfer.effectAllowed="move"; try{ e.dataTransfer.setData("text/plain",li.dataset.id); }catch(err){} return; }
@@ -2769,7 +2824,7 @@
         if(unit && !e.target.closest("input,textarea,[contenteditable=true]")){ dragUnitKey=unit.dataset.unit; unit.classList.add("unit-dragging"); e.dataTransfer.effectAllowed="move"; try{ e.dataTransfer.setData("text/plain",dragUnitKey); }catch(err){} }
         return; }
       e.dataTransfer.effectAllowed="move"; try{ e.dataTransfer.setData("text/plain",(li||jc).dataset.id); }catch(err){}
-      if(dragTaskId && S.tasks.some(function(x){return x.id===dragTaskId;})) showDragDock();
+      if(dragTaskId && S.tasks.some(function(x){return x.id===dragTaskId;})){ v.classList.add("dragging"); showDragDock(); }
     };
     v.ondragover=function(e){
       if(dragSub){
@@ -2856,7 +2911,7 @@
         if(j&&j.stage!==col.dataset.stage){ j.stage=col.dataset.stage; save(); render(); toast("Moved to "+col.dataset.stage); } } }
       dragTaskId=null; dragJobId=null; dragNestTarget=null; dragFocusId=null; dragUnitKey=null; clearDrag(); hideDragDock();
     };
-    v.ondragend=function(){ dragTaskId=null; dragJobId=null; dragNestTarget=null; dragFocusId=null; dragUnitKey=null; [].forEach.call(v.querySelectorAll(".unit-dragging"),function(x){x.classList.remove("unit-dragging");}); clearDrag(); hideDragDock(); };
+    v.ondragend=function(){ v.classList.remove("dragging"); dragTaskId=null; dragJobId=null; dragNestTarget=null; dragFocusId=null; dragUnitKey=null; [].forEach.call(v.querySelectorAll(".unit-dragging"),function(x){x.classList.remove("unit-dragging");}); clearDrag(); hideDragDock(); };
     // ---- touch-drag (Phase 6): long-press to pick up, drag to move. Reuses the mouse drag/drop handlers via synthesized events. ----
     if(!v.__touchDragBound){ v.__touchDragBound=true; (function(){
       var tEl=null, tDragging=false, tTimer=null, tStartY=0, tStartX=0, tLastX=0, tLastY=0;
@@ -2915,6 +2970,8 @@
         if(inFocus(tf)){ var fa=S.focus[viewDay]||[], fx2=fa.findIndex(function(x){return x.taskId===tf;});
           if(fx2>=0){ fa.splice(fx2,1); save(); render(); toast("Removed from Today’s Focus"); } }
         else addTaskToFocus(tf); }
+      else if(act==="tb-edit"){ var tbk=S.tasks.find(function(x){return x.id===(id||anyId);});
+        if(tbk) openTaskModal({edit:tbk}); }   // a positioned block has no room for the inline editor
       else if(act==="bump"){ var bk=S.tasks.find(function(x){return x.id===a.dataset.id;});
         if(bk){ var bto=a.dataset.d; rescheduleTask(bk,bto); save(); render();
           toast(bto===today()?"Moved to today":"Moved to "+niceDate(bto)); } }
@@ -3283,6 +3340,8 @@
         '<div class="fld"><label>Day <span style="text-transform:none;letter-spacing:0;font-weight:600">(empty = someday)</span></label><input id="m-day" type="date" value="'+(ed?(base.day||""):(base.day||today()))+'"/></div>'+
         '<div class="fld"><label>Ends <span style="text-transform:none;letter-spacing:0;font-weight:600">(blank = one day)</span></label><input id="m-end" type="date" value="'+esc(base.end||"")+'"/></div>'+
         '<div class="fld"><label>Due <span style="text-transform:none;letter-spacing:0;font-weight:600">(deadline — separate from the planned day)</span></label><input id="m-due" type="date" value="'+esc(base.due||"")+'"/></div>'+
+        '<div class="fld"><label>Length <span style="text-transform:none;letter-spacing:0;font-weight:600">(with a time set — how much of the day it blocks)</span></label><select id="m-dur">'+DUR_OPTS.map(function(o){
+          return '<option value="'+o[0]+'"'+((base.dur||"")==o[0]?" selected":"")+'>'+o[1]+'</option>'; }).join("")+'</select></div>'+
         '<div class="fld"><label>'+(ed?"Schedule":"Schedule — pick one or several")+'</label><div class="chips" id="m-block">'+
           BLKS.map(function(b){return '<button class="chip" data-b="'+b[0]+'" aria-pressed="'+(!!selBlocks[b[0]])+'">'+b[1]+'</button>';}).join("")+'</div></div>'+
         '<div class="fld"><label>Time</label><input id="m-time" type="time" value="'+(base.at||"")+'"/></div>'+
@@ -3377,6 +3436,7 @@
       var day=document.getElementById("m-day").value||null;
       var endD=(document.getElementById("m-end")||{}).value||null;
       var dueD=(document.getElementById("m-due")||{}).value||null;
+      var durV=+((document.getElementById("m-dur")||{}).value)||null;
       var chosen=Object.keys(selBlocks).map(function(b){return b==="allday"?null:b;});
       if(!chosen.length) chosen=[null];
       var tv=document.getElementById("m-time").value||null;
@@ -3393,13 +3453,13 @@
       if(msn&&msn.value.trim()) subs.push({id:uid(),text:msn.value.trim(),done:false});
       var cleanSubs=subs.filter(function(s){return (s.text||"").trim();});
       var ntv=rteValue("m-notes")||null;
-      if(ed){ ed.title=title; ed.projectId=pid; ed.day=day; ed.end=endD; ed.due=dueD; ed.block=chosen[0]; ed.at=tv; ed.priority=priorityV; ed.subs=cleanSubs; ed.notes=ntv; ed.personIds=selPeople.slice();
+      if(ed){ ed.title=title; ed.projectId=pid; ed.day=day; ed.end=endD; ed.due=dueD; ed.dur=durV; ed.block=chosen[0]; ed.at=tv; ed.priority=priorityV; ed.subs=cleanSubs; ed.notes=ntv; ed.personIds=selPeople.slice();
         if(etp){
           if(freq==="once"){ S.templates=S.templates.filter(function(x){return x.id!==etp.id;}); delete ed.tplId; }
           else { etp.title=title; etp.projectId=pid; etp.block=chosen[0]; etp.freq=freq; etp.weekdays=weekdays; etp.interval=+(document.getElementById("m-int")||{}).value||intervalV; etp.priority=priorityV; }
         } else if(freq!=="once"){ var ntp={id:uid(),title:title,projectId:pid,block:chosen[0],freq:freq,start:day||today(),weekdays:weekdays,interval:+(document.getElementById("m-int")||{}).value||2,priority:priorityV}; S.templates.push(ntp); ed.tplId=ntp.id; generateRecurring(today()); }
         save(); close(); render(); toast(etp?(freq==="once"?"Saved — repeat stopped":"Saved — series updated"):(freq!=="once"?"Saved — now repeats":"Saved")); return; }
-      if(freq==="once"){ chosen.forEach(function(bl){ S.tasks.push({id:uid(),title:title,projectId:pid,personIds:selPeople.slice(),status:"todo",day:day,end:endD,due:dueD,block:bl,at:tv,priority:priorityV,rollover:0,notes:ntv,subs:cleanSubs.map(function(s){return {id:uid(),text:s.text,done:s.done};}),created:today()}); }); }
+      if(freq==="once"){ chosen.forEach(function(bl){ S.tasks.push({id:uid(),title:title,projectId:pid,personIds:selPeople.slice(),status:"todo",day:day,end:endD,due:dueD,dur:durV,block:bl,at:tv,priority:priorityV,rollover:0,notes:ntv,subs:cleanSubs.map(function(s){return {id:uid(),text:s.text,done:s.done};}),created:today()}); }); }
       else { var tp={id:uid(),title:title,projectId:pid,block:chosen[0],freq:freq,start:day||today(),weekdays:weekdays,interval:+(document.getElementById("m-int")||{}).value||2,priority:priorityV};
         S.templates.push(tp); generateRecurring(today()); }
       save(); close(); render(); if(!dismiss) toast(freq==="once"&&chosen.length>1?chosen.length+" tasks added":"Task added");
@@ -5020,7 +5080,7 @@
     S.tasks.forEach(function(k){ if(!k.day || k.status==="done" || lastDay(k.day,k.end)<horizon) return;
       var timed=/^\d{2}:\d{2}$/.test(k.at||"");
       L.push("BEGIN:VEVENT","UID:task-"+k.id+"@daybook","SUMMARY:"+icsEsc(k.title));
-      if(timed){ L.push("DTSTART:"+k.day.replace(/-/g,"")+"T"+k.at.replace(":","")+"00","DURATION:PT30M"); }
+      if(timed){ L.push("DTSTART:"+k.day.replace(/-/g,"")+"T"+k.at.replace(":","")+"00","DURATION:PT"+(k.dur||60)+"M"); }
       else { L.push("DTSTART;VALUE=DATE:"+k.day.replace(/-/g,""));
         if(k.end&&k.end>k.day) L.push("DTEND;VALUE=DATE:"+addDays(k.end,1).replace(/-/g,"")); }   // DTEND is exclusive
       if(k.notes){ var n=htmlToText(k.notes); if(n) L.push("DESCRIPTION:"+icsEsc(n)); }
