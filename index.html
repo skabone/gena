@@ -887,7 +887,7 @@
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-08-24 11:31";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-08-24 11:47";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1814,8 +1814,7 @@
       '<button class="chip" data-act="panel-toggle" aria-pressed="'+!!S.panelOpen+'" title="Backlog & log panel">📋 '+(S.panelOpen?"Hide":"Show")+' panel'+(doneCount?' · '+doneCount+' done':'')+'</button>'+
       '</div>'+
       '<p class="sub"'+(total?' style="margin-bottom:0"':'')+'>'+status+'</p>'+
-      (total?'<div class="day-prog" role="img" aria-label="'+doneCount+' of '+total+' done"><span style="width:'+Math.round(100*doneCount/total)+'%"></span></div>':'')+
-      (total?'<div class="day-prog" aria-hidden="true"><span style="width:'+Math.round(100*doneCount/total)+'%"></span></div>':"");
+      (total?'<div class="day-prog" role="img" aria-label="'+doneCount+' of '+total+' done"><span style="width:'+Math.round(100*doneCount/total)+'%"></span></div>':'');
 
     html+='<div class="today-main">';
     if(isToday) html+=spuCourseDashboardHtml();
