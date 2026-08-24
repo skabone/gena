@@ -147,8 +147,8 @@
     font-family:inherit; font-size:14px; border-radius:12px; padding:11px 13px; cursor:pointer;
     background: var(--card); color: var(--ink); border:1.5px solid var(--line);
   }
-  .capture .add { background: var(--terra); color:#fff; border-color: var(--terra); font-weight:700; padding:11px 18px; }
-  .capture .add:hover { background: var(--terra-deep); }
+  .capture .add { background: var(--good); color:#fff; border-color: var(--good); font-weight:700; padding:11px 18px; }
+  .capture .add:hover { background: var(--good-deep); }
 
   h2.view-h { font-size: 22px; font-weight:800; margin: 4px 0 2px; letter-spacing:-.01em; }
   .sub { color: var(--ink-soft); font-size: 13.5px; margin:0 0 16px; }
@@ -174,9 +174,22 @@
   .task-meta{ display:flex; align-items:center; gap:7px; margin-top:4px; flex-wrap:wrap; }
   .pill{ font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; display:inline-flex; align-items:center; gap:4px; }
   .pill.proj{ color:#fff; }
-  .pill.aged{ background: var(--warn-bg); color: var(--warn); }
-  .pill.rec{ background: var(--terra-bg); color: var(--terra-deep); }
-  .pill.block{ background: var(--line-soft); color: var(--ink-soft); }
+  /* Only the project pill keeps a solid fill — everything else is quiet text, so titles win.
+     "carried" earns red at a week; before that it's information, not an alarm. */
+  .pill.aged{ background:transparent; color:var(--ink-faint); padding-left:0; padding-right:6px; }
+  .pill.aged.hot{ background: var(--warn-bg); color: var(--warn); padding:2px 8px; }
+  .pill.rec{ background:transparent; color:var(--terra-deep); padding-left:0; padding-right:6px; }
+  .pill.block{ background:transparent; color:var(--ink-faint); padding-left:0; padding-right:6px; }
+  .pill.more{ background:var(--line-soft); color:var(--ink-soft); cursor:default; }
+  /* carried card: one primary action, the rest behind a native fold — 33 items × 6 buttons was a wall */
+  .pm-fold{ display:inline-block; }
+  .pm-fold summary{ list-style:none; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:800; color:var(--ink-faint); border:1px solid var(--line); border-radius:999px;
+    padding:2px 9px; background:var(--card); }
+  .pm-fold summary::-webkit-details-marker{ display:none; }
+  .pm-fold summary:hover{ color:var(--ink); border-color:var(--ink-faint); }
+  .pm-fold[open] summary{ background:var(--line-soft); }
+  .pm-fold>.panel-move{ margin-top:5px; }
   .task-x{ flex:none; background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:16px; padding:2px 4px; border-radius:6px; opacity:0; transition:opacity .15s; }
   .task:hover .task-x{ opacity:1; }
   .task-x:hover{ color: var(--terra-deep); background: var(--terra-bg); }
@@ -332,6 +345,14 @@
     padding:0; width:112px; cursor:pointer; }
   .rv-proj{ font-family:inherit; font-size:12px; border:1.5px solid var(--line); border-radius:999px;
     padding:3px 8px; background:var(--card); color:var(--ink); max-width:150px; }
+  .rv-extra{ display:inline-block; }
+  .rv-extra summary{ list-style:none; cursor:pointer; display:inline-flex; align-items:center;
+    font-size:12px; font-weight:800; color:var(--ink-faint); border:1.5px solid var(--line); border-radius:999px;
+    padding:4px 11px; background:var(--card); }
+  .rv-extra summary::-webkit-details-marker{ display:none; }
+  .rv-extra[open] summary{ background:var(--line-soft); color:var(--ink); }
+  .rv-extra-row{ display:inline-flex; gap:5px; flex-wrap:wrap; align-items:center; margin-left:5px; }
+  .ins-tile b{ font-size:16px; letter-spacing:.01em; }
   .rv-tabs{ display:flex; gap:6px; margin:12px 0 2px; flex-wrap:wrap; }
   .rv-tabs .chip[aria-pressed="true"]{ background:var(--terra); border-color:var(--terra); color:#fff; }
   .ds-list{ max-height:56vh; overflow-y:auto; margin:4px 0 2px; }
@@ -458,7 +479,7 @@
   .imp-item:last-child{ border-bottom:none; }
   .imp-badge{ flex:none; font-size:11px; font-weight:700; padding:2px 9px; border-radius:999px; white-space:nowrap; }
 
-  .pill.imp{ background:var(--warn-bg); color:var(--warn); }
+  .pill.imp{ background:transparent; color:var(--warn); padding-left:0; padding-right:6px; }
   .task-main{ cursor:pointer; }
   .task-star{ flex:none; background:transparent; border:none; cursor:pointer; font-size:16px; color:var(--ink-faint); padding:2px 3px; line-height:1; }
   .task-star.on{ color:var(--warn); }
@@ -647,7 +668,7 @@
   .sub .chk.done::after{ left:4px; top:1px; width:4px; height:7px; }
   .sub-t{ font-size:13px; color:var(--ink-soft); }
   .sub.done .sub-t{ text-decoration:line-through; color:var(--ink-faint); }
-  .pill.subs-n{ background:var(--line-soft); color:var(--ink-soft); }
+  .pill.subs-n{ background:transparent; color:var(--ink-soft); }
   .msub{ display:flex; gap:8px; align-items:center; margin-bottom:6px; }
   .msub input{ flex:1; }
   .msub .chk{ flex:none; }
@@ -761,6 +782,22 @@
     .card{ padding:14px; }
     h2.view-h{ font-size:20px; }
     .jobs-col{ flex-basis:80vw; }
+  }
+  /* ---- phone header compression: content, not chrome, above the fold ---- */
+  @media (max-width:760px){
+    .capture{ margin:10px 0 6px; }
+    .capture select#q-proj, .capture #q-more{ display:none; }  /* @project parses in the input; ⋯ lives in the editor */
+    .capture input.q{ flex:1 1 auto; min-width:0; }
+    .global-head{ margin-top:8px; }
+    .today-head{ gap:8px; align-items:center; }
+    .today-head h2.view-h{ font-size:19px; margin:0; flex:1 1 auto; min-width:0; }
+    .day-nav .icon-btn{ width:32px; height:32px; }
+    [data-act="panel-toggle"], #rb-toggle{ display:none !important; }  /* the side panel isn't beside you on a phone */
+    .appbar-inner{ row-gap:4px; }
+    /* touch shows the row buttons permanently — at 375px they were squeezing titles to a word a line */
+    li.task{ flex-wrap:wrap; }
+    li.task .task-main{ min-width:58%; }
+    .task-addsub,.task-bump,.task-focus,.task-star,.task-x{ padding:2px 3px; font-size:13px; }
   }
 </style>
 
@@ -887,7 +924,7 @@
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-08-24 11:47";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-08-24 12:01";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -906,7 +943,7 @@
   var IDMAPS=["notes","focus","habitLog"]; // date-keyed maps merged per key
   // Settings/scalars merged per-field by their own modified-time (_sm) instead of taken wholesale from
   // whichever file saved last — otherwise a stale cloud push silently resets your name / active profile.
-  var SCALARS=["name","activeProfile","filterProjects","sbOpen","panelOpen","skin","theme","calView","calAnchor","tlView","collapsed","remind","proxy","notesRTE","lastExport","autoCarry","autoCarryRev","accent","density","font","subsHidden","expandOnAdd","eveningHour","reviewDone","todayOrder"];
+  var SCALARS=["name","activeProfile","filterProjects","sbOpen","panelOpen","skin","theme","calView","calAnchor","tlView","collapsed","remind","proxy","notesRTE","lastExport","autoCarry","autoCarryRev","accent","density","font","subsHidden","expandOnAdd","eveningHour","reviewDone","nameNudgeGone","todayOrder"];
   function isBlankVal(v){ return v===undefined||v===null||v===""; }
   function clone(x){ return JSON.parse(JSON.stringify(x)); }
   function itemSig(x){ if(!x||typeof x!=="object") return JSON.stringify(x); var o={}; for(var k in x){ if(k!=="_m") o[k]=x[k]; } return JSON.stringify(o); }
@@ -1196,7 +1233,10 @@
   var WDFULL=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   function ordinal(n){ var s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
   function fullDate(s){ var d=parse(s); return WDFULL[d.getDay()]+", "+MONTHS[d.getMonth()]+" "+ordinal(d.getDate())+", "+d.getFullYear(); }
-  function clockHtml(){ var now=new Date(); var loc=now.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}); var sea=now.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"America/Los_Angeles"}); return '<b>'+loc+'</b> your time <span style="opacity:.45">·</span> <span class="sea">'+sea+' Seattle</span>'; }
+  function clockHtml(){ var now=new Date(); var loc=now.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}); var sea=now.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"America/Los_Angeles"});
+    // when local time IS Seattle time, one clock is the truth and two is noise
+    if(sea===loc) return '<b>'+loc+'</b>';
+    return '<b>'+loc+'</b> your time <span style="opacity:.45">·</span> <span class="sea">'+sea+' Seattle</span>'; }
   function updateClock(){ var el=document.getElementById("clock"); if(el) el.innerHTML=clockHtml(); var g=document.getElementById("g-clock"); if(g) g.innerHTML=clockHtml(); }
   function fold(key,label,body,action){ var open=S.collapsed[key]?"":" open"; return '<details class="card fold" data-fold="'+key+'"'+open+'><summary><span class="fold-label">'+label+'</span>'+(action||"")+'<span class="fold-chev">▸</span></summary><div class="fold-body">'+body+'</div></details>'; }
   function foldProg(done,total){ if(!total) return ""; var pct=Math.round(100*done/total);
@@ -1480,11 +1520,9 @@
     var todayOpen=S.tasks.filter(function(k){return taskOnDay(k,today())&&k.status!=="done"&&inScope(k.projectId);}).length;
     var backlogOpen=S.tasks.filter(function(k){return !k.day&&k.status!=="done"&&inScope(k.projectId);}).length;
     var VIEWCNT={today:todayOpen, backlog:backlogOpen};
-    var VIEWS=[["today","📅","Today"],["week","📆","Week"],["backlog","🗃","Backlog"],["hub","✨","Hub"],["projects","🗂","Projects"],["people","👥","People"],["calendar","🗓","Calendar"],["timeline","📈","Timeline"]];
+    // The Views list duplicated the top nav chip-for-chip; the sidebar earns its width with what is
+    // uniquely its own — profiles and project filters.
     var h='<div class="sb-brand">🌼 Gena<button class="sb-act" data-sb="collapse" title="Hide the sidebar">⟨ hide</button></div>';
-    h+='<div class="sb-card"><div class="sb-h">Views</div>'+VIEWS.map(function(v){
-      return '<button class="sb-row" data-sb="view" data-v="'+v[0]+'" aria-pressed="'+(view===v[0])+'">'+v[1]+'<span class="sb-name">'+v[2]+'</span>'+(VIEWCNT[v[0]]?'<span class="cnt">'+VIEWCNT[v[0]]+'</span>':"")+'</button>';
-    }).join("")+'</div>';
     var favCnt=S.projects.filter(function(p){return p.fav;}).length;
     h+='<div class="sb-card"><div class="sb-h">Profiles<button class="sb-act" data-sb="newprofile">+ new</button></div>';
     h+='<button class="sb-row" data-sb="profile" data-id="all" aria-pressed="'+(S.activeProfile==="all")+'">🌐<span class="sb-name">All</span></button>';
@@ -1532,9 +1570,11 @@
   document.getElementById("rb-scrim").onclick=function(){ document.body.classList.remove("rb-open"); };
   function renderGlobalHead(){
     var el=document.getElementById("global-head"); if(!el) return;
-    el.innerHTML=(S.name?'<span class="gh-name">'+esc(S.name)+'</span>':'<button class="chip" id="gh-setname" style="padding:3px 11px">👋 Add your name</button>')+
-      '<span class="gh-date">'+fullDate(today())+'</span>'+
+    el.innerHTML=(S.name?'<span class="gh-name">'+esc(S.name)+'</span>'
+        :(S.nameNudgeGone?'':'<button class="chip" id="gh-setname" style="padding:3px 11px">👋 Add your name</button><button class="chip" id="gh-setname-x" style="padding:3px 8px" title="Don’t ask again" aria-label="Dismiss">✕</button>'))+
       '<span class="clock" id="g-clock">'+clockHtml()+'</span>';
+    var bx=document.getElementById("gh-setname-x");
+    if(bx) bx.onclick=function(){ S.nameNudgeGone=true; save(); renderGlobalHead(); };
     var b=document.getElementById("gh-setname");
     if(b) b.onclick=function(){ document.getElementById("menu-btn").onclick(); setTimeout(function(){ var n=document.getElementById("set-name"); if(n) n.focus(); },0); };
   }
@@ -1611,17 +1651,24 @@
   }
   function taskLi(k){
     var p=proj(k.projectId);
-    var pills="";
-    if(k.priority) pills+='<span class="pill imp">★ important</span>';
-    if(p) pills+='<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>';
-    if(k.tplId) pills+='<span class="pill rec">↻ repeats</span>';
-    if(k.rollover>=1) pills+='<span class="pill aged">carried '+k.rollover+'d</span>';
-    if(k.dueLabel) pills+='<span class="pill block">'+esc(k.dueLabel)+'</span>';
-    pills+=spanPill(k.day,k.end);
-    if(k.block) pills+='<span class="pill block">'+k.block+'</span>';
-    if(k.at) pills+='<span class="pill block">🕒 '+fmtTime(k.at)+'</span>';
-    if(k.notes) pills+='<span class="pill block" title="'+esc(htmlToText(k.notes))+'">📝</span>';
-    pills+=peoplePills(k);
+    // pills as a list, so the row shows the few that matter and folds the rest into "+N" —
+    // five saturated chips per row meant the titles lost every glance
+    var pl=[];
+    if(k.priority) pl.push('<span class="pill imp">★ important</span>');
+    if(p) pl.push('<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>');
+    if(k.tplId) pl.push('<span class="pill rec">↻ repeats</span>');
+    if(k.rollover>=1) pl.push('<span class="pill aged'+(k.rollover>=7?" hot":"")+'">carried '+k.rollover+'d</span>');
+    if(k.dueLabel) pl.push('<span class="pill block">'+esc(k.dueLabel)+'</span>');
+    var spn=spanPill(k.day,k.end); if(spn) pl.push(spn);
+    if(k.block) pl.push('<span class="pill block">'+k.block+'</span>');
+    if(k.at) pl.push('<span class="pill block">🕒 '+fmtTime(k.at)+'</span>');
+    if(k.notes) pl.push('<span class="pill block" title="'+esc(htmlToText(k.notes))+'">📝</span>');
+    var ppl=peoplePills(k); if(ppl) pl.push(ppl);
+    var pills;
+    if(pl.length>4){
+      var hidden=pl.slice(3).map(function(x){return x.replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim();}).join(" · ");
+      pills=pl.slice(0,3).join("")+'<span class="pill more" title="'+esc(hidden)+'">+'+(pl.length-3)+'</span>';
+    } else pills=pl.join("");
     if(bulkMode){
       var bsel=!!bulkIds[k.id];
       return '<li class="task '+(k.status==="done"?"done ":"")+(bsel?"bulk-on":"")+'" data-id="'+k.id+'">'+
@@ -1803,9 +1850,10 @@
     else if(isPast) status = "Looking back. "+(doneCount ? doneCount+" thing"+(doneCount===1?"":"s")+" completed this day." : "Nothing was completed this day.")+(open.length?" "+open.length+" still open.":"");
     else status = "Planning ahead. "+(open.length ? open.length+" task"+(open.length===1?"":"s")+" lined up for this day." : "Nothing planned yet — add tasks below.");
     var html='<div class="today-head day-nav">'+
+      '<span style="display:inline-flex;gap:6px;align-items:center;flex:1 1 auto;min-width:0">'+
       '<button class="icon-btn" data-act="daynav" data-d="-1" aria-label="Previous day" title="Previous day">‹</button>'+
-      '<h2 class="view-h">'+fullDate(vd)+'</h2>'+
-      '<button class="icon-btn" data-act="daynav" data-d="1" aria-label="Next day" title="Next day">›</button>'+
+      '<h2 class="view-h" style="min-width:0">'+fullDate(vd)+'</h2>'+
+      '<button class="icon-btn" data-act="daynav" data-d="1" aria-label="Next day" title="Next day">›</button></span>'+
       (isToday?'':'<button class="chip" data-act="daynav" data-d="0">Back to today</button>')+
       (isToday&&streak>=2?'<span class="streak-pill" title="Days in a row with at least one task done">🔥 '+streak+'-day streak</span>':"")+
       (scopeActive()?'<button class="chip" data-act="clearscope" title="Showing a filtered slice — tap to show everything" style="background:var(--warn-bg);border-color:var(--warn-bg);color:var(--warn)">🔍 '+esc(scopeLabel())+' ✕</button>':'')+
@@ -1937,8 +1985,11 @@
     var vdLabel = vd===today() ? "today" : niceDate(vd);
     function carriedRow(k){
       return '<div class="panel-task" data-id="'+k.id+'"><div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title" style="font-size:13.5px">'+esc(k.title)+'</div>'+
-        '<div class="task-meta"><span class="pill aged">carried '+k.rollover+'d</span></div></div>'+
-        '<div class="panel-move"><button class="pm-primary" data-act="sched" data-id="'+k.id+'" data-d="'+vd+'">➕ Add to '+esc(vdLabel)+'</button>'+MOVES.map(function(m){return '<button data-act="panel-move" data-to="'+m[0]+'" data-id="'+k.id+'">'+m[1]+'</button>';}).join("")+'</div></div>';
+        '<div class="task-meta"><span class="pill aged'+(k.rollover>=7?" hot":"")+'">carried '+k.rollover+'d</span></div></div>'+
+        '<div class="panel-move"><button class="pm-primary" data-act="sched" data-id="'+k.id+'" data-d="'+vd+'">➕ Add to '+esc(vdLabel)+'</button>'+
+        '<details class="pm-fold"><summary title="More places">⋯</summary><div class="panel-move">'+
+          MOVES.map(function(m){return '<button data-act="panel-move" data-to="'+m[0]+'" data-id="'+k.id+'">'+m[1]+'</button>';}).join("")+
+        '</div></details></div></div>';
     }
     // grouped by project — the project name moves to a heading so it isn't repeated on every row
     var cb=carried.length?groupByProject(carried).map(function(g){
@@ -2062,7 +2113,7 @@
   /* ---------- BACKLOG — undated tasks you schedule when ready (Structured-style) ---------- */
   function backlogRow(k){
     var p=proj(k.projectId);
-    var pills=(k.priority?'<span class="pill imp">★</span>':"")+((k.rollover||0)>=1?'<span class="pill aged">carried '+k.rollover+'d</span>':"")+(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+
+    var pills=(k.priority?'<span class="pill imp">★</span>':"")+((k.rollover||0)>=1?'<span class="pill aged'+(k.rollover>=7?" hot":"")+'">carried '+k.rollover+'d</span>':"")+(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+
       (k.subs&&k.subs.length?'<span class="pill subs-n">☑ '+k.subs.filter(function(s){return s.done;}).length+'/'+k.subs.length+'</span>':"");
     var chips='<button data-act="sched" data-id="'+k.id+'" data-d="'+today()+'">📅 Today</button>'+
       '<button data-act="sched" data-id="'+k.id+'" data-d="'+addDays(today(),1)+'">→ Tomorrow</button>';
@@ -4605,11 +4656,15 @@
             h+='<div class="ds-row" data-id="'+k.id+'"><div class="ds-main"><div class="ds-title">'+esc(k.title)+'</div>'+
               '<div class="task-meta"><span class="pill '+w.cls+'">'+esc(w.label)+'</span>'+
                 '<span class="pill block">'+esc(niceDate(k.day))+'</span>'+spanPill(k.day,k.end)+
-                ((k.rollover||0)>=1?'<span class="pill aged">carried '+k.rollover+'d</span>':"")+'</div></div>'+
-              '<div class="ds-pick">'+picks.map(function(m){
+                ((k.rollover||0)>=1?'<span class="pill aged'+(k.rollover>=7?" hot":"")+'">carried '+k.rollover+'d</span>':"")+'</div></div>'+
+              '<div class="ds-pick">'+picks.slice(0,3).map(function(m){
                 return '<button class="chip" data-rv="'+m[0]+'" data-id="'+k.id+'"'+
                   (m[2]?' title="Move to '+esc(niceDate(m[2]))+'"':'')+'>'+m[1]+'</button>'; }).join("")+
-                // the named days cover the common moves; this covers every other day
+                // the first three answer most rows; the long tail folds so a phone row stays one line
+                '<details class="rv-extra"><summary title="More options">⋯</summary><span class="rv-extra-row">'+
+                picks.slice(3).map(function(m){
+                  return '<button class="chip" data-rv="'+m[0]+'" data-id="'+k.id+'"'+
+                    (m[2]?' title="Move to '+esc(niceDate(m[2]))+'"':'')+'>'+m[1]+'</button>'; }).join("")+
                 '<label class="rv-date" title="Move to any day"><span>📆</span>'+
                   '<input type="date" data-rvdate data-id="'+k.id+'" value="'+esc(k.day||"")+'" aria-label="Move to a specific day"/></label>'+
                 (S.projects.length?'<select class="rv-proj" data-rvproj data-id="'+k.id+'" title="Change project" aria-label="Project">'+
@@ -4617,7 +4672,7 @@
                     return '<option value="'+pp.id+'"'+(pp.id===k.projectId?" selected":"")+'>'+(pp.emoji?esc(pp.emoji)+" ":"")+esc(pp.name)+'</option>'; }).join("")+
                   '</select>':'')+
                 '<button class="chip" data-rv="star" data-id="'+k.id+'" aria-pressed="'+!!k.priority+'" title="Important">'+(k.priority?"★":"☆")+'</button>'+
-                '</div></div>';
+                '</span></details></div></div>';
           });
         });
         h+='</div>';
@@ -4944,6 +4999,12 @@
   /* ---------- sync status chip ---------- */
   function updateSyncStatus(){
     var el=document.getElementById("sync-status"); if(!el) return;
+    // A status that is true 99% of the time is noise: show the chip while something is happening or
+    // wrong, fade it once things are simply fine. Sync options stay reachable from the ⋯ menu.
+    var busyOrBad = (typeof ghError!=="undefined"&&ghError) || (typeof ghBusy!=="undefined"&&ghBusy);
+    clearTimeout(el._hideT);
+    el.style.display="";
+    if(!busyOrBad) el._hideT=setTimeout(function(){ el.style.display="none"; },2500);
     if(GH&&GH.gistId) el.textContent = ghError ? "⚠ cloud sync error" : (ghBusy ? "☁ syncing…" : "☁ synced"+(ghLastSync?" · "+new Date(ghLastSync).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):""));
     else if(syncName) el.textContent="🔗 file sync on";
     else el.textContent="● saved on device";
