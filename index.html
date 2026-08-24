@@ -329,11 +329,23 @@
     padding:3px 8px; background:var(--card); color:var(--ink); max-width:150px; }
   .rv-tabs{ display:flex; gap:6px; margin:12px 0 2px; flex-wrap:wrap; }
   .rv-tabs .chip[aria-pressed="true"]{ background:var(--terra); border-color:var(--terra); color:#fff; }
-  .ds-list{ max-height:52vh; overflow-y:auto; margin:4px 0 2px; }
-  .ds-row{ display:flex; gap:14px; align-items:flex-start; padding:9px 2px; border-bottom:1px solid var(--line-soft); }
-  .ds-main{ flex:1; min-width:0; }
-  .ds-title{ font-size:14.5px; font-weight:600; margin-bottom:3px; }
-  .ds-pick{ display:flex; gap:5px; flex:none; flex-wrap:wrap; }
+  .ds-list{ max-height:56vh; overflow-y:auto; margin:4px 0 2px; }
+  .ds-list .grp-head{ position:sticky; top:0; background:var(--sheet); z-index:2; padding:7px 2px 5px; }
+  /* Stacked, not side-by-side: with ten controls on a row, a two-column layout crushed the title into
+     a one-character-wide sliver and forced the modal to scroll sideways. */
+  .ds-row{ display:flex; flex-direction:column; gap:7px; padding:11px 2px 12px; border-bottom:1px solid var(--line-soft); }
+  .ds-row:last-child{ border-bottom:none; }
+  .ds-main{ min-width:0; }
+  .ds-title{ font-size:14.5px; font-weight:650; margin-bottom:3px; line-height:1.35; }
+  .ds-pick{ display:flex; gap:5px; flex-wrap:wrap; align-items:center; }
+  .ds-pick .chip{ padding:4px 10px; font-size:12px; }
+  .ds-pick .chip:first-child{ border-color:var(--good); color:var(--good); }
+  .ds-pick .chip:first-child:hover{ background:var(--good-bg); }
+  .prog-row{ display:flex; align-items:center; gap:8px; margin-bottom:2px; }
+  .prog-row .prog{ flex:1; margin:0; }
+  .prog-pct{ font-size:11.5px; font-weight:700; color:var(--ink-faint); flex:none; }
+  .day-prog{ height:6px; max-width:360px; border-radius:999px; background:var(--line-soft); margin:8px 0 2px; overflow:hidden; }
+  .day-prog span{ display:block; height:100%; border-radius:999px; background:var(--good); transition:width .35s ease; }
   .ds-pick .chip[aria-pressed="true"]{ background:var(--terra); border-color:var(--terra); color:#fff; }
   .grp-head{ display:flex; align-items:center; gap:7px; font-size:10.5px; font-weight:800; letter-spacing:.07em;
     text-transform:uppercase; color:var(--ink-soft); margin:12px 0 5px; padding-top:8px; border-top:1px solid var(--line-soft); }
@@ -1771,6 +1783,7 @@
       '<button class="chip" data-act="panel-toggle" aria-pressed="'+!!S.panelOpen+'" title="Backlog & log panel">📋 '+(S.panelOpen?"Hide":"Show")+' panel'+(doneCount?' · '+doneCount+' done':'')+'</button>'+
       '</div>'+
       '<p class="sub"'+(total?' style="margin-bottom:0"':'')+'>'+status+'</p>'+
+      (total?'<div class="day-prog" role="img" aria-label="'+doneCount+' of '+total+' done"><span style="width:'+Math.round(100*doneCount/total)+'%"></span></div>':'')+
       (total?'<div class="day-prog" aria-hidden="true"><span style="width:'+Math.round(100*doneCount/total)+'%"></span></div>':"");
 
     html+='<div class="today-main">';
@@ -2043,13 +2056,22 @@
     var html='<h2 class="view-h">Projects</h2><p class="sub">Every task across every day, grouped by project.'+(scopeActive()?' <b>Filtered:</b> '+esc(scopeLabel())+' — <button class="chip" data-act="clearscope" style="padding:2px 9px">show all</button>':'')+'</p>';
     html+='<button class="btn primary" data-act="newproj" style="margin-bottom:16px">+ New project</button>';
     html+='<div class="board">';
-    S.projects.filter(function(p){return inScope(p.id);}).forEach(function(p){
+    // most recently touched first, so the live projects are the ones you land on
+    var projCards=S.projects.filter(function(p){return inScope(p.id);}).map(function(p){
       var ts=S.tasks.filter(function(k){return k.projectId===p.id;});
+      var lastTouch=""; ts.forEach(function(k){ [k.completedOn,k.created,k.day].forEach(function(d){ if(d&&d<=today()&&d>lastTouch) lastTouch=d; }); });
+      return {p:p,ts:ts,lastTouch:lastTouch};
+    }).sort(function(a,b){ return (b.lastTouch||"").localeCompare(a.lastTouch||""); });
+    projCards.forEach(function(pc){
+      var p=pc.p, ts=pc.ts;
       var done=ts.filter(function(k){return k.status==="done";}).length;
       var open=ts.length-done; var pct=ts.length?Math.round(done/ts.length*100):0;
+      var quiet=pc.lastTouch?diffDays(today(),pc.lastTouch):null;
       html+='<div class="proj-card"><div class="proj-top" style="'+cbg(p.color)+'">'+
-        '<h3>'+esc(p.name)+'</h3><div class="pmeta">'+open+' open · '+done+' done</div></div>'+
-        '<div class="proj-body"><div class="prog"><span style="width:'+pct+'%;background:'+p.color+'"></span></div>';
+        '<h3>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</h3><div class="pmeta">'+open+' open · '+done+' done</div></div>'+
+        '<div class="proj-body"><div class="prog-row"><div class="prog"><span style="width:'+pct+'%;background:'+p.color+'"></span></div>'+
+        '<span class="prog-pct">'+pct+'%</span>'+
+        (open&&quiet!==null&&quiet>=7?'<span class="pill aged" title="No task added, scheduled or completed in '+quiet+' days">quiet '+quiet+'d</span>':'')+'</div>';
       var openTasks=orderTasks(ts.filter(function(k){return k.status==="todo";}),false).slice(0,6);
       html+='<ul class="tasks">'+(openTasks.length?openTasks.map(function(k){
         return '<li class="task" data-id="'+k.id+'"><button class="chk" data-act="toggle" aria-label="done" aria-pressed="false"></button>'+
@@ -4537,6 +4559,24 @@
       } else h+='<div class="empty">'+(isEve?"Today is clear — nicely done 🎉":(scope==="morning"?"Nothing left hanging 🎉":"Nothing carried 🎉"))+'</div>';
       h+='</div>';
 
+      if(isEve){
+        var tm=addDays(t,1);
+        var tomorrow=S.tasks.filter(function(k){ return k.status!=="done" && taskOnDay(k,tm) && inScope(k.projectId); });
+        var ftm=S.focus[tm]=S.focus[tm]||[];
+        h+='<div class="fld"><label>Set up tomorrow — pick what matters most</label>';
+        if(tomorrow.length){
+          h+=tomorrow.slice(0,10).map(function(k){
+            var on=ftm.some(function(f){return f.taskId===k.id;});
+            var kp=k.projectId?proj(k.projectId):null;
+            return '<div class="panel-task"><div class="task-title" style="font-size:13.5px">'+esc(k.title)+
+              (kp?' <span class="pill proj" style="'+cbg(kp.color)+'">'+(kp.emoji?esc(kp.emoji)+" ":"")+esc(kp.name)+'</span>':"")+'</div>'+
+              '<div class="panel-move"><button data-tmfocus="'+k.id+'" aria-pressed="'+on+'"'+
+              (on?' style="background:var(--terra);border-color:var(--terra);color:#fff"':'')+'>'+(on?"◎ In focus":"◎ Focus")+'</button></div></div>';
+          }).join("");
+          if(ftm.length) h+='<div class="sub" style="font-size:12px;margin-top:6px">'+ftm.length+' in tomorrow’s Focus — it’ll be waiting in the morning.</div>';
+        } else h+='<div class="empty">Nothing scheduled for tomorrow yet — send something up there ↑</div>';
+        h+='</div>';
+      }
       h+='<div class="fld"><label>Someday shelf — anything ready to schedule?</label>'+
         (someday.length?someday.map(function(k){
           return '<div class="panel-task"><div class="task-title" style="font-size:13.5px">'+esc(k.title)+'</div>'+
@@ -4572,6 +4612,11 @@
         var all=e.target.closest("[data-all]");
         if(all){ looseEnds().forEach(function(k){ apply(k,all.dataset.all); }); save(); rebuild(); return; }
         if(e.target.closest("[data-rvdate],[data-rvproj]")) return;   // handled on change, not click
+        var tf=e.target.closest("[data-tmfocus]");
+        if(tf){ var tmd=addDays(t,1), fa=S.focus[tmd]=S.focus[tmd]||[];
+          var fi=fa.findIndex(function(f){return f.taskId===tf.dataset.tmfocus;});
+          if(fi>=0) fa.splice(fi,1); else fa.push({id:uid(),taskId:tf.dataset.tmfocus});
+          save(); rebuild(); return; }
         var b=e.target.closest("[data-rv]"); if(!b) return;
         var k=S.tasks.find(function(x){return x.id===b.dataset.id;}); if(!k) return;
         apply(k,b.dataset.rv); save(); rebuild();
