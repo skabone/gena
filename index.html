@@ -321,6 +321,8 @@
       transition-duration:.01ms !important; scroll-behavior:auto !important; }
   }
   /* day-start review rows */
+  .rv-tabs{ display:flex; gap:6px; margin:12px 0 2px; flex-wrap:wrap; }
+  .rv-tabs .chip[aria-pressed="true"]{ background:var(--terra); border-color:var(--terra); color:#fff; }
   .ds-list{ max-height:52vh; overflow-y:auto; margin:4px 0 2px; }
   .ds-row{ display:flex; gap:14px; align-items:flex-start; padding:9px 2px; border-bottom:1px solid var(--line-soft); }
   .ds-main{ flex:1; min-width:0; }
@@ -859,7 +861,7 @@
   var IDMAPS=["notes","focus","habitLog"]; // date-keyed maps merged per key
   // Settings/scalars merged per-field by their own modified-time (_sm) instead of taken wholesale from
   // whichever file saved last — otherwise a stale cloud push silently resets your name / active profile.
-  var SCALARS=["name","activeProfile","filterProjects","sbOpen","panelOpen","skin","theme","calView","calAnchor","tlView","collapsed","remind","proxy","notesRTE","lastExport","autoCarry","autoCarryRev","accent","density","font","subsHidden","expandOnAdd","todayOrder"];
+  var SCALARS=["name","activeProfile","filterProjects","sbOpen","panelOpen","skin","theme","calView","calAnchor","tlView","collapsed","remind","proxy","notesRTE","lastExport","autoCarry","autoCarryRev","accent","density","font","subsHidden","expandOnAdd","eveningHour","reviewDone","todayOrder"];
   function isBlankVal(v){ return v===undefined||v===null||v===""; }
   function clone(x){ return JSON.parse(JSON.stringify(x)); }
   function itemSig(x){ if(!x||typeof x!=="object") return JSON.stringify(x); var o={}; for(var k in x){ if(k!=="_m") o[k]=x[k]; } return JSON.stringify(o); }
@@ -995,7 +997,7 @@
     dedupeRemovedCount=removed.length;
     return d;
   }
-  function normalize(d){ d.projects=d.projects||[]; d.tasks=d.tasks||[]; d.templates=d.templates||[]; d.habits=d.habits||[]; d.habitLog=d.habitLog||{}; d.events=d.events||[]; d.phases=d.phases||[]; d.dismissed=d.dismissed||[]; d.notes=d.notes||{}; d.calSources=d.calSources||[]; if(!d.proxy)d.proxy=PROXY_DEFAULT; d.emails=d.emails||[]; d.jobs=d.jobs||[]; d.improve=d.improve||[]; if(!d.calView)d.calView="month"; if(!d.calAnchor)d.calAnchor=(d.calMonth?d.calMonth+"-01":null); if(!d.skin)d.skin="paper"; delete d.apiKey; d.people=d.people||[]; d.collapsed=d.collapsed||{}; d.lastExport=d.lastExport||null; if(typeof d.name!=="string")d.name=""; d._sm=d._sm||{}; if(typeof d.autoCarry!=="boolean")d.autoCarry=false; if(typeof d.accent!=="string")d.accent=d.accent||null; d.tasks.forEach(function(k){ if(!Array.isArray(k.personIds)) k.personIds=[]; }); if(!d.density)d.density="cozy"; if(!d.font)d.font="rounded"; d.sessions=d.sessions||[]; d.subsHidden=d.subsHidden||{}; if(typeof d.expandOnAdd!=="boolean")d.expandOnAdd=true;
+  function normalize(d){ d.projects=d.projects||[]; d.tasks=d.tasks||[]; d.templates=d.templates||[]; d.habits=d.habits||[]; d.habitLog=d.habitLog||{}; d.events=d.events||[]; d.phases=d.phases||[]; d.dismissed=d.dismissed||[]; d.notes=d.notes||{}; d.calSources=d.calSources||[]; if(!d.proxy)d.proxy=PROXY_DEFAULT; d.emails=d.emails||[]; d.jobs=d.jobs||[]; d.improve=d.improve||[]; if(!d.calView)d.calView="month"; if(!d.calAnchor)d.calAnchor=(d.calMonth?d.calMonth+"-01":null); if(!d.skin)d.skin="paper"; delete d.apiKey; d.people=d.people||[]; d.collapsed=d.collapsed||{}; d.lastExport=d.lastExport||null; if(typeof d.name!=="string")d.name=""; d._sm=d._sm||{}; if(typeof d.autoCarry!=="boolean")d.autoCarry=false; if(typeof d.accent!=="string")d.accent=d.accent||null; d.tasks.forEach(function(k){ if(!Array.isArray(k.personIds)) k.personIds=[]; }); if(!d.density)d.density="cozy"; if(!d.font)d.font="rounded"; d.sessions=d.sessions||[]; d.subsHidden=d.subsHidden||{}; if(typeof d.expandOnAdd!=="boolean")d.expandOnAdd=true; if(!(typeof d.eveningHour==="number"||d.eveningHour===false))d.eveningHour=20; d.reviewDone=d.reviewDone||{};
     // One-time: 7.5 shipped autoCarry defaulting to on, which left the Carried-over card empty whenever
     // everything had already been auto-placed. Off is the setting where the day list and that card are
     // both useful, so re-default once. Any later toggle is the user's and is left alone.
@@ -1109,7 +1111,7 @@
       calSources:[], proxy:PROXY_DEFAULT,
       emails:[], jobs:[], improve:[],
       calView:"month", calAnchor:null, skin:"paper", lastExport:null, name:"",
-      people:[], collapsed:{}, tlView:"months", panelOpen:true, autoCarry:false, autoCarryRev:1, accent:null, density:"cozy", font:"rounded", sessions:[], subsHidden:{}, expandOnAdd:true, _sm:{}
+      people:[], collapsed:{}, tlView:"months", panelOpen:true, autoCarry:false, autoCarryRev:1, accent:null, density:"cozy", font:"rounded", sessions:[], subsHidden:{}, expandOnAdd:true, eveningHour:20, reviewDone:{}, _sm:{}
     });
   }
 
@@ -1758,7 +1760,8 @@
       (isToday?'':'<button class="chip" data-act="daynav" data-d="0">Back to today</button>')+
       (isToday&&streak>=2?'<span class="streak-pill" title="Days in a row with at least one task done">🔥 '+streak+'-day streak</span>':"")+
       (scopeActive()?'<button class="chip" data-act="clearscope" title="Showing a filtered slice — tap to show everything" style="background:var(--warn-bg);border-color:var(--warn-bg);color:var(--warn)">🔍 '+esc(scopeLabel())+' ✕</button>':'')+
-      '<button class="chip" style="margin-left:auto" data-act="'+(bulkMode?'bulk-exit':'bulk-enter')+'" aria-pressed="'+bulkMode+'">'+(bulkMode?'✕ Done selecting':'☑ Select')+'</button>'+
+      '<button class="chip" style="margin-left:auto" data-act="review" title="Run a review — loose ends, today, or the week">'+(new Date().getHours()>=14?"🌙":"🌅")+' Review</button>'+
+      '<button class="chip" data-act="'+(bulkMode?'bulk-exit':'bulk-enter')+'" aria-pressed="'+bulkMode+'">'+(bulkMode?'✕ Done selecting':'☑ Select')+'</button>'+
       '<button class="chip" data-act="panel-toggle" aria-pressed="'+!!S.panelOpen+'" title="Backlog & log panel">📋 '+(S.panelOpen?"Hide":"Show")+' panel'+(doneCount?' · '+doneCount+' done':'')+'</button>'+
       '</div>'+
       '<p class="sub"'+(total?' style="margin-bottom:0"':'')+'>'+status+'</p>'+
@@ -2698,6 +2701,7 @@
       else if(act==="bump"){ var bk=S.tasks.find(function(x){return x.id===a.dataset.id;});
         if(bk){ var bto=a.dataset.d; rescheduleTask(bk,bto); save(); render();
           toast(bto===today()?"Moved to today":"Moved to "+niceDate(bto)); } }
+      else if(act==="review"){ openReviewModal(new Date().getHours()>=14?"evening":"morning", S.lastOpen); }
       else if(act==="calview"){ S.calView=a.dataset.v; save(); render(); }
       else if(act==="focus-toggle"){ var fx=(S.focus[viewDay]||[]).find(function(x){return x.id===anyId;}); if(fx){ fx.done=!fx.done; save(); render(); } }
       else if(act==="focus-del"){ var arr=S.focus[viewDay]||[]; var fi=arr.findIndex(function(x){return x.id===anyId;}); if(fi>=0){ var fdel=arr[fi]; arr.splice(fi,1); save(); render(); toastUndo("Focus item deleted",function(){ arr.splice(Math.min(fi,arr.length),0,fdel); save(); render(); }); } }
@@ -3794,6 +3798,7 @@
       '<button class="btn" id="x-gh">☁️ '+(GH&&GH.gistId?"Cloud sync: connected":"Cloud sync via GitHub (cross-device)")+'</button>'+
       '<button class="btn" id="x-remind">🔔 Task-time reminders: '+(S.remind?"on":"off")+'</button>'+
       '<button class="btn" id="x-autocarry" title="On: unfinished tasks move onto today by themselves. Off: they stay on their original day and wait in the Carried-over card until you place them.">⏳ Carry unfinished onto today: '+(S.autoCarry===false?"off":"on")+'</button>'+
+      '<button class="btn" id="x-evening" title="A nudge in the evening to close the day out — tick off what you did and decide where the rest goes.">🌙 Evening review nudge: '+(S.eveningHour===false?"off":(((S.eveningHour+11)%12+1)+(S.eveningHour<12?"am":"pm")))+'</button>'+
       '<button class="btn" id="x-expandadd" title="On: adding a task opens its editor so you can fill in details straight away. Off: it just adds the line and keeps the cursor ready for the next one.">📝 Open the editor when I add a task: '+(S.expandOnAdd===false?"off":"on")+'</button>'+
       '<button class="btn" id="x-feed">📡 Reminder calendar feed (subscribe)</button>'+
       '<button class="btn" id="x-share">🔗 Share a read-only snapshot</button>'+
@@ -3822,6 +3827,16 @@
           else toast("Notifications were blocked by the browser");
         });
       } else { S.remind=false; save(); close(); toast("Reminders off"); }
+    };
+    document.getElementById("x-evening").onclick=function(){
+      // a short cycle through the hours an evening nudge could sensibly land on, then off
+      var OPTS=[18,19,20,21,22], i=OPTS.indexOf(S.eveningHour);
+      S.eveningHour = (S.eveningHour===false) ? OPTS[0]
+                    : (i<0) ? 20
+                    : (i===OPTS.length-1) ? false
+                    : OPTS[i+1];
+      save(); close();
+      toast(S.eveningHour===false?"Evening nudge off":"Evening nudge at "+(((S.eveningHour+11)%12+1)+(S.eveningHour<12?"am":"pm")));
     };
     document.getElementById("x-expandadd").onclick=function(){
       S.expandOnAdd=(S.expandOnAdd===false); save(); close();
@@ -4283,8 +4298,9 @@
       ["🧭","Show / hide the sidebar",function(){ if(window.innerWidth>1000){ S.sbOpen=!S.sbOpen; save(); applySidebarState(); } else document.body.classList.toggle("sb-open"); }],
       ["◐","Toggle light / dark",function(){ document.getElementById("theme-btn").onclick(); }],
       ["🔍","Search everything",function(){ openSearchModal(); }],
-      ["🌅","Daily review",function(){ if(!openReviewModal("day",S.lastOpen)) toast("Nothing left hanging 🎉"); }],
-      ["🧹","Weekly review",function(){ openReviewModal(); }],
+      ["🌅","Morning review — loose ends",function(){ openReviewModal("morning",S.lastOpen); }],
+      ["🌙","Evening review — how today went",function(){ openReviewModal("evening"); }],
+      ["🧹","Weekly review",function(){ openReviewModal("week"); }],
       ["⏱","Focus timer — 25 minutes",function(){ startFocusTimer("",25); }],
       ["☑","Select multiple tasks (bulk edit)",function(){ view="today"; syncNav(); bulkMode=true; bulkIds={}; render(); toast("Tap tasks to select them"); }],
       ["⌨️","Keyboard shortcuts",function(){ openShortcutsModal(); }],
@@ -4419,19 +4435,30 @@
             ["someday","💭 Someday",null],
             ["drop","✕ Drop",null]];
   }
-  function openReviewModal(scope, fromDay){
-    var isDay=scope==="day", t=today();
+  var REVIEW_SCOPES=[["morning","🌅","Loose ends"],["evening","🌙","Today"],["week","🧹","This week"]];
+  function openReviewModal(scope, fromDay, auto){
+    scope=scope||"week";
+    var isEve=scope==="evening", isDay=(scope==="morning"||isEve), t=today();
     function looseEnds(){
-      return isDay
-        // a span isn't a loose end while it's still running, so measure from its last day
+      // morning: what was left behind (a span isn't a loose end while it's still running)
+      // evening:  what is still open on today itself
+      // week:     anything that has been carried at all
+      if(isEve) return S.tasks.filter(function(k){ return k.status==="todo" && taskOnDay(k,t) && inScope(k.projectId); });
+      return scope==="morning"
         ? S.tasks.filter(function(k){ return k.status==="todo" && k.day && lastDay(k.day,k.end)<t && inScope(k.projectId) && !k.tplId; })
         : S.tasks.filter(function(k){ return k.status==="todo" && (k.rollover||0)>=1 && !k.tplId && inScope(k.projectId); });
     }
-    if(isDay && !looseEnds().length) return false;   // nothing to review — don't interrupt the morning
+    if(auto && !looseEnds().length) return false;   // nothing to review — don't interrupt the day
 
     function tiles(){
       var out=[];
-      if(isDay){
+      if(isEve){
+        out.push(["✅ "+S.tasks.filter(function(k){return k.completedOn===t;}).length,"done today"]);
+        out.push(["🔥 "+doneStreak(),"day streak"]);
+        var mt=focusMinutes(t);
+        if(mt) out.push(["⏱ "+fmtMins(mt),"focused today"]);
+        out.push(["🌙 "+looseEnds().length,"still open"]);
+      } else if(isDay){
         var y=fromDay||addDays(t,-1), wasYesterday=(y===addDays(t,-1));
         out.push(["✅ "+S.tasks.filter(function(k){return k.completedOn===y;}).length,
                   "done "+(wasYesterday?"yesterday":"on "+niceDate(y))]);
@@ -4454,14 +4481,20 @@
       return out;
     }
     function body(){
-      var loose=looseEnds(), picks=reviewPicks();
+      var loose=looseEnds(), picks=reviewPicks().filter(function(m){ return !(isEve&&m[0]==="today"); });
       var someday=S.tasks.filter(function(k){ return !k.day && k.status!=="done" && inScope(k.projectId); }).slice(0,6);
       var hr=new Date().getHours();
       var greet=hr<12?"Good morning":(hr<17?"Good afternoon":"Good evening");
-      var h = isDay
+      var h = isEve
+        ? '<h3>🌙 Good evening'+(S.name?", "+esc(S.name):"")+' — how did today go?</h3>'+
+          '<p class="sub">Tick off what you did, and decide where the rest goes.</p>'
+        : scope==="morning"
         ? '<h3>🌅 '+greet+(S.name?", "+esc(S.name):"")+' — yesterday’s loose ends</h3>'+
           '<p class="sub">A minute: celebrate, clear, choose.'+(fromDay?' Last here '+esc(niceDate(fromDay))+'.':'')+'</p>'
         : '<h3>🧹 Weekly review</h3><p class="sub">Two minutes: celebrate, clear, choose.</p>';
+      // flip between the three without closing — the same tasks, a different question
+      h+='<div class="rv-tabs">'+REVIEW_SCOPES.map(function(x){
+        return '<button class="chip" data-scope="'+x[0]+'" aria-pressed="'+(scope===x[0])+'">'+x[1]+' '+x[2]+'</button>'; }).join("")+'</div>';
       h+='<div class="ins-tiles" style="margin-top:6px">'+tiles().map(function(x){
         return '<div class="ins-tile"><b>'+x[0]+'</b><span>'+x[1]+'</span></div>'; }).join("")+'</div>';
 
@@ -4486,7 +4519,7 @@
           });
         });
         h+='</div>';
-      } else h+='<div class="empty">'+(isDay?"Nothing left hanging 🎉":"Nothing carried 🎉")+'</div>';
+      } else h+='<div class="empty">'+(isEve?"Today is clear — nicely done 🎉":(scope==="morning"?"Nothing left hanging 🎉":"Nothing carried 🎉"))+'</div>';
       h+='</div>';
 
       h+='<div class="fld"><label>Someday shelf — anything ready to schedule?</label>'+
@@ -4495,7 +4528,7 @@
             '<div class="panel-move">'+picks.filter(function(m){ return !!m[2]; }).map(function(m){
               return '<button data-rv="'+m[0]+'" data-id="'+k.id+'" title="Move to '+esc(niceDate(m[2]))+'">'+m[1]+'</button>'; }).join("")+'</div></div>';
         }).join(""):'<div class="empty">The shelf is clear</div>')+'</div>';
-      h+='<div class="modal-actions"><button class="btn primary" data-x>'+(isDay?"Start the day":"Done — feels lighter")+'</button></div>';
+      h+='<div class="modal-actions"><button class="btn primary" data-x>'+(isEve?"Close the day":(scope==="morning"?"Start the day":"Done — feels lighter"))+'</button></div>';
       return h;
     }
     function apply(k,m){
@@ -4516,7 +4549,9 @@
     function wire(){
       var root=document.querySelector(".modal");
       root.onclick=function(e){
-        if(e.target.closest("[data-x]")){ close(); render(); return; }
+        if(e.target.closest("[data-x]")){ markReviewed(); close(); render(); return; }
+        var sc=e.target.closest("[data-scope]");
+        if(sc){ markReviewed(); close(); openReviewModal(sc.dataset.scope, fromDay); return; }
         var all=e.target.closest("[data-all]");
         if(all){ looseEnds().forEach(function(k){ apply(k,all.dataset.all); }); save(); rebuild(); return; }
         var b=e.target.closest("[data-rv]"); if(!b) return;
@@ -4525,10 +4560,25 @@
       };
     }
     function rebuild(){ var m=document.querySelector(".modal"); if(m){ m.innerHTML=body(); wire(); } }
+    // remember this slot ran today, so the automatic prompt doesn't reopen on every tab focus
+    function markReviewed(){ S.reviewDone=S.reviewDone||{}; S.reviewDone[t+":"+scope]=1;
+      var keys=Object.keys(S.reviewDone); if(keys.length>40) keys.slice(0,keys.length-40).forEach(function(k){ delete S.reviewDone[k]; });
+      save(); }
     modal(body(),"wide"); wire();
     return true;
   }
-  function openDayStartReview(fromDay){ return openReviewModal("day",fromDay); }
+  function openDayStartReview(fromDay){ return openReviewModal("morning",fromDay,true); }
+  function reviewRan(scope){ return !!(S.reviewDone||{})[today()+":"+scope]; }
+  // The evening nudge: once, at or after the hour you set, and only if something is actually open.
+  function checkEveningReview(){
+    if(S.eveningHour===false || typeof S.eveningHour!=="number") return;
+    if(new Date().getHours() < S.eveningHour) return;
+    if(reviewRan("evening")) return;
+    if(document.querySelector(".modal")) return;      // don't stomp on whatever is already open
+    if(lockCfg() && document.getElementById("lockscreen")) return;
+    S.reviewDone=S.reviewDone||{}; S.reviewDone[today()+":evening"]=1; save();
+    openReviewModal("evening", null, true);
+  }
 
   /* ---------- task-time reminders (browser notifications while open) ---------- */
   var notified={};
@@ -4868,7 +4918,10 @@
   });
   document.getElementById("search-btn").onclick=openSearchModal;
   // catch the day change if the app stays open past midnight (tab or home-screen app)
-  function checkDay(){ if(S.lastOpen!==today()){ viewDay=today(); onOpen(); render(); if(dayStartFrom) openDayStartReview(dayStartFrom); } }
+  function checkDay(){
+    if(S.lastOpen!==today()){ viewDay=today(); onOpen(); render(); if(dayStartFrom) openDayStartReview(dayStartFrom); return; }
+    checkEveningReview();
+  }
   document.addEventListener("visibilitychange",function(){ if(!document.hidden) checkDay(); });
   setInterval(checkDay,60000);
   // heartbeat: keep a local snapshot and retry cloud sync if a push is still pending/failed
