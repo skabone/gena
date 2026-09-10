@@ -293,7 +293,7 @@
   .tl-legend span{ display:inline-flex; align-items:center; gap:5px; }
 
   /* modal */
-  .scrim{ position:fixed; inset:0; background:rgba(20,18,24,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px; }
+  .scrim{ position:fixed; inset:0; background:rgba(20,18,24,.5); z-index:64; display:flex; align-items:center; justify-content:center; padding:16px; padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
   /* A fixed scrim IS the visible viewport; 90vh is not — on iOS vh means the large viewport (URL bar
      hidden), so a tall modal ran past the bottom of the screen and its sticky footer ("Start the day")
      could not be scrolled to. max-height:100% resolves against the scrim's content box instead, which
@@ -387,8 +387,14 @@
   .rv-extra-row{ display:inline-flex; gap:5px; flex-wrap:wrap; align-items:center; margin-left:5px; }
   .ins-tile b{ font-size:16px; letter-spacing:.01em; }
   .rv-tabs{ display:flex; gap:6px; margin:12px 0 2px; flex-wrap:wrap; }
+  .rv-fold>summary{ list-style:none; cursor:pointer; }
+  .rv-fold>summary::-webkit-details-marker{ display:none; }
+  .rv-fold>summary label{ cursor:pointer; margin-bottom:0; }
+  .rv-fold>summary label::before{ content:"▸ "; color:var(--ink-faint); }
+  .rv-fold[open]>summary label::before{ content:"▾ "; }
+  .rv-fold[open]>summary{ margin-bottom:8px; }
   .rv-tabs .chip[aria-pressed="true"]{ background:var(--terra); border-color:var(--terra); color:#fff; }
-  .ds-list{ max-height:56vh; overflow-y:auto; margin:4px 0 2px; }
+  .ds-list{ margin:4px 0 2px; }
   .ds-list .grp-head{ position:sticky; top:0; background:var(--sheet); z-index:2; padding:7px 2px 5px; }
   /* Stacked, not side-by-side: with ten controls on a row, a two-column layout crushed the title into
      a one-character-wide sliver and forced the modal to scroll sideways. */
@@ -530,6 +536,7 @@
   .inline-plus{ flex:none; width:20px; text-align:center; color:var(--ink-faint); font-weight:700; font-size:16px; }
   .at-btn{ flex:none; width:26px; height:26px; border-radius:8px; border:1px solid var(--line-soft); background:var(--sheet); color:var(--ink-faint); font-family:inherit; font-size:14px; font-weight:800; cursor:pointer; padding:0; opacity:.55; }
   .at-btn:hover, .inline-row:focus-within .at-btn{ opacity:1; color:var(--terra-deep); border-color:var(--terra); }
+  .row-br{ display:none; }
   .at-btn.q-at{ width:34px; height:34px; opacity:.8; align-self:center; }
   .inline-add{ flex:1; min-width:0; border:none; background:transparent; font-family:inherit; font-size:15px; color:var(--ink); padding:4px 0; }
   .inline-add:focus{ outline:none; }
@@ -617,6 +624,9 @@
   .task{ border-radius:8px; transition:background .12s; }
   .task:not(.inline-row):hover{ background:var(--line-soft); }
   .chk.done::after{ animation:pop .2s ease; }
+  .task.completing{ animation:settle .38s ease forwards; }
+  .task.completing > .task-main .task-title{ text-decoration:line-through; color:var(--ink-faint); transition:color .25s; }
+  @keyframes settle{ 40%{ background:var(--good-bg); } 100%{ opacity:.3; transform:translateX(8px); } }
   @keyframes pop{ 0%{ transform:rotate(42deg) scale(0); } 60%{ transform:rotate(42deg) scale(1.25); } 100%{ transform:rotate(42deg) scale(1); } }
   .dot:hover{ transform:scale(1.18); }
   .job-card{ transition:border-color .12s, transform .12s, box-shadow .12s; }
@@ -656,6 +666,7 @@
   @media print{ #bottomnav{ display:none !important; } }
   body[data-snapshot] #bottomnav{ display:none !important; }
   .day-prog span{ display:block; height:100%; border-radius:999px; background:var(--good); transition:width .4s ease; }
+  .now-pill{ font-size:9px; letter-spacing:.1em; background:var(--terra); color:#fff; border-radius:999px; padding:2px 7px; margin-left:6px; vertical-align:middle; }
   .streak-pill{ font-size:12px; font-weight:800; color:var(--terra-deep); background:var(--terra-bg); padding:3px 10px; border-radius:999px; white-space:nowrap; }
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
 
@@ -710,6 +721,8 @@
   .hourslot .task{ border-bottom:0; padding:5px 4px; }
   .now-line{ position:absolute; left:0; right:0; height:2px; background:var(--terra); z-index:3; pointer-events:none; }
   .now-line::before{ content:""; position:absolute; left:-4px; top:-3px; width:8px; height:8px; border-radius:50%; background:var(--terra); }
+  .now-line::after{ content:attr(data-t); position:absolute; left:8px; top:-8px; font-size:9.5px; font-weight:800; color:var(--terra-deep); background:var(--sheet); padding:0 4px; border-radius:4px; line-height:1.5; }
+  .wk-tg-col .now-line::after{ display:none; }
 
   /* shared read-only snapshot page */
   .snap-wrap{ max-width:680px; margin:0 auto; padding:20px 18px 60px; }
@@ -794,6 +807,10 @@
     .sub-mv{ font-size:14px; padding:2px 7px; }
   }
   .sub .inline-add{ font-size:13px; padding:2px 0; }
+  .nl-prev{ position:fixed; z-index:69; display:flex; gap:6px; align-items:center; flex-wrap:wrap; max-width:320px; padding:6px 9px; font-size:11.5px; background:var(--card); border:1.5px solid var(--line); border-radius:10px; box-shadow:0 10px 26px -12px rgba(0,0,0,.35); pointer-events:none; animation:fadeup .15s ease; }
+  .nl-prev .nl-title{ font-weight:700; color:var(--ink-soft); }
+  .nl-prev .nl-chip{ display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:999px; background:var(--terra-bg); color:var(--terra-deep); font-weight:700; }
+  .nl-prev .nl-chip .pdot{ width:8px; height:8px; border-radius:50%; }
   .ac{ position:fixed; z-index:70; background:var(--card); border:1.5px solid var(--line); border-radius:12px; box-shadow:0 14px 34px -12px rgba(0,0,0,.35); min-width:220px; max-width:320px; max-height:262px; overflow-y:auto; }
   .ac-item{ padding:8px 12px; font-size:13.5px; display:flex; gap:8px; align-items:center; cursor:pointer; }
   .ac-item.sel{ background:var(--terra-bg); color:var(--terra-deep); }
@@ -887,10 +904,24 @@
     .today-head h2.view-h{ font-size:19px; margin:0; flex:1 1 auto; min-width:0; }
     .day-nav .icon-btn{ width:32px; height:32px; }
     [data-act="panel-toggle"], #rb-toggle{ display:none !important; }  /* the side panel isn't beside you on a phone */
-    .appbar-inner{ row-gap:4px; }
+    /* two rows, not three: burger ‹ › brand … icons on the first, the view tabs on the second */
+    .appbar-inner{ row-gap:6px; padding:10px 12px 10px; gap:6px; }
+    .appbar .nav{ order:10; flex:1 1 100%; }
+    #theme-btn{ display:none; }              /* light/dark lives in ⋯ too; the first row must fit at 375px */
+    .appbar .brand{ font-size:15px; }
+    .appbar .icon-btn{ width:34px; height:34px; }
+    .navhist .icon-btn{ width:28px; height:28px; }
+    .sync-chip{ font-size:0; width:12px; height:12px; padding:0; border-radius:50%; background:var(--terra); opacity:.9; }
     /* touch shows the row buttons permanently — at 375px they were squeezing titles to a word a line */
-    li.task{ flex-wrap:wrap; }
-    li.task .task-main{ min-width:58%; }
+    li.task{ flex-wrap:wrap; gap:8px; }
+    li.task .task-main{ flex:1 1 44%; min-width:44%; }
+    /* ⤷+ and → stay on the title line; ◎ ★ ✕ wrap together, pushed to the right of the meta line */
+    li.task .row-br{ display:block; flex-basis:100%; height:0; order:9; margin:-8px 0 0; }
+    li.task .task-focus{ order:10; margin-left:auto; }
+    li.task .task-star{ order:11; }
+    li.task .task-x{ order:12; }
+    li.task[data-focus] .task-x{ order:0; margin-left:0; }   /* a focus row has only ⤷+ → ✕ — they fit */
+    .task-addsub,.task-bump,.task-focus,.task-star,.task-x{ min-width:30px; min-height:30px; }
     .task-addsub,.task-bump,.task-focus,.task-star,.task-x{ padding:2px 3px; font-size:13px; }
   }
 </style>
@@ -1020,7 +1051,7 @@
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-10 00:36";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-10 00:53";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1638,6 +1669,10 @@
     renderRightbar();
     renderGlobalHead();
     bind();
+    if(lastRenderedView!==view && view==="day" && viewDay===today()){
+      // arriving on the Day view: bring "now" into the upper third instead of starting at 6am
+      var nl=m.querySelector(".now-line"); if(nl) setTimeout(function(){ var y=nl.getBoundingClientRect().top+window.scrollY-Math.round(window.innerHeight*0.35); window.scrollTo({top:Math.max(0,y),behavior:"smooth"}); },30);
+    }
     if(lastRenderedView!==view){ m.classList.remove("anim"); void m.offsetWidth; m.classList.add("anim"); lastRenderedView=view; }
     syncHist();
   }
@@ -1883,6 +1918,7 @@
       (pills?'<div class="task-meta">'+pills+'</div>':'')+subsHtml+'</div>'+
       '<button class="task-addsub" data-act="sub-add" aria-label="Add a subtask" title="Add a subtask">⤷+</button>'+
       bumpBtn(k)+
+      '<span class="row-br"></span>'+   /* phone: forces ◎ ★ ✕ onto their own right-aligned line together */
       '<button class="task-focus'+(inFocus(k.id)?" on":"")+'" data-act="tofocus" aria-label="Add to Today’s Focus" title="Add to Today’s Focus">◎</button>'+
       '<button class="task-star '+(k.priority?"on":"")+'" data-act="star" aria-label="Toggle important" aria-pressed="'+!!k.priority+'">'+(k.priority?"★":"☆")+'</button>'+
       '<button class="task-x" data-act="del" aria-label="Delete">✕</button></li>';
@@ -2030,7 +2066,7 @@
     var now=new Date(), nowH=now.getHours(), nowM=now.getMinutes(), rows='';
     for(var h=lo; h<=hi; h++){
       var hh=String(h).padStart(2,"0");
-      var line=(isToday&&nowH===h)?'<div class="now-line" style="top:'+(nowM/60*100).toFixed(1)+'%"></div>':'';
+      var line=(isToday&&nowH===h)?'<div class="now-line" data-t="'+fmtTime(String(nowH).padStart(2,"0")+":"+String(nowM).padStart(2,"0"))+'" style="top:'+(nowM/60*100).toFixed(1)+'%"></div>':'';
       rows+='<div class="hour-row">'+(withLabels?'<div class="hour-label">'+(h%12||12)+(h<12?'am':'pm')+'</div>':'')+
         '<div class="hourslot" data-hour="'+hh+'">'+line+'</div></div>';
     }
@@ -2084,7 +2120,7 @@
     var html='<div class="today-head day-nav">'+
       '<span style="display:inline-flex;gap:6px;align-items:center;flex:1 1 auto;min-width:0">'+
       '<button class="icon-btn" data-act="daynav" data-d="-1" aria-label="Previous day" title="Previous day">‹</button>'+
-      '<h2 class="view-h" style="min-width:0">'+fullDate(vd)+'</h2>'+
+      '<h2 class="view-h" style="min-width:0">'+(matchMedia("(max-width:480px)").matches?niceDate(vd):fullDate(vd))+'</h2>'+
       '<button class="icon-btn" data-act="daynav" data-d="1" aria-label="Next day" title="Next day">›</button></span>'+
       (isToday?'':'<button class="chip" data-act="daynav" data-d="0">Back to today</button>')+
       (isToday&&streak>=2?'<span class="streak-pill" title="Days in a row with at least one task done">🔥 '+streak+'-day streak</span>':"")+
@@ -2118,6 +2154,7 @@
     var focusDone=focusItems.filter(focusItemDone).length;
     var master=orderTasks(open,false);
     var BLOCK_ICONS={morning:"☀️",afternoon:"🌤",evening:"🌙"};
+    var nowBlock=isToday?blockForTime(String(new Date().getHours()).padStart(2,"0")+":00"):null;
     var blocksHtml='<div class="blocks-grid" style="margin-top:0">'+blocks.map(function(b){
       var items=orderTasks(open.filter(function(k){return k.block===b;}),true);
       var doneB=doneV.filter(function(k){return k.block===b;}).length;
@@ -2126,7 +2163,7 @@
       curList="done:block-"+b; body+=doneStrip("block-"+b, doneV.filter(function(k){return k.block===b;}).map(taskLi).join(""), doneB);
       curList=null;
       var action=foldProg(doneB,items.length+doneB)+'<button class="chip" style="padding:3px 9px" data-act="addblock" data-block="'+b+'">+ options</button>';
-      return fold("block-"+b, BLOCK_ICONS[b]+" "+b.charAt(0).toUpperCase()+b.slice(1), body, action);
+      return fold("block-"+b, BLOCK_ICONS[b]+" "+b.charAt(0).toUpperCase()+b.slice(1)+(b===nowBlock?' <span class="now-pill">now</span>':''), body, action);
     }).join("")+'</div>';
     var anytime=orderTasks(open.filter(function(k){return !k.block;}),true);
     var doneA=doneV.filter(function(k){return !k.block;}).length;
@@ -3311,7 +3348,18 @@
     var rbEl2=document.getElementById("rightbar"); if(rbEl2) rbEl2.onclick=v.onclick;
   }
   function toggleTask(id){ var k=S.tasks.find(function(x){return x.id===id;}); if(!k)return;
-    k.status=k.status==="done"?"todo":"done"; k.completedOn=k.status==="done"?(view==="today"?viewDay:today()):null; save(); render(); }
+    var toDone=k.status!=="done";
+    function commit(){ k.status=toDone?"done":"todo"; k.completedOn=toDone?(view==="today"?viewDay:today()):null; save(); render(); }
+    if(!toDone || matchMedia("(prefers-reduced-motion: reduce)").matches){ commit(); return; }
+    // Let the row finish its tick — check fills, title strikes, row settles — before it moves to Done.
+    var rows=[].slice.call(document.querySelectorAll('.task[data-id="'+id+'"]'));
+    [].forEach.call(document.querySelectorAll('.chk[data-tid="'+id+'"]'),function(c){ var r=c.closest(".task"); if(r&&rows.indexOf(r)<0) rows.push(r); });   // focus rows carry the task id on the checkbox
+    if(!rows.length){ commit(); return; }
+    if(rows.some(function(r){ return r.classList.contains("completing"); })) return;   // already on its way
+    rows.forEach(function(r){ r.classList.add("completing"); var c=r.querySelector(":scope > .chk"); if(c) c.classList.add("done"); });
+    try{ navigator.vibrate&&navigator.vibrate(12); }catch(e){}
+    setTimeout(commit, 380);
+  }
 
   function addSubInline(taskId,val){
     val=(val||"").trim(); if(!val) return;
@@ -5147,12 +5195,12 @@
         } else h+='<div class="empty">Nothing scheduled for tomorrow yet — send something up there ↑</div>';
         h+='</div>';
       }
-      h+='<div class="fld"><label>Someday shelf — anything ready to schedule?</label>'+
+      h+='<details class="fld rv-fold"><summary><label>💭 Someday shelf'+(someday.length?' · '+someday.length:'')+' — anything ready to schedule?</label></summary>'+
         (someday.length?someday.map(function(k){
           return '<div class="panel-task"><div class="task-title" style="font-size:13.5px">'+esc(k.title)+'</div>'+
             '<div class="panel-move">'+picks.filter(function(m){ return !!m[2]; }).map(function(m){
               return '<button data-rv="'+m[0]+'" data-id="'+k.id+'" title="Move to '+esc(niceDate(m[2]))+'">'+m[1]+'</button>'; }).join("")+'</div></div>';
-        }).join(""):'<div class="empty">The shelf is clear</div>')+'</div>';
+        }).join(""):'<div class="empty">The shelf is clear</div>')+'</details>';
       h+='<div class="modal-actions"><button class="btn primary" data-x>'+(isEve?"Close the day":(scope==="morning"?"Start the day":"Done — feels lighter"))+'</button></div>';
       return h;
     }
@@ -5583,7 +5631,26 @@
     acItems=acCandidates(m[1], !!(t.dataset&&t.dataset.focus));
     acRender();
   }
-  document.addEventListener("input",function(e){ var t=e.target; if(t&&t.matches&&t.matches(".inline-add,#q-input,#m-title")) acUpdate(t); });
+  document.addEventListener("input",function(e){ var t=e.target; if(t&&t.matches&&t.matches(".inline-add,#q-input,#m-title")) acUpdate(t); if(t&&t.matches&&t.matches(".inline-add:not([data-subfor]):not([data-fsubfor]),#q-input")) nlPreview(t); });
+  var nlEl=null;
+  function nlPreviewClose(){ if(nlEl){ nlEl.remove(); nlEl=null; } }
+  function nlPreview(t){
+    nlPreviewClose();
+    if(acEl || !t.value.trim()) return;
+    var p=nlParse(t.value), chips=[];
+    if(p.day==="someday") chips.push("💭 Someday");
+    else if(p.day) chips.push("📅 "+(p.day===today()?"Today":(p.day===addDays(today(),1)?"Tomorrow":niceDate(p.day))));
+    if(p.at) chips.push("🕒 "+fmtTime(p.at)); else if(p.block) chips.push({morning:"☀️ Morning",afternoon:"🌤 Afternoon",evening:"🌙 Evening"}[p.block]);
+    if(p.projectId){ var pr=proj(p.projectId); if(pr) chips.push('<span class="pdot" style="'+cbg(pr.color)+'"></span>'+esc(pr.name)); }
+    (p.personIds||[]).forEach(function(id){ var pe=personById(id); if(pe) chips.push("👤 "+esc(pe.name)); });
+    if(!chips.length) return;
+    nlEl=el('<div class="nl-prev" aria-live="polite"><span class="nl-title">'+esc(p.title.slice(0,40))+(p.title.length>40?"…":"")+'</span>'+chips.map(function(c){ return '<span class="nl-chip">'+c+'</span>'; }).join("")+'</div>');
+    var r=t.getBoundingClientRect();
+    nlEl.style.left=Math.max(8,Math.min(r.left,window.innerWidth-320))+"px"; nlEl.style.top=(r.bottom+3)+"px";
+    document.body.appendChild(nlEl);
+  }
+  document.addEventListener("focusout",function(e){ if(nlEl) setTimeout(nlPreviewClose,120); });
+  document.addEventListener("keydown",function(e){ if(nlEl&&(e.key==="Enter"||e.key==="Escape")) nlPreviewClose(); },true);
   document.body.appendChild(el('<datalist id="time-opts">'+TIME_OPTS.map(function(t){ return '<option value="'+fmtTime(t)+'"></option>'; }).join("")+'</datalist>'));
   document.addEventListener("change",function(e){ var t=e.target;
     if(t&&t.classList&&t.classList.contains("time-in")){ var at=parseLooseTime(t.value); if(at) t.value=fmtTime(at); } });
