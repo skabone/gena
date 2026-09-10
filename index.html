@@ -47,6 +47,8 @@
     -webkit-font-smoothing: antialiased; font-size: 15px; line-height: 1.5;
   }
   /* skin scenery — a fixed illustration layer behind all content */
+  :root{ --r-card:16px; --r-ctl:10px; --dur:.18s; --ease:cubic-bezier(.2,.7,.2,1); }
+  body[data-scene="off"]::before{ display:none; }
   body::before{
     content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
     background-image:var(--scene,none); background-repeat:no-repeat;
@@ -90,7 +92,7 @@
     body.rb-open #rb-scrim{ display:block; position:fixed; inset:0; z-index:55; background:rgba(20,18,24,.4); }
   }
   .sb-card{ background:var(--card); border:1.5px solid var(--line); border-radius:14px; padding:10px; }
-  .sb-h{ font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); font-weight:700; margin:2px 6px 8px; display:flex; align-items:center; }
+  .sb-h{ font-size:12px; letter-spacing:0; text-transform:none; color:var(--ink-soft); font-weight:700; margin:2px 6px 8px; display:flex; align-items:center; }
   .sb-h .sb-act{ margin-left:auto; background:none; border:none; color:var(--terra-deep); cursor:pointer; font-size:11.5px; font-weight:700; padding:0 2px; font-family:inherit; }
   .sb-row{ display:flex; align-items:center; gap:8px; width:100%; text-align:left; background:none; border:none; font-family:inherit; font-size:13.5px; color:var(--ink); padding:7px 8px; border-radius:9px; cursor:pointer; }
   .sb-row:hover{ background:var(--line-soft); }
@@ -109,8 +111,9 @@
   }
 
   /* global header strip — name, date, clock on every tab */
-  .global-head{ display:flex; align-items:baseline; justify-content:center; gap:14px; flex-wrap:wrap; padding:12px 4px 0; }
-  .gh-name{ font-size:16.5px; font-weight:800; color:var(--ink); }
+  .global-head{ display:flex; align-items:baseline; justify-content:flex-end; gap:10px; flex-wrap:wrap; padding:8px 6px 0; }
+  .global-head::before{ display:none !important; content:none; }
+  .gh-name{ font-size:12.5px; font-weight:600; color:var(--ink-faint); }
   .gh-date{ font-size:13.5px; font-weight:700; color:var(--ink-soft); }
 
   /* per-section progress (health bars) */
@@ -124,7 +127,9 @@
     position: sticky; top: 0; z-index: 30; background: var(--slate);
     border-radius: 0 0 18px 18px; box-shadow: 0 4px 20px -8px var(--shadow);
   }
-  .appbar-inner { max-width:none; margin:0; padding: 14px 18px 16px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .appbar-inner { max-width:none; margin:0; padding: 12px 18px 12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  @media (min-width:1001px){ .appbar-inner{ flex-wrap:nowrap; } .appbar .nav{ flex:0 1 auto; min-width:0; } .sync-chip{ flex:none; } }
+  #theme-btn{ display:none; }   /* light / dark lives in ⋯ (and ◐ there) — one icon fewer in the bar */
   .brand { color: var(--slate-ink); font-weight: 800; letter-spacing:.12em; text-transform:uppercase; font-size:15px; white-space:nowrap; display:flex; align-items:center; gap:8px; }
   .brand-mark { flex:none; width:19px; height:19px; color: var(--terra); }
   .appbar .spacer { flex:1; }
@@ -164,7 +169,15 @@
   .capture .add { background: var(--good); color:#fff; border-color: var(--good); font-weight:700; padding:11px 18px; }
   .capture .add:hover { background: var(--good-deep); }
 
-  h2.view-h { font-size: 22px; font-weight:800; margin: 4px 0 2px; letter-spacing:-.01em; }
+  h2.view-h { font-size: 22px; font-weight:700; margin: 4px 0 2px; letter-spacing:-.02em; }
+  .grouped > h2.view-h:first-child{ display:none; }
+  .grouped > h2.view-h:first-child + p.sub{ display:none; }
+  /* segmented control — the Plan / Lists sub-views */
+  .seg{ display:inline-flex; gap:2px; padding:3px; background:var(--line-soft); border-radius:12px; margin:2px 0 14px; }
+  .seg button{ font-family:inherit; font-size:13px; font-weight:600; padding:6px 14px; border:none; border-radius:9px; background:transparent; color:var(--ink-soft); cursor:pointer; transition:background var(--dur) var(--ease), color var(--dur) var(--ease); }
+  .seg button:hover{ color:var(--ink); }
+  .seg button[aria-selected="true"]{ background:var(--card); color:var(--ink); box-shadow:0 1px 2px var(--shadow); }
+  @media (max-width:480px){ .seg{ display:flex; } .seg button{ flex:1; padding:7px 4px; } }
   .sub { color: var(--ink-soft); font-size: 13.5px; margin:0 0 16px; }
 
   .card { background: var(--card); border:1.5px solid var(--line); border-radius: 16px; padding: 16px 18px; }
@@ -185,7 +198,16 @@
   .task-main{ flex:1; min-width:0; }
   .task-title{ font-size:15px; word-wrap:break-word; }
   .task.done .task-title{ text-decoration:line-through; color:var(--ink-faint); }
-  .task-meta{ display:flex; align-items:center; gap:7px; margin-top:4px; flex-wrap:wrap; }
+  .task-meta{ display:block; margin-top:3px; font-size:11.5px; line-height:1.7; color:var(--ink-soft); }
+  .task-meta .pill{ background:transparent !important; color:var(--ink-soft) !important; padding:0; font-weight:600; font-size:11.5px; border-radius:0; display:inline; white-space:nowrap; }
+  .task-meta .pill.proj .pdot{ display:inline-block; vertical-align:middle; margin-right:3px; }
+  .task-meta .pill+.pill::before{ content:"\200B"; white-space:normal; }
+  .task-meta .pill:not(:last-child)::after{ content:" ·"; margin:0 5px 0 4px; color:var(--ink-faint); font-weight:700; }
+  .task-meta .pill.proj{ --pc:var(--p0); }
+  .task-meta .pill.proj .pdot{ width:7px; height:7px; border-radius:50%; background:var(--pc); flex:none; margin-right:1px; }
+  .task-meta .pill.imp{ color:var(--terra-deep) !important; font-weight:800; }
+  .task-meta .pill.aged.hot, .task-meta .pill.due.hot{ color:var(--warn) !important; font-weight:800; }
+  .task-meta .pill.more{ color:var(--ink-faint) !important; }
   .pill{ font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; display:inline-flex; align-items:center; gap:4px; }
   .pill.proj{ color:#fff; }
   /* Only the project pill keeps a solid fill — everything else is quiet text, so titles win.
@@ -298,7 +320,7 @@
      hidden), so a tall modal ran past the bottom of the screen and its sticky footer ("Start the day")
      could not be scrolled to. max-height:100% resolves against the scrim's content box instead, which
      is always exactly what you can see. overscroll-behavior stops the rubber-band bounce escaping. */
-  .modal{ background:var(--sheet); border-radius:18px; width:min(460px,100%); max-height:100%; overflow:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:22px; box-shadow:0 30px 60px -20px rgba(0,0,0,.5); }
+  .modal{ background:var(--sheet); border-radius:var(--r-card); width:min(460px,100%); max-height:100%; overflow:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:22px; box-shadow:0 30px 60px -20px rgba(0,0,0,.5); }
   .modal h3{ margin:0 0 4px; font-size:18px; font-weight:800; }
   .modal .fld{ margin:14px 0; }
   .modal label{ display:block; font-size:12px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
@@ -319,7 +341,7 @@
     .modal.wide .m-cols{ flex-direction:column; gap:0; }
     .modal.wide .m-col-side{ border-left:none; padding-left:0; border-top:1px solid var(--line-soft); padding-top:6px; margin-top:14px; }
   }
-  .btn{ font-family:inherit; font-size:14px; font-weight:700; border-radius:11px; padding:10px 18px; cursor:pointer; border:1.5px solid var(--line); background:var(--card); color:var(--ink); }
+  .btn{ font-family:inherit; font-size:14px; font-weight:600; border-radius:var(--r-ctl); transition:background var(--dur) var(--ease), border-color var(--dur) var(--ease), transform var(--dur) var(--ease); padding:10px 18px; cursor:pointer; border:1.5px solid var(--line); background:var(--card); color:var(--ink); }
   /* Affirmative actions (Save / Add / Apply) read green; destructive ones red. Both use the existing
      --good / --warn tokens, so they follow every skin and both themes. */
   .btn.primary{ background:var(--good); border-color:var(--good); color:#fff; }
@@ -350,7 +372,7 @@
   :root[data-density="compact"] body{ font-size:14px; }
   :root[data-density="roomy"] body{ font-size:16px; }
   :root[data-font="serif"]{ --font: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; }
-  :root[data-font="system"]{ --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif; }
+  :root[data-font="system"]{ --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable", "Segoe UI", Roboto, Inter, system-ui, sans-serif; }
   :root[data-font="mono"]{ --font: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
   /* keyboard users get a visible ring everywhere; mouse users don't (Phase 9b a11y pass) */
   :where(button,a,input,select,textarea,[tabindex]):focus-visible{
@@ -537,18 +559,33 @@
   .at-btn{ flex:none; width:26px; height:26px; border-radius:8px; border:1px solid var(--line-soft); background:var(--sheet); color:var(--ink-faint); font-family:inherit; font-size:14px; font-weight:800; cursor:pointer; padding:0; opacity:.55; }
   .at-btn:hover, .inline-row:focus-within .at-btn{ opacity:1; color:var(--terra-deep); border-color:var(--terra); }
   .row-br{ display:none; }
+  .task.empty-li{ display:block; padding:12px 6px 6px; font-size:12.5px; color:var(--ink-faint); cursor:default; }
+  .task.empty-li:hover{ background:transparent; }
+  .task-more{ display:none; flex:none; width:32px; height:32px; align-items:center; justify-content:center; border:none; background:transparent; color:var(--ink-faint); font-size:18px; font-weight:800; border-radius:8px; cursor:pointer; align-self:flex-start; }
+  .task-more:active{ background:var(--line-soft); }
+  /* the action sheet — a modal that rises from the bottom edge on a phone */
+  .scrim.sheet-scrim{ align-items:flex-end; padding:0; }
+  .modal.sheet{ width:100%; max-width:560px; border-radius:var(--r-card) var(--r-card) 0 0; padding:10px 14px calc(14px + env(safe-area-inset-bottom)); animation:sheetUp .22s var(--ease); }
+  @keyframes sheetUp{ from{ transform:translateY(24px); opacity:0; } }
+  .sheet-grip{ width:36px; height:4px; border-radius:2px; background:var(--line); margin:0 auto 10px; }
+  .sheet-title{ font-size:14px; font-weight:700; color:var(--ink); margin:0 4px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sheet-row{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; font-family:inherit; font-size:15px; color:var(--ink); background:transparent; border:none; padding:12px 8px; border-radius:10px; cursor:pointer; }
+  .sheet-row:active{ background:var(--line-soft); }
+  .sheet-row .si{ width:26px; text-align:center; font-size:17px; }
+  .sheet-row.danger{ color:var(--warn); }
+  @media (min-width:761px){ .modal.sheet{ border-radius:var(--r-card); } .scrim.sheet-scrim{ align-items:center; padding:16px; } }
   .at-btn.q-at{ width:34px; height:34px; opacity:.8; align-self:center; }
   .inline-add{ flex:1; min-width:0; border:none; background:transparent; font-family:inherit; font-size:15px; color:var(--ink); padding:4px 0; }
   .inline-add:focus{ outline:none; }
   .inline-add::placeholder{ color:var(--ink-faint); }
   .today-head{ display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
-  .clock{ font-size:14px; color:var(--ink-soft); font-weight:600; font-variant-numeric:tabular-nums; }
+  .clock{ font-size:12.5px; color:var(--ink-faint); font-weight:600; font-variant-numeric:tabular-nums; }
   .clock b{ color:var(--ink); font-weight:800; } .clock .sea{ color:var(--terra-deep); }
   details.fold{ padding:0; }
   details.fold>summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:15px 18px; }
   details.fold>summary::-webkit-details-marker{ display:none; }
   details.fold[open]>summary{ padding-bottom:6px; }
-  details.fold>summary .fold-label{ flex:1; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); font-weight:700; }
+  details.fold>summary .fold-label{ flex:1; font-size:14px; letter-spacing:-.01em; text-transform:none; color:var(--ink); font-weight:700; }
   details.fold>summary .fold-chev{ color:var(--ink-faint); font-size:12px; transition:transform .15s; }
   details.fold[open]>summary .fold-chev{ transform:rotate(90deg); }
   .fold-body{ padding:0 18px 16px; }
@@ -621,7 +658,7 @@
 
   /* motion & polish */
   html{ accent-color: var(--terra); }
-  .task{ border-radius:8px; transition:background .12s; }
+  .task{ border-radius:8px; transition:background var(--dur) var(--ease); }
   .task:not(.inline-row):hover{ background:var(--line-soft); }
   .chk.done::after{ animation:pop .2s ease; }
   .task.completing{ animation:settle .38s ease forwards; }
@@ -635,12 +672,12 @@
   @keyframes scrimIn{ from{ opacity:0; } }
   .modal{ animation:modalIn .2s cubic-bezier(.2,.85,.3,1.15); }
   @keyframes modalIn{ from{ opacity:0; transform:translateY(12px) scale(.97); } }
-  #view.anim{ animation:fadeup .22s ease; }
+  #view.anim{ animation:fadeup var(--dur) var(--ease); }
   @keyframes fadeup{ from{ opacity:0; transform:translateY(5px); } }
   details.fold[data-fold="focus"]{ border-left:4px solid var(--terra); }
   /* the "Done · n" strip at the foot of each Today card */
   details.done-strip{ margin:6px 0 0; border-top:1px dashed var(--line-soft); }
-  details.done-strip>summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:8px; padding:8px 4px 4px; font-size:11.5px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; color:var(--ink-faint); }
+  details.done-strip>summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:8px; padding:8px 4px 4px; font-size:12px; letter-spacing:0; text-transform:none; font-weight:600; color:var(--ink-faint); }
   details.done-strip>summary::-webkit-details-marker{ display:none; }
   details.done-strip>summary .fold-chev{ font-size:11px; transition:transform .15s; }
   details.done-strip[open]>summary .fold-chev{ transform:rotate(90deg); }
@@ -665,6 +702,13 @@
   }
   @media print{ #bottomnav{ display:none !important; } }
   body[data-snapshot] #bottomnav{ display:none !important; }
+  .today-status{ display:flex; align-items:center; gap:12px; margin:6px 0 4px; }
+  .ring{ width:46px; height:46px; flex:none; transform:rotate(-90deg); }
+  .ring circle{ fill:none; stroke-width:3.4; }
+  .ring-bg{ stroke:var(--line-soft); }
+  .ring-fg{ stroke:var(--good); stroke-linecap:round; transition:stroke-dasharray .6s var(--ease); }
+  .ring text{ transform:rotate(90deg); transform-origin:18px 18px; font-size:9px; font-weight:800; fill:var(--ink); font-variant-numeric:tabular-nums; }
+  .today-extras{ margin-top:18px; }
   .day-prog span{ display:block; height:100%; border-radius:999px; background:var(--good); transition:width .4s ease; }
   .now-pill{ font-size:9px; letter-spacing:.1em; background:var(--terra); color:#fff; border-radius:999px; padding:2px 7px; margin-left:6px; vertical-align:middle; }
   .streak-pill{ font-size:12px; font-weight:800; color:var(--terra-deep); background:var(--terra-bg); padding:3px 10px; border-radius:999px; white-space:nowrap; }
@@ -686,7 +730,7 @@
   .day-title{ margin:0; font-size:18px; }
   .day-events{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
   .day-unsched{ background:var(--sheet); border:1px solid var(--line-soft); border-radius:14px; padding:10px 12px; margin-bottom:14px; }
-  .day-unsched-h{ font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:6px; }
+  .day-unsched-h{ font-size:12.5px; font-weight:700; letter-spacing:0; text-transform:none; color:var(--ink-soft); margin-bottom:6px; }
   ul.day-tray{ max-height:230px; overflow-y:auto; }
   .day-tray.empty-tray{ color:var(--ink-faint); font-size:13px; padding:6px 2px; }
   .day-tray.drag-over{ outline:2px dashed var(--terra); outline-offset:3px; border-radius:10px; }
@@ -696,7 +740,7 @@
   /* the block layer floats over the slot column; during a drag it goes transparent so the hour slots
      underneath keep receiving the drop */
   .tb-layer{ position:absolute; top:0; bottom:0; left:63px; right:4px; pointer-events:none; }
-  .tblock{ position:absolute; pointer-events:auto; border-radius:8px; padding:3px 8px; overflow:hidden;
+  .tblock{ position:absolute; pointer-events:auto; border-radius:7px; padding:3px 8px; overflow:hidden; transition:filter var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
     cursor:pointer; font-size:12px; color:#fff; box-shadow:0 1px 3px rgba(0,0,0,.12); z-index:2;
     display:flex; flex-direction:column; gap:0; border-left:3px solid rgba(0,0,0,.18); }
   .tblock.plain{ background:var(--card); color:var(--ink); border:1.5px solid var(--line); border-left:3px solid var(--terra); }
@@ -705,6 +749,8 @@
   .tblock:hover{ filter:brightness(1.05); z-index:4; }
   .tb-time{ font-size:10px; font-weight:700; opacity:.85; line-height:1.3; }
   .day-cap{ font-size:12.5px; color:var(--ink-soft); margin:-4px 0 10px; }
+  .day-jump{ position:relative; overflow:hidden; cursor:pointer; padding:4px 10px; }
+  .day-jump input{ position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; }
   .day-cap.over{ color:var(--warn); }
   .tb-resize{ position:absolute; left:0; right:0; bottom:0; height:9px; cursor:ns-resize; touch-action:none; }
   .tb-resize::after{ content:""; position:absolute; left:50%; bottom:2px; width:22px; height:3px; margin-left:-11px; border-radius:2px; background:rgba(255,255,255,.55); opacity:0; transition:opacity .12s; }
@@ -715,7 +761,7 @@
   .dragging .tblock{ pointer-events:none; }
   .hour-row:first-child{ border-top:0; }
   .hour-label{ flex:0 0 62px; padding:7px 10px; font-size:11px; color:var(--ink-faint); text-align:right; border-right:1px solid var(--line-soft); user-select:none; }
-  .hourslot{ position:relative; flex:1 1 auto; min-width:0; padding:4px 8px; }
+  .hourslot{ position:relative; flex:1 1 auto; min-width:0; padding:4px 8px; background:linear-gradient(to bottom, transparent 50%, var(--line-soft) 50%, var(--line-soft) calc(50% + 1px), transparent calc(50% + 1px)); background-size:100% 100%; }
   .hourslot.drag-over{ background:var(--terra-bg); outline:2px dashed var(--terra); outline-offset:-2px; }
   .hourslot .tasks{ gap:4px; }
   .hourslot .task{ border-bottom:0; padding:5px 4px; }
@@ -907,21 +953,17 @@
     /* two rows, not three: burger ‹ › brand … icons on the first, the view tabs on the second */
     .appbar-inner{ row-gap:6px; padding:10px 12px 10px; gap:6px; }
     .appbar .nav{ order:10; flex:1 1 100%; }
-    #theme-btn{ display:none; }              /* light/dark lives in ⋯ too; the first row must fit at 375px */
     .appbar .brand{ font-size:15px; }
     .appbar .icon-btn{ width:34px; height:34px; }
     .navhist .icon-btn{ width:28px; height:28px; }
     .sync-chip{ font-size:0; width:12px; height:12px; padding:0; border-radius:50%; background:var(--terra); opacity:.9; }
     /* touch shows the row buttons permanently — at 375px they were squeezing titles to a word a line */
-    li.task{ flex-wrap:wrap; gap:8px; }
-    li.task .task-main{ flex:1 1 44%; min-width:44%; }
-    /* ⤷+ and → stay on the title line; ◎ ★ ✕ wrap together, pushed to the right of the meta line */
-    li.task .row-br{ display:block; flex-basis:100%; height:0; order:9; margin:-8px 0 0; }
-    li.task .task-focus{ order:10; margin-left:auto; }
-    li.task .task-star{ order:11; }
-    li.task .task-x{ order:12; }
-    li.task[data-focus] .task-x{ order:0; margin-left:0; }   /* a focus row has only ⤷+ → ✕ — they fit */
-    .task-addsub,.task-bump,.task-focus,.task-star,.task-x{ min-width:30px; min-height:30px; }
+    /* the phone row: checkbox, title + meta, one ⋯. Everything else is behind the sheet or a swipe
+       (right = done, left = tomorrow), the way Mail and Things do it. */
+    li.task{ gap:8px; }
+    li.task .task-main{ flex:1 1 auto; min-width:0; }
+    li.task .task-addsub, li.task .task-bump, li.task .task-focus, li.task .task-star, li.task .task-x, li.task .row-br{ display:none; }
+    li.task .task-more{ display:inline-flex; }
     .task-addsub,.task-bump,.task-focus,.task-star,.task-x{ padding:2px 3px; font-size:13px; }
   }
 </style>
@@ -933,16 +975,11 @@
     <span class="navhist"><button class="icon-btn" id="nav-back" title="Back (⌘[ )" aria-label="Back" disabled>‹</button><button class="icon-btn" id="nav-fwd" title="Forward (⌘] )" aria-label="Forward" disabled>›</button></span>
     <div class="brand"><svg class="brand-mark" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="currentColor"><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z"/><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z" transform="rotate(90 32 32)"/><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z" transform="rotate(180 32 32)"/></g><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z" fill="#c0392b" transform="rotate(270 32 32)"/><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z" fill="currentColor" transform="rotate(270 32 32) translate(32 14.03) scale(0.72) translate(-32 -14.03)"/><line x1="24" y1="32" x2="32" y2="32" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="32" r="3" fill="currentColor"/></svg>Gena</div>
     <nav class="nav" id="nav" aria-label="Views">
-      <button data-view="hub">Hub</button>
       <button data-view="today" aria-current="true">Today</button>
-      <button data-view="day">Day</button>
-      <button data-view="week">Week</button>
-      <button data-view="backlog">Backlog</button>
-      <button data-view="projects">Projects</button>
-      <button data-view="people">People</button>
-      <button data-view="calendar">Calendar</button>
-      <button data-view="timeline">Timeline</button>
+      <button data-view="plan" data-group="day calendar week">Plan</button>
+      <button data-view="lists" data-group="backlog projects people timeline">Lists</button>
       <button data-view="journal">Journal</button>
+      <button data-view="hub">Hub</button>
     </nav>
     <span class="spacer"></span>
     <button class="sync-chip" id="sync-status" title="Where your data is saved — tap for sync options" aria-label="Sync status"></button>
@@ -974,11 +1011,11 @@
 <div id="rb-scrim"></div>
 <div id="modal-root"></div>
 <nav id="bottomnav" aria-label="Quick navigation">
-  <button data-view="today"><span>📅</span>Today</button>
-  <button data-view="day"><span>🕒</span>Day</button>
-  <button data-view="week"><span>🗓</span>Week</button>
-  <button data-view="calendar"><span>📆</span>Calendar</button>
-  <button data-act="bn-review"><span>🌅</span>Review</button>
+  <button data-view="today"><span>☀️</span>Today</button>
+  <button data-view="plan" data-group="day calendar week"><span>🗓</span>Plan</button>
+  <button data-view="lists" data-group="backlog projects people timeline"><span>☰</span>Lists</button>
+  <button data-view="journal"><span>📓</span>Journal</button>
+  <button data-view="hub"><span>✨</span>Hub</button>
 </nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -1051,7 +1088,7 @@
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-10 01:00";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-10 01:13";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1206,7 +1243,7 @@
     dedupeRemovedCount=removed.length;
     return d;
   }
-  function normalize(d){ d.projects=d.projects||[]; d.tasks=d.tasks||[]; d.templates=d.templates||[]; d.habits=d.habits||[]; d.habitLog=d.habitLog||{}; d.events=d.events||[]; d.phases=d.phases||[]; d.dismissed=d.dismissed||[]; d.notes=d.notes||{}; d.calSources=d.calSources||[]; if(!d.proxy)d.proxy=PROXY_DEFAULT; d.emails=d.emails||[]; d.jobs=d.jobs||[]; d.improve=d.improve||[]; if(!d.calView)d.calView="month"; if(!d.calAnchor)d.calAnchor=(d.calMonth?d.calMonth+"-01":null); if(!d.skin)d.skin="paper"; delete d.apiKey; d.people=d.people||[]; d.collapsed=d.collapsed||{}; d.lastExport=d.lastExport||null; if(typeof d.name!=="string")d.name=""; d._sm=d._sm||{}; if(typeof d.autoCarry!=="boolean")d.autoCarry=false; if(typeof d.accent!=="string")d.accent=d.accent||null; d.tasks.forEach(function(k){ if(!Array.isArray(k.personIds)) k.personIds=[]; }); if(!d.density)d.density="cozy"; if(!d.font)d.font="rounded"; d.sessions=d.sessions||[]; d.subsHidden=d.subsHidden||{}; if(typeof d.expandOnAdd!=="boolean")d.expandOnAdd=true; if(!(typeof d.eveningHour==="number"||d.eveningHour===false))d.eveningHour=20; d.reviewDone=d.reviewDone||{};
+  function normalize(d){ d.projects=d.projects||[]; d.tasks=d.tasks||[]; d.templates=d.templates||[]; d.habits=d.habits||[]; d.habitLog=d.habitLog||{}; d.events=d.events||[]; d.phases=d.phases||[]; d.dismissed=d.dismissed||[]; d.notes=d.notes||{}; d.calSources=d.calSources||[]; if(!d.proxy)d.proxy=PROXY_DEFAULT; d.emails=d.emails||[]; d.jobs=d.jobs||[]; d.improve=d.improve||[]; if(!d.calView)d.calView="month"; if(!d.calAnchor)d.calAnchor=(d.calMonth?d.calMonth+"-01":null); if(!d.skin)d.skin="paper"; delete d.apiKey; d.people=d.people||[]; d.collapsed=d.collapsed||{}; d.lastExport=d.lastExport||null; if(typeof d.name!=="string")d.name=""; d._sm=d._sm||{}; if(typeof d.autoCarry!=="boolean")d.autoCarry=false; if(typeof d.accent!=="string")d.accent=d.accent||null; d.tasks.forEach(function(k){ if(!Array.isArray(k.personIds)) k.personIds=[]; }); if(!d.density)d.density="cozy"; if(!d.font)d.font="rounded"; if(!d.l2rev){ d.font="system"; d.scene="off"; d.l2rev=1; } if(d.scene!=="on"&&d.scene!=="off") d.scene="off"; d.sessions=d.sessions||[]; d.subsHidden=d.subsHidden||{}; if(typeof d.expandOnAdd!=="boolean")d.expandOnAdd=true; if(!(typeof d.eveningHour==="number"||d.eveningHour===false))d.eveningHour=20; d.reviewDone=d.reviewDone||{};
     // One-time: 7.5 shipped autoCarry defaulting to on, which left the Carried-over card empty whenever
     // everything had already been auto-placed. Off is the setting where the day list and that card are
     // both useful, so re-default once. Any later toggle is the user's and is left alone.
@@ -1399,6 +1436,16 @@
     return '<details class="done-strip" data-fold="done-'+key+'"'+open+'><summary><span class="fold-chev">▸</span>✓ Done · '+n+'</summary>'+
       '<ul class="tasks" data-list="done:'+key+'">'+rows+'</ul></details>';
   }
+  // A progress ring for the day — what the bar said, in the shape every fitness/planner app taught
+  // people to read at a glance.
+  function ringHtml(done,total){
+    var pct=total?Math.round(100*done/total):0, r=15.9;
+    return '<svg class="ring" viewBox="0 0 36 36" role="img" aria-label="'+done+' of '+total+' done">'+
+      '<circle class="ring-bg" cx="18" cy="18" r="'+r+'"/>'+
+      '<circle class="ring-fg" cx="18" cy="18" r="'+r+'" stroke-dasharray="'+pct+' 100"/>'+
+      '<text x="18" y="21.5" text-anchor="middle">'+done+'/'+total+'</text></svg>';
+  }
+  function emptyLi(text){ return '<li class="task empty-li">'+text+'</li>'; }
   function foldProg(done,total){ if(!total) return ""; var pct=Math.round(100*done/total);
     return '<span class="fold-prog" title="'+done+' of '+total+' done"><span class="fp-track"><span class="fp-fill" style="width:'+pct+'%"></span></span><span class="fp-n">'+done+'/'+total+'</span></span>'; }
 
@@ -1411,7 +1458,8 @@
     else { r.removeProperty("--terra"); r.removeProperty("--terra-deep"); r.removeProperty("--terra-bg"); }
     var de=document.documentElement;
     if(S.density&&S.density!=="cozy") de.setAttribute("data-density",S.density); else de.removeAttribute("data-density");
-    if(S.font&&S.font!=="rounded") de.setAttribute("data-font",S.font); else de.removeAttribute("data-font"); }
+    if(S.font&&S.font!=="rounded") de.setAttribute("data-font",S.font); else de.removeAttribute("data-font");
+    document.body.setAttribute("data-scene", S.scene==="on"?"on":"off"); }
   // colour helpers — used by the accent picker and anywhere a derived shade is needed
   function hexToRgb(h){ h=String(h||"").replace("#",""); if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
     var n=parseInt(h,16); return isNaN(n)?{r:170,g:140,b:60}:{r:(n>>16)&255,g:(n>>8)&255,b:n&255}; }
@@ -1621,8 +1669,38 @@
   var lastRenderedView=null;
   var IN_CLAUDE=(function(){ try{ return window.self!==window.top || /claude|anthropic|usercontent/i.test(location.hostname); }catch(e){ return true; } })();
   var nav=document.getElementById("nav");
-  nav.onclick=function(e){ var b=e.target.closest("button"); if(!b)return; view=b.dataset.view;
-    [].forEach.call(nav.children,function(c){c.setAttribute("aria-current",c===b?"true":"false");}); render(); };
+  /* Five tabs. "Plan" and "Lists" are groups: Plan = Day · Week · Month · Agenda, Lists = Backlog ·
+     Projects · People · Timeline, each with a segmented control at the top of the view. goView is the
+     one way to change view — it resolves a group to the sub-view you last used and remembers it. */
+  var GROUPS={plan:["day","calendar","week"], lists:["backlog","projects","people","timeline"]};
+  var lastSub={plan:"day", lists:"backlog"};
+  function groupOf(v){ for(var g in GROUPS) if(GROUPS[g].indexOf(v)>=0) return g; return null; }
+  function goView(v, opts){
+    opts=opts||{};
+    if(GROUPS[v]) v=lastSub[v]||GROUPS[v][0];
+    if(v==="calendar" && opts.cal){ S.calView=opts.cal; if(!S.calAnchor) S.calAnchor=today(); }
+    var g=groupOf(v); if(g) lastSub[g]=v;
+    view=v; if(v==="today" && opts.today!==false) viewDay=today();
+    syncNav(); render(); if(opts.top!==false) window.scrollTo({top:0});
+  }
+  // the segment for the calendar depends on its mode: month/year read as "Month", the rest as "Week"
+  function planSeg(){ return view==="day"?"day":(view==="week"?"agenda":((S.calView==="month"||S.calView==="year")?"month":"wk")); }
+  function segHtml(){
+    var g=groupOf(view); if(!g) return "";
+    var items = g==="plan"
+      ? [["day","Day",view==="day"],["wk","Week",planSeg()==="wk"],["month","Month",planSeg()==="month"],["agenda","Agenda",view==="week"]]
+      : [["backlog","Backlog",view==="backlog"],["projects","Projects",view==="projects"],["people","People",view==="people"],["timeline","Timeline",view==="timeline"]];
+    return '<div class="seg" role="tablist" aria-label="'+(g==="plan"?"Plan":"Lists")+'">'+items.map(function(it){
+      return '<button role="tab" data-act="seg" data-seg="'+it[0]+'" aria-selected="'+!!it[2]+'">'+it[1]+'</button>'; }).join("")+'</div>';
+  }
+  function segGo(k){
+    if(k==="day") goView("day");
+    else if(k==="agenda") goView("week");
+    else if(k==="month") goView("calendar",{cal:"month"});
+    else if(k==="wk") goView("calendar",{cal:(["week","workweek","3day"].indexOf(S.calView)>=0?S.calView:"week")});
+    else goView(k);
+  }
+  nav.onclick=function(e){ var b=e.target.closest("button"); if(!b)return; goView(b.dataset.view,{today:true}); };
   /* ---------- where you have been: back / forward ----------
      Navigation happens from ~20 call sites (nav bar, bottom nav, day arrows, log rows, timeline,
      search hits, quick actions). Rather than instrument every one, the stack records at render() —
@@ -1671,17 +1749,19 @@
     ensureOrd();
     navRecord();
     ieShown=false;
-    var m=document.getElementById("view");
-    if(view==="today") m.innerHTML=viewToday();
-    else if(view==="day") m.innerHTML=viewDayGrid();
-    else if(view==="journal") m.innerHTML=viewJournal();
-    else if(view==="week") m.innerHTML=viewWeek();
-    else if(view==="backlog") m.innerHTML=viewBacklog();
-    else if(view==="projects") m.innerHTML=viewProjects();
-    else if(view==="calendar") m.innerHTML=viewCalendar();
-    else if(view==="timeline") m.innerHTML=viewTimeline();
-    else if(view==="hub") m.innerHTML=viewHub();
-    else if(view==="people") m.innerHTML=viewPeople();
+    var m=document.getElementById("view"), inner;
+    if(view==="today") inner=viewToday();
+    else if(view==="day") inner=viewDayGrid();
+    else if(view==="journal") inner=viewJournal();
+    else if(view==="week") inner=viewWeek();
+    else if(view==="backlog") inner=viewBacklog();
+    else if(view==="projects") inner=viewProjects();
+    else if(view==="calendar") inner=viewCalendar();
+    else if(view==="timeline") inner=viewTimeline();
+    else if(view==="hub") inner=viewHub();
+    else if(view==="people") inner=viewPeople();
+    var seg=segHtml();
+    m.innerHTML=seg?seg+'<div class="grouped">'+inner+'</div>':inner;
     renderSidebar();
     renderRightbar();
     renderGlobalHead();
@@ -1720,9 +1800,10 @@
     return bits.join(" · ");
   }
   function syncNav(){
-    [].forEach.call(nav.children,function(c){ c.setAttribute("aria-current",c.dataset.view===view?"true":"false"); });
+    function cur(c){ var g=c.dataset.group; return c.dataset.view===view || (g && g.split(" ").indexOf(view)>=0); }
+    [].forEach.call(nav.children,function(c){ c.setAttribute("aria-current",cur(c)?"true":"false"); });
     var bn=document.getElementById("bottomnav");
-    if(bn) [].forEach.call(bn.querySelectorAll("[data-view]"),function(c){ c.setAttribute("aria-current",c.dataset.view===view?"true":"false"); });
+    if(bn) [].forEach.call(bn.querySelectorAll("[data-view]"),function(c){ c.setAttribute("aria-current",cur(c)?"true":"false"); });
   }
   function renderSidebar(){
     var sb=document.getElementById("sidebar"); if(!sb) return;
@@ -1899,7 +1980,7 @@
     // five saturated chips per row meant the titles lost every glance
     var pl=[];
     if(k.priority) pl.push('<span class="pill imp">★ important</span>');
-    if(p) pl.push('<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>');
+    if(p) pl.push('<span class="pill proj" style="--pc:'+esc(p.color)+'"><i class="pdot"></i>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>');
     if(k.tplId) pl.push('<span class="pill rec">↻ repeats</span>');
     if(k.rollover>=1) pl.push('<span class="pill aged'+(k.rollover>=7?" hot":"")+'">carried '+k.rollover+'d</span>');
     if(k.dueLabel) pl.push('<span class="pill block">'+esc(k.dueLabel)+'</span>');
@@ -1939,7 +2020,8 @@
       '<span class="row-br"></span>'+   /* phone: forces ◎ ★ ✕ onto their own right-aligned line together */
       '<button class="task-focus'+(inFocus(k.id)?" on":"")+'" data-act="tofocus" aria-label="Add to Today’s Focus" title="Add to Today’s Focus">◎</button>'+
       '<button class="task-star '+(k.priority?"on":"")+'" data-act="star" aria-label="Toggle important" aria-pressed="'+!!k.priority+'">'+(k.priority?"★":"☆")+'</button>'+
-      '<button class="task-x" data-act="del" aria-label="Delete">✕</button></li>';
+      '<button class="task-x" data-act="del" aria-label="Delete">✕</button>'+
+      '<button class="task-more" data-act="rowmenu" aria-label="More actions">⋯</button></li>';
   }
   var AT_BTN='<button type="button" class="at-btn" title="Pick a project, person, day or time" aria-label="Pick a project, person, day or time">@</button>';
   function inlineAddRow(key,label){
@@ -1956,7 +2038,7 @@
       var kp=k.projectId?proj(k.projectId):null;
       var done=k.status==="done";
       var lpills=(k.priority?'<span class="pill imp">★ important</span>':"")+
-        (kp?'<span class="pill proj" style="'+cbg(kp.color)+'">'+(kp.emoji?esc(kp.emoji)+" ":"")+esc(kp.name)+'</span>':"")+
+        (kp?'<span class="pill proj" style="--pc:'+esc(kp.color)+'"><i class="pdot"></i>'+(kp.emoji?esc(kp.emoji)+" ":"")+esc(kp.name)+'</span>':"")+
         (k.day&&!taskOnDay(k,viewDay)?'<span class="pill block">'+niceDate(k.day)+'</span>':"")+
         spanPill(k.day,k.end)+
         (k.block?'<span class="pill block">'+k.block+'</span>':"")+
@@ -1974,7 +2056,8 @@
         '<div class="task-main" data-act="focus-editlinked" data-tid="'+k.id+'" title="Tap to edit the task"><div class="task-title">'+subsCaret(k.id,(k.subs||[]).length)+esc(k.title)+'</div><div class="task-meta">'+lpills+'</div>'+lsubsHtml+'</div>'+
         '<button class="task-addsub" data-act="sub-add" data-tid="'+k.id+'" aria-label="Add a subtask" title="Add a subtask">⤷+</button>'+
         bumpBtn(k)+
-        '<button class="task-x" data-act="focus-del" aria-label="Remove from focus" title="Remove from focus (keeps the task)">✕</button></li>';
+        '<button class="task-x" data-act="focus-del" aria-label="Remove from focus" title="Remove from focus (keeps the task)">✕</button>'+
+        '<button class="task-more" data-act="rowmenu" aria-label="More actions">⋯</button></li>';
     }
     var p=f.projectId?proj(f.projectId):null;
     var pills=(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"");
@@ -1994,6 +2077,12 @@
       '<button class="task-x" data-act="focus-del" aria-label="Delete">✕</button></li>';
   }
   // is this task already promoted into the focus list for the day being viewed?
+  // the task behind a row — a focus row's data-id is the focus item, whose taskId is the task
+  function taskForRow(li){
+    if(li.dataset.focus){ var f=(S.focus[viewDay]||[]).find(function(x){return x.id===li.dataset.id;});
+      return f&&f.taskId?S.tasks.find(function(k){return k.id===f.taskId;}):null; }
+    return S.tasks.find(function(k){return k.id===li.dataset.id;});
+  }
   function inFocus(taskId){ return (S.focus[viewDay]||[]).some(function(f){return f.taskId===taskId;}); }
   function addTaskToFocus(taskId, silent){
     if(!taskId||!S.tasks.some(function(x){return x.id===taskId;})) return false;
@@ -2104,6 +2193,7 @@
       '<h2 class="day-title">'+esc(niceDate(d))+(isToday?' · today':'')+'</h2>'+
       '<button class="icon-btn" data-act="daynav" data-d="1" aria-label="Next day" title="Next day">›</button>'+
       (isToday?'':'<button class="chip" data-act="daynav" data-d="0">Back to today</button>')+
+      '<label class="chip day-jump" title="Jump to a date">📅<input type="date" id="day-jump" value="'+d+'" aria-label="Jump to a date"/></label>'+
       (unsched.length?'<button class="chip" data-act="planday" style="margin-left:auto" title="Slot every unscheduled task into the day’s free gaps">✨ Plan my day</button>':'')+
       '</div>'+capacityHtml(d);
     var evBanner=evs.length?'<div class="day-events">'+evs.map(function(e){ return '<span class="pill block">📅 '+esc(e.title)+'</span>'; }).join("")+'</div>':'';
@@ -2147,26 +2237,26 @@
       '<button class="chip" data-act="'+(bulkMode?'bulk-exit':'bulk-enter')+'" aria-pressed="'+bulkMode+'">'+(bulkMode?'✕ Done selecting':'☑ Select')+'</button>'+
       '<button class="chip" data-act="panel-toggle" aria-pressed="'+!!S.panelOpen+'" title="Backlog & log panel">📋 '+(S.panelOpen?"Hide":"Show")+' panel'+(doneCount?' · '+doneCount+' done':'')+'</button>'+
       '</div>'+
-      '<p class="sub"'+(total?' style="margin-bottom:0"':'')+'>'+status+'</p>'+
-      (isPast?'':capacityHtml(vd))+
-      (total?'<div class="day-prog" role="img" aria-label="'+doneCount+' of '+total+' done"><span style="width:'+Math.round(100*doneCount/total)+'%"></span></div>':'');
+      '<div class="today-status">'+(total?ringHtml(doneCount,total):'')+'<div><p class="sub" style="margin:0">'+status+'</p>'+(isPast?'':capacityHtml(vd))+'</div></div>';
 
+    // The day itself comes first — Focus, To-do, the blocks. Dashboards, suggestions and capture are
+    // useful, but not before the first task; they follow the lists.
+    var extras='';
+    if(isToday) extras+=spuCourseDashboardHtml();
+    if(isToday) extras+=projectBriefsHtml();
     html+='<div class="today-main">';
-    if(isToday) html+=spuCourseDashboardHtml();
-    if(isToday) html+=projectBriefsHtml();
 
     if(sugg.length){
-      html+='<div class="stack">';
-      html+='<div class="sugg-note">✨ Smart, not psychic — suggestions from your own patterns</div>';
+      extras+='<div class="stack">';
+      extras+='<div class="sugg-note">✨ Smart, not psychic — suggestions from your own patterns</div>';
       sugg.forEach(function(s){
-        html+='<div class="sugg" data-sid="'+esc(s.id)+'"><div class="stxt">'+s.text+'</div>'+
+        extras+='<div class="sugg" data-sid="'+esc(s.id)+'"><div class="stxt">'+s.text+'</div>'+
           (s.action?'<button class="sugg-act" data-act="sugg" data-sid="'+esc(s.id)+'">'+s.action+'</button>':'')+
           '<button class="sugg-dismiss" data-act="sugg-x" data-sid="'+esc(s.id)+'" aria-label="Dismiss">✕</button></div>';
       });
-      html+='</div>';
+      extras+='</div>';
     }
-
-    if(isToday) html+=captureCardHtml(true);
+    if(isToday) extras+=captureCardHtml(true);
     // a focus item is done when its task is (task-backed) or when it is ticked itself (legacy free-text)
     function focusItemDone(f){ if(!f.taskId) return !!f.done; var lk=S.tasks.find(function(x){return x.id===f.taskId;}); return !!(lk&&lk.status==="done"); }
     var focusDone=focusItems.filter(focusItemDone).length;
@@ -2177,7 +2267,7 @@
       var items=orderTasks(open.filter(function(k){return k.block===b;}),true);
       var doneB=doneV.filter(function(k){return k.block===b;}).length;
       curList=b;
-      var body='<ul class="tasks" data-list="'+b+'">'+items.map(taskLi).join("")+inlineAddRow(b,"Add to "+b+"…")+'</ul>';
+      var body='<ul class="tasks" data-list="'+b+'">'+(items.length||doneB?'':emptyLi("Nothing planned for the "+b+" yet"))+items.map(taskLi).join("")+inlineAddRow(b,"Add to "+b+"…")+'</ul>';
       curList="done:block-"+b; body+=doneStrip("block-"+b, doneV.filter(function(k){return k.block===b;}).map(taskLi).join(""), doneB);
       curList=null;
       var action=foldProg(doneB,items.length+doneB)+'<button class="chip" style="padding:3px 9px" data-act="addblock" data-block="'+b+'">+ options</button>';
@@ -2205,10 +2295,10 @@
     curList="master"; var masterHtml=master.map(taskLi).join(""); curList=null;
     curList="done:master"; var masterDoneHtml=doneStrip("master", doneV.map(taskLi).join(""), doneCount); curList=null;
     var units={
-      focus: fold("focus",(isToday?"Today\'s focus":"Focus — "+niceDate(vd)),'<ul class="tasks" data-list="focus">'+focusHtml+inlineAddRowFocus("What matters most "+(isToday?"today":"that day")+"…")+'</ul>'+focusDoneHtml,foldProg(focusDone,focusItems.length)),
+      focus: fold("focus",(isToday?"Today\'s focus":"Focus — "+niceDate(vd)),'<ul class="tasks" data-list="focus">'+(focusItems.length?'':emptyLi("Pick the one to three things that matter most — tap ◎ on any task, or type one below"))+focusHtml+inlineAddRowFocus("What matters most "+(isToday?"today":"that day")+"…")+'</ul>'+focusDoneHtml,foldProg(focusDone,focusItems.length)),
       // card label is "To-do" (the master list); the fold key stays "tasks" so saved collapse state and
       // S.todayOrder keep working. "task" remains the generic word for any item you enter.
-      tasks: fold("tasks","To-do",'<ul class="tasks" data-list="master">'+masterHtml+inlineAddRow("master","Add a task — try @project @morning, or “tomorrow”…")+'</ul>'+masterDoneHtml,foldProg(doneCount,total)),
+      tasks: fold("tasks","To-do",'<ul class="tasks" data-list="master">'+(total?'':emptyLi(isToday?"A clear day. Add a task, or pull one in from the Backlog in the panel":"Nothing here yet"))+masterHtml+inlineAddRow("master","Add a task — try @project @morning, or “tomorrow”…")+'</ul>'+masterDoneHtml,foldProg(doneCount,total)),
       blocks: blocksHtml,
       habitsnotes: '<div class="grid2">'+fold("habits","Habits &amp; wellness",hb,foldProg(habitDone,habitTotal))+fold("notes","Notes",richTextHtml("daily",S.notes[vd]||"","Jot anything — ideas, blockers, wins… try [[a project name]]",110))+'</div>'+
         fold("sessions","Focus sessions"+(focusMinutes(vd)?" · "+focusMinutes(vd)+"m":""), focusLogHtml(vd))
@@ -2218,6 +2308,7 @@
     DEF_UNITS.forEach(function(k){ if(uorder.indexOf(k)<0) uorder.push(k); });
     uorder=uorder.filter(function(k){ return units[k]!==undefined; });
     uorder.forEach(function(key){ html+='<div class="today-unit" data-unit="'+key+'" draggable="true"><span class="unit-grip" title="Drag to reorder this section">⠿ drag</span>'+units[key]+'</div>'; });
+    if(extras) html+='<div class="today-extras">'+extras+'</div>';
     html+='</div>'; // today-main
     if(bulkMode){
       var n=bulkCount();
@@ -2675,7 +2766,7 @@
       '<button class="chip" data-act="cal" data-d="0" style="margin-left:6px">Today</button>'+
       '<button class="chip" data-act="calendars" style="margin-left:auto">🗓 Calendars</button>'+
       '<button class="chip" data-act="import-ics">⤓ Import file</button></div>';
-    html+='<div class="chips" style="margin-bottom:14px">'+[["month","Month"],["week","Week"],["workweek","Work week"],["3day","3 days"],["year","Year"]].map(function(v){return '<button class="chip" data-act="calview" data-v="'+v[0]+'" aria-pressed="'+(cv===v[0])+'">'+v[1]+'</button>';}).join("")+'</div>';
+    html+='<div class="chips" style="margin-bottom:14px">'+[["week","7 days"],["workweek","Work week"],["3day","3 days"],["year","Year"]].map(function(v){return '<button class="chip" data-act="calview" data-v="'+v[0]+'" aria-pressed="'+(cv===v[0])+'">'+v[1]+'</button>';}).join("")+'</div>';
     if(S.calSources.length) html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+S.calSources.map(function(s){return '<span class="pill" style="background:'+(s.enabled?s.color:"var(--line)")+';color:#fff">'+esc(s.name)+(s.error?" ⚠":"")+'</span>';}).join("")+'</div>';
     if(cv==="month") html+=monthGridHtml(a);
     else if(cv==="year") html+=yearGridHtml(+a.slice(0,4));
@@ -3214,6 +3305,9 @@
       v.addEventListener("touchend",endDrag);
       v.addEventListener("touchcancel",endDrag);
     })(); }
+    v.onchange=function(e){
+      if(e.target.id==="day-jump" && e.target.value){ viewDay=e.target.value; render(); }
+    };
     // generic clicks
     v.onclick=function(e){
       var a=e.target.closest("[data-act]"); if(!a)return; var act=a.dataset.act;
@@ -3245,6 +3339,8 @@
           if(fx2>=0){ fa.splice(fx2,1); save(); render(); toast("Removed from Today’s Focus"); } }
         else addTaskToFocus(tf); }
       else if(act==="planday"){ planDay(viewDay); }
+      else if(act==="seg"){ segGo(a.dataset.seg); }
+      else if(act==="rowmenu"){ openRowSheet(a.closest("li.task")); }
       else if(act==="panel-focus"){ var pfk=S.tasks.find(function(x){return x.id===a.dataset.id;});
         if(pfk){ var pfd=(view==="today")?viewDay:today(); if(!taskOnDay(pfk,pfd)) rescheduleTask(pfk,pfd); addTaskToFocus(pfk.id); } }
       else if(act==="tb-edit"){ var tbk=S.tasks.find(function(x){return x.id===(id||anyId);});
@@ -3430,6 +3526,32 @@
     else if(zone.slice(0,6)==="block:"){ k.block=zone.slice(6); if(!k.day) k.day=viewDay; toast("Moved to "+k.block); }
     else if(zone.slice(0,5)==="proj:"){ var p=proj(zone.slice(5)); k.projectId=p?p.id:k.projectId; toast(p?"Tagged "+p.name:"Moved"); }
     save(); render();
+  }
+  /* The phone row's ⋯ sheet. Each item presses the row's own button (hidden on a phone), so the sheet
+     can never drift from what the desktop buttons do. */
+  function openRowSheet(li){
+    if(!li) return;
+    var isFocusRow=!!li.dataset.focus, k=taskForRow(li); if(!k) return;
+    var done=k.status==="done", past=viewDay<today();
+    var items=[
+      ["toggle", done?"↩":"✓", done?"Reopen":"Mark done", li.querySelector(":scope > .chk")],
+      [null, "◎", inFocus(k.id)?"Remove from Focus":"Add to Today’s Focus", isFocusRow?li.querySelector(".task-x"):li.querySelector(".task-focus")],
+      [null, past?"↩":"→", past?"Move to today":"Move to tomorrow", li.querySelector(".task-bump")],
+      [null, "⤷", "Add a subtask", li.querySelector(".task-addsub")],
+      [null, k.priority?"☆":"★", k.priority?"Not important":"Important", li.querySelector(".task-star")],
+      ["pick", "📅", "Move to a date…", null],
+      ["edit", "✎", "Edit", li.querySelector(":scope > .task-main")],
+      isFocusRow?null:["del", "✕", "Delete", li.querySelector(".task-x")]
+    ].filter(function(x){ return x && (x[3]||x[0]==="pick"); });
+    var root=modal('<div class="sheet-grip"></div><div class="sheet-title">'+esc(k.title)+'</div>'+
+      items.map(function(it,i){ return '<button class="sheet-row'+(it[0]==="del"?" danger":"")+'" data-si="'+i+'"><span class="si">'+it[1]+'</span>'+it[2]+'</button>'; }).join(""),"sheet");
+    document.getElementById("scrim").classList.add("sheet-scrim");
+    root.querySelector(".modal").onclick=function(e){
+      var b=e.target.closest("[data-si]"); if(!b) return;
+      var it=items[+b.dataset.si]; close();
+      if(it[0]==="pick"){ openDatePickModal(k); return; }
+      if(it[3]) it[3].click();
+    };
   }
   function openDatePickModal(k){
     modal('<h3>Move to a date</h3><p class="sub">“'+esc(k.title)+'”</p>'+
@@ -4421,6 +4543,8 @@
         '<div class="sub" style="font-size:11px;margin-top:6px">Overrides the colour scheme’s accent everywhere — buttons, pills, highlights.</div></div>'+
       '<div class="row"><div class="fld"><label>Density</label><div class="chips" id="dens-row">'+
         [["compact","Compact"],["cozy","Cozy"],["roomy","Roomy"]].map(function(dv){return '<button class="chip" data-d="'+dv[0]+'" aria-pressed="'+((S.density||"cozy")===dv[0])+'">'+dv[1]+'</button>';}).join("")+'</div></div>'+
+      '<div class="fld"><label>Background</label><div class="chips" id="scene-row">'+
+        [["off","Plain"],["on","Scene"]].map(function(sv){return '<button class="chip" data-s="'+sv[0]+'" aria-pressed="'+((S.scene||"off")===sv[0])+'">'+sv[1]+'</button>';}).join("")+'</div></div>'+
       '<div class="fld"><label>Typeface</label><div class="chips" id="font-row">'+
         [["rounded","Rounded"],["system","System"],["serif","Serif"],["mono","Mono"]].map(function(fv){return '<button class="chip" data-f="'+fv[0]+'" aria-pressed="'+((S.font||"rounded")===fv[0])+'">'+fv[1]+'</button>';}).join("")+'</div></div></div>'+
       '<div class="fld"><label>Your name (for the greeting)</label><input id="set-name" value="'+esc(S.name||"")+'" placeholder="e.g. Sam"/></div>'+
@@ -4506,6 +4630,9 @@
     var densRow=document.getElementById("dens-row");
     if(densRow) densRow.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; S.density=b.dataset.d; applyTheme(); save();
       [].forEach.call(densRow.children,function(c){c.setAttribute("aria-pressed",c===b);}); };
+    var sceneRow=document.getElementById("scene-row");
+    if(sceneRow) sceneRow.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; S.scene=b.dataset.s; applyTheme(); save();
+      [].forEach.call(sceneRow.children,function(c){ c.setAttribute("aria-pressed",c===b); }); };
     var fontRow=document.getElementById("font-row");
     if(fontRow) fontRow.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; S.font=b.dataset.f; applyTheme(); save();
       [].forEach.call(fontRow.children,function(c){c.setAttribute("aria-pressed",c===b);}); };
@@ -4924,7 +5051,7 @@
           S.tasks.push(ak); save(); render(); toast("Restored to today");
         }); } }
       else if(kind==="note"){ close(); openDayModal(key); }
-      else if(kind==="email"){ close(); view="hub"; [].forEach.call(nav.children,function(c){c.setAttribute("aria-current",c.dataset.view==="hub"?"true":"false");}); render(); }
+      else if(kind==="email"){ close(); goView("hub"); }
     };
   }
 
@@ -5694,7 +5821,7 @@
   document.addEventListener("focusout",function(e){ if(acEl&&e.target===acInput) setTimeout(function(){ if(acEl&&document.activeElement!==acInput) acClose(); },150); });
 
   /* ---------- boot ---------- */
-  document.getElementById("cap-btn").onclick=function(){ view="hub"; [].forEach.call(nav.children,function(c){c.setAttribute("aria-current",c.dataset.view==="hub"?"true":"false");}); render(); document.querySelector(".hub-cap")&&document.getElementById("cap-in")&&document.getElementById("cap-in").focus(); };
+  document.getElementById("cap-btn").onclick=function(){ goView("hub"); document.querySelector(".hub-cap")&&document.getElementById("cap-in")&&document.getElementById("cap-in").focus(); };
   (function panelWidths(){
     var LIM={sb:[170,420], rb:[220,540]}, VAR={sb:"--sbw", rb:"--rbw"}, root=document.documentElement;
     var saved={}; try{ saved=JSON.parse(localStorage.getItem("gena-panes")||"{}")||{}; }catch(e){}
@@ -5770,9 +5897,9 @@
     if(e.metaKey||e.ctrlKey||e.altKey) return;
     if(gSeq && Date.now()-gSeq<900){
       gSeq=0;
-      var map={t:"today",w:"week",b:"backlog",h:"hub",p:"projects",e:"people",c:"calendar",l:"timeline"};
+      var map={t:"today",d:"day",w:"week",b:"backlog",h:"hub",p:"projects",e:"people",c:"calendar",l:"timeline",j:"journal"};
       var v2=map[e.key.toLowerCase()];
-      if(v2){ e.preventDefault(); view=v2; if(v2==="today") viewDay=today(); syncNav(); render(); return; }
+      if(v2){ e.preventDefault(); goView(v2,{today:true}); return; }
     }
     if(e.key==="g"||e.key==="G"){ gSeq=Date.now(); return; }
     if(e.key==="/"){ e.preventDefault(); openSearchModal(); }
@@ -5795,11 +5922,7 @@
     var v=document.getElementById("view");
     var el=null, taskId=null, sx=0, sy=0, dx=0, swiping=false, decided=false;
     var THRESH=72;
-    function taskFor(li){
-      if(li.dataset.focus){ var f=(S.focus[viewDay]||[]).find(function(x){return x.id===li.dataset.id;});
-        return f&&f.taskId?S.tasks.find(function(k){return k.id===f.taskId;}):null; }
-      return S.tasks.find(function(k){return k.id===li.dataset.id;});
-    }
+    var taskFor=taskForRow;
     function reset(anim){
       if(el){ if(anim){ el.style.transition="transform .18s ease"; } el.style.transform="";
         var e0=el; setTimeout(function(){ e0.style.transition=""; e0.classList.remove("swp-l","swp-r"); },200); }
@@ -5846,9 +5969,7 @@
     var bn=document.getElementById("bottomnav");
     if(bn) bn.onclick=function(e){
       var b=e.target.closest("button"); if(!b) return;
-      if(b.dataset.act==="bn-review"){ openReviewModal(new Date().getHours()>=14?"evening":"morning", S.lastOpen); return; }
-      view=b.dataset.view; if(view==="today") viewDay=today();
-      syncNav(); render(); window.scrollTo({top:0});
+      goView(b.dataset.view,{today:true});
     };
   })();
   document.addEventListener("visibilitychange",function(){ if(!document.hidden) checkDay(); });
