@@ -512,6 +512,49 @@
   .reflink{ color:var(--terra-deep); font-weight:600; text-decoration:none; border-bottom:1px solid var(--terra); }
   .reflink:hover{ background:var(--terra-bg); }
   .jr-body{ font-size:14px; line-height:1.6; }
+  .learn-head{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:6px 0 14px; }
+  .learn-prog{ margin-left:auto; font-size:12.5px; font-weight:700; color:var(--terra-deep); background:var(--terra-bg); border-radius:999px; padding:4px 12px; white-space:nowrap; }
+  .learn-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; align-items:start; }
+  details.learn-card{ padding:0; }
+  details.learn-card>summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:14px 16px; }
+  details.learn-card>summary::-webkit-details-marker{ display:none; }
+  details.learn-card[open]{ grid-column:1 / -1; }
+  .learn-emoji{ font-size:22px; flex:none; }
+  .learn-title{ flex:1; font-size:15px; font-weight:700; }
+  .learn-meta{ font-size:11.5px; color:var(--ink-faint); font-weight:600; white-space:nowrap; }
+  details.learn-card.read .learn-title{ color:var(--ink-soft); }
+  .learn-body{ padding:0 16px 16px; font-size:14.5px; line-height:1.65; max-width:68ch; }
+  .learn-body p{ margin:0 0 10px; }
+  .learn-try{ margin-top:14px; padding:12px 14px; background:var(--terra-bg); border-radius:12px; }
+  .learn-try-h{ font-size:11.5px; font-weight:800; color:var(--terra-deep); margin-bottom:4px; }
+  .learn-try p{ margin:0 0 8px; }
+  .rl-row .rl-st{ padding:2px 9px; font-size:11.5px; }
+  .rl-row .rl-st[aria-pressed="true"]{ background:var(--slate); border-color:var(--slate); color:var(--slate-ink); }
+  .rl-note{ width:100%; margin-top:6px; font-family:inherit; font-size:12.5px; border:none; border-bottom:1px dashed var(--line); background:transparent; color:var(--ink); padding:3px 0; }
+  .rl-note:focus{ outline:none; border-bottom-color:var(--terra); border-bottom-style:solid; }
+  .drop-zone{ border:2px dashed var(--line); border-radius:12px; padding:14px 16px; font-size:13px; color:var(--ink-soft); text-align:center; margin:0 0 10px; transition:border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
+  .drop-zone.drag-over{ border-color:var(--terra); background:var(--terra-bg); color:var(--terra-deep); }
+  .drop-zone:focus{ outline:none; border-color:var(--terra); }
+  .jr-tools{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:6px 0 14px; }
+  .jr-search{ flex:1 1 220px; max-width:360px; font-family:inherit; font-size:14px; padding:9px 12px; border:1.5px solid var(--line); border-radius:11px; background:var(--card); color:var(--ink); }
+  .jr-search:focus{ outline:none; border-color:var(--terra); }
+  .jr-months{ margin:0; }
+  .jr-month-h{ font-size:12.5px; font-weight:700; color:var(--ink-soft); margin:18px 4px 8px; }
+  .jr-card{ margin-bottom:12px; }
+  .jr-card.drag-over{ outline:2px dashed var(--terra); outline-offset:-2px; }
+  .jr-head{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+  .jr-head b{ font-size:15px; }
+  .jr-date{ margin-left:6px; color:var(--ink-soft); font-size:13px; }
+  .jr-stats{ font-size:12px; color:var(--ink-faint); font-weight:600; }
+  .jr-head .chip{ margin-left:auto; }
+  .jr-links{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .jr-link{ display:inline-flex; align-items:center; gap:2px; background:var(--sheet); border:1px solid var(--line-soft); border-radius:999px; padding:3px 6px 3px 10px; font-size:12px; }
+  .jr-link a{ color:var(--ink); text-decoration:none; font-weight:600; }
+  .jr-unlink{ border:none; background:transparent; color:var(--ink-faint); cursor:pointer; font-size:11px; padding:0 4px; }
+  .jr-unlink:hover{ color:var(--warn); }
+  .jr-addlink{ flex:1 1 200px; }
+  .jr-linkin{ width:100%; font-family:inherit; font-size:12.5px; border:1px dashed var(--line); border-radius:999px; padding:5px 12px; background:transparent; color:var(--ink); }
+  .jr-linkin:focus{ outline:none; border-color:var(--terra); border-style:solid; }
   .jr-body p{ margin:0 0 8px; }
 
   /* The right panel is only ~220px wide — five row buttons there squeeze the title down to a couple of
@@ -1017,7 +1060,7 @@
       <button data-view="today" aria-current="true">Today</button>
       <button data-view="plan" data-group="day calendar week">Plan</button>
       <button data-view="lists" data-group="backlog projects people timeline">Lists</button>
-      <button data-view="journal">Journal</button>
+      <button data-view="journal" data-group="journal learn">Journal</button>
       <button data-view="hub">Hub</button>
     </nav>
     <span class="spacer"></span>
@@ -1053,14 +1096,14 @@
   <button data-view="today"><span>☀️</span>Today</button>
   <button data-view="plan" data-group="day calendar week"><span>🗓</span>Plan</button>
   <button data-view="lists" data-group="backlog projects people timeline"><span>☰</span>Lists</button>
-  <button data-view="journal"><span>📓</span>Journal</button>
+  <button data-view="journal" data-group="journal learn"><span>📓</span>Journal</button>
   <button data-view="hub"><span>✨</span>Hub</button>
 </nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 "use strict";
-(function () {
+function GENA_MAIN() {
   /* ---------- head / mobile meta injection ---------- */
   function meta(n, c, prop) { var m=document.createElement("meta"); if(prop)m.setAttribute("property",n);else m.name=n; m.content=c; document.head.appendChild(m); }
   if (!document.querySelector('meta[name="viewport"]')) meta("viewport","width=device-width, initial-scale=1, viewport-fit=cover");
@@ -1114,6 +1157,10 @@
 
   /* ---------- storage ---------- */
   var KEY = "gena-v1";
+  var EC=window.__genaCrypto;                 // crypto helpers from the gate
+  var ENC=window.__genaEnc||null;             // {key,salt,it} while unlocked; null = plaintext store
+  var encSeq=0;
+  function encString(plain){ return EC.encrypt(ENC.key,ENC.salt,ENC.it,plain); }
   // The app was called Daybook until 2026-08. Copy anything stored under the old keys across once, and
   // leave the originals untouched as a fallback — a rename must never be able to cost you your data.
   (function migrateLegacyKeys(){
@@ -1127,7 +1174,7 @@
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-10 02:36";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-10 03:22";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1142,8 +1189,8 @@
   // seed() — silently wiping the whole store for anyone who had written a daily note.
   var RTE_ALLOWED={B:1,STRONG:1,I:1,EM:1,U:1,UL:1,OL:1,LI:1,BR:1,P:1,DIV:1,SPAN:1};
   // ---- merge-by-item sync (Phase 2) ----
-  var IDLISTS=["projects","tasks","templates","routines","habits","events","phases","people","emails","jobs","improve","calSources","profiles","archive","sessions"];
-  var IDMAPS=["notes","focus","habitLog"]; // date-keyed maps merged per key
+  var IDLISTS=["readlist","projects","tasks","templates","routines","habits","events","phases","people","emails","jobs","improve","calSources","profiles","archive","sessions"];
+  var IDMAPS=["notes","focus","habitLog","jlinks","learnRead"]; // keyed maps merged per key
   // Settings/scalars merged per-field by their own modified-time (_sm) instead of taken wholesale from
   // whichever file saved last — otherwise a stale cloud push silently resets your name / active profile.
   var SCALARS=["name","activeProfile","filterProjects","sbOpen","panelOpen","skin","theme","calView","calAnchor","tlView","collapsed","remind","proxy","notesRTE","lastExport","autoCarry","autoCarryRev","accent","density","font","subsHidden","expandOnAdd","eveningHour","reviewDone","nameNudgeGone","todayOrder"];
@@ -1282,7 +1329,7 @@
     dedupeRemovedCount=removed.length;
     return d;
   }
-  function normalize(d){ d.projects=d.projects||[]; d.tasks=d.tasks||[]; d.templates=d.templates||[]; d.habits=d.habits||[]; d.habitLog=d.habitLog||{}; d.events=d.events||[]; d.phases=d.phases||[]; d.dismissed=d.dismissed||[]; d.notes=d.notes||{}; d.calSources=d.calSources||[]; if(!d.proxy)d.proxy=PROXY_DEFAULT; d.emails=d.emails||[]; d.jobs=d.jobs||[]; d.improve=d.improve||[]; if(!d.calView)d.calView="month"; if(!d.calAnchor)d.calAnchor=(d.calMonth?d.calMonth+"-01":null); if(!d.skin)d.skin="paper"; delete d.apiKey; d.people=d.people||[]; d.collapsed=d.collapsed||{}; d.lastExport=d.lastExport||null; if(typeof d.name!=="string")d.name=""; d._sm=d._sm||{}; if(typeof d.autoCarry!=="boolean")d.autoCarry=false; if(typeof d.accent!=="string")d.accent=d.accent||null; d.tasks.forEach(function(k){ if(!Array.isArray(k.personIds)) k.personIds=[]; }); if(!d.density)d.density="cozy"; if(!d.font)d.font="rounded"; if(!d.l2rev){ d.font="system"; d.scene="off"; d.l2rev=1; } if(d.scene!=="on"&&d.scene!=="off") d.scene="off"; d.sessions=d.sessions||[]; d.subsHidden=d.subsHidden||{}; if(typeof d.expandOnAdd!=="boolean")d.expandOnAdd=true; if(!(typeof d.eveningHour==="number"||d.eveningHour===false))d.eveningHour=20; d.reviewDone=d.reviewDone||{};
+  function normalize(d){ d.projects=d.projects||[]; d.tasks=d.tasks||[]; d.templates=d.templates||[]; d.habits=d.habits||[]; d.habitLog=d.habitLog||{}; d.events=d.events||[]; d.phases=d.phases||[]; d.dismissed=d.dismissed||[]; d.notes=d.notes||{}; d.jlinks=d.jlinks||{}; d.learnRead=d.learnRead||{}; d.readlist=d.readlist||[]; d.calSources=d.calSources||[]; if(!d.proxy)d.proxy=PROXY_DEFAULT; d.emails=d.emails||[]; d.jobs=d.jobs||[]; d.improve=d.improve||[]; if(!d.calView)d.calView="month"; if(!d.calAnchor)d.calAnchor=(d.calMonth?d.calMonth+"-01":null); if(!d.skin)d.skin="paper"; delete d.apiKey; d.people=d.people||[]; d.collapsed=d.collapsed||{}; d.lastExport=d.lastExport||null; if(typeof d.name!=="string")d.name=""; d._sm=d._sm||{}; if(typeof d.autoCarry!=="boolean")d.autoCarry=false; if(typeof d.accent!=="string")d.accent=d.accent||null; d.tasks.forEach(function(k){ if(!Array.isArray(k.personIds)) k.personIds=[]; }); if(!d.density)d.density="cozy"; if(!d.font)d.font="rounded"; if(!d.l2rev){ d.font="system"; d.scene="off"; d.l2rev=1; } if(d.scene!=="on"&&d.scene!=="off") d.scene="off"; d.sessions=d.sessions||[]; d.subsHidden=d.subsHidden||{}; if(typeof d.expandOnAdd!=="boolean")d.expandOnAdd=true; if(!(typeof d.eveningHour==="number"||d.eveningHour===false))d.eveningHour=20; d.reviewDone=d.reviewDone||{};
     // One-time: 7.5 shipped autoCarry defaulting to on, which left the Carried-over card empty whenever
     // everything had already been auto-placed. Off is the setting where the day list and that card are
     // both useful, so re-default once. Any later toggle is the user's and is left alone.
@@ -1332,9 +1379,10 @@
   }
   function load(){
     var raw=null, d=null;
-    try{ raw=localStorage.getItem(KEY); }catch(e){}
+    if(window.__genaPlain!=null){ raw=window.__genaPlain; try{ delete window.__genaPlain; }catch(e){ window.__genaPlain=null; } }
+    else { try{ raw=localStorage.getItem(KEY); }catch(e){} }
     if(!raw) return seed();
-    try{ d=JSON.parse(raw); }catch(e){ try{ localStorage.setItem(KEY+"-corrupt",raw); }catch(e2){} return seed(); }
+    try{ d=JSON.parse(raw); }catch(e){ try{ if(!ENC) localStorage.setItem(KEY+"-corrupt",raw); }catch(e2){} return seed(); }
     if(!d||!d.version) return seed();
     // The RTE_ALLOWED incident: a migration bug made load() fall back to seed() and a refresh ate the
     // store. normalize() no longer seeds on failure, but it can still MUTATE wrongly — so count the big
@@ -1345,7 +1393,7 @@
       var after=storeCounts(out);
       var lost=Object.keys(before).filter(function(k){ return before[k]>=5 && after[k]<before[k]*0.8; });
       if(lost.length){
-        try{ localStorage.setItem(KEY+"-guard",raw); }catch(e5){}
+        try{ if(!ENC) localStorage.setItem(KEY+"-guard",raw); }catch(e5){}
         INTEGRITY_WARN={lost:lost.map(function(k){return k+" "+before[k]+"→"+after[k];}).join(", ")};
       }
       return out;
@@ -1353,7 +1401,7 @@
     catch(e){
       // A bug in a migration must not cost you your data. Keep the raw copy, tell you loudly, and carry
       // on with the un-migrated state rather than starting from a blank seed.
-      try{ localStorage.setItem(KEY+"-corrupt",raw); }catch(e2){}
+      try{ if(!ENC) localStorage.setItem(KEY+"-corrupt",raw); }catch(e2){}
       try{ console.error("Gena: normalize() failed, using un-migrated data.", e); }catch(e3){}
       setTimeout(function(){ try{ toast("Something went wrong loading your data — a backup is safe. Export one from the ⋯ menu."); }catch(e4){} }, 1200);
       return d;
@@ -1375,7 +1423,16 @@
       }
     }catch(e){}
   }
-  function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ toast("Storage full — export a backup"); } keepLocalBackups(); updateSyncStatus(); }
+  function persist(){
+    if(ENC){                                   // encrypt off the main path; only the newest write lands
+      var my=++encSeq;
+      encString(JSON.stringify(S)).then(function(envStr){ if(my!==encSeq) return;
+        try{ localStorage.setItem(KEY, envStr); }catch(e){ toast("Storage full — export a backup"); }
+        keepLocalBackups(); updateSyncStatus(); })
+      .catch(function(){ toast("Couldn’t encrypt this save — export a backup"); });
+      return;
+    }
+    try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ toast("Storage full — export a backup"); } keepLocalBackups(); updateSyncStatus(); }
   // ---- global undo/redo (Phase 6). Snapshots the pre-mutation state; rapid bursts coalesce into one step. ----
   var undoStack=[], redoStack=[], lastUndoPush=0, suppressUndo=false;
   function save(){
@@ -1711,15 +1768,15 @@
   /* Five tabs. "Plan" and "Lists" are groups: Plan = Day · Week · Month · Agenda, Lists = Backlog ·
      Projects · People · Timeline, each with a segmented control at the top of the view. goView is the
      one way to change view — it resolves a group to the sub-view you last used and remembers it. */
-  var GROUPS={plan:["day","calendar","week"], lists:["backlog","projects","people","timeline"]};
-  var lastSub={plan:"day", lists:"backlog"};
+  var GROUPS={plan:["day","calendar","week"], lists:["backlog","projects","people","timeline"], journal:["journal","learn"]};
+  var lastSub={plan:"day", lists:"backlog", journal:"journal"};
   function groupOf(v){ for(var g in GROUPS) if(GROUPS[g].indexOf(v)>=0) return g; return null; }
   function goView(v, opts){
     opts=opts||{};
     if(GROUPS[v]) v=lastSub[v]||GROUPS[v][0];
     if(v==="calendar" && opts.cal){ S.calView=opts.cal; if(!S.calAnchor) S.calAnchor=today(); }
     var g=groupOf(v); if(g) lastSub[g]=v;
-    view=v; if(v==="today" && opts.today!==false) viewDay=today();
+    view=v; if((v==="today" && opts.today!==false) || v==="journal") viewDay=today();
     syncNav(); render(); if(opts.top!==false) window.scrollTo({top:0});
   }
   // the segment for the calendar depends on its mode: month/year read as "Month", the rest as "Week"
@@ -1728,8 +1785,9 @@
     var g=groupOf(view); if(!g) return "";
     var items = g==="plan"
       ? [["day","Day",view==="day"],["wk","Week",planSeg()==="wk"],["month","Month",planSeg()==="month"],["agenda","Agenda",view==="week"]]
+      : g==="journal" ? [["journal","Journal",view==="journal"],["learn","Learn",view==="learn"]]
       : [["backlog","Backlog",view==="backlog"],["projects","Projects",view==="projects"],["people","People",view==="people"],["timeline","Timeline",view==="timeline"]];
-    return '<div class="seg" role="tablist" aria-label="'+(g==="plan"?"Plan":"Lists")+'">'+items.map(function(it){
+    return '<div class="seg" role="tablist" aria-label="'+(g==="plan"?"Plan":(g==="journal"?"Journal":"Lists"))+'">'+items.map(function(it){
       return '<button role="tab" data-act="seg" data-seg="'+it[0]+'" aria-selected="'+!!it[2]+'">'+it[1]+'</button>'; }).join("")+'</div>';
   }
   function segGo(k){
@@ -1799,6 +1857,7 @@
     else if(view==="timeline") inner=viewTimeline();
     else if(view==="hub") inner=viewHub();
     else if(view==="people") inner=viewPeople();
+    else if(view==="learn") inner=viewLearn();
     var seg=segHtml();
     m.innerHTML=seg?seg+'<div class="grouped">'+inner+'</div>':inner;
     renderSidebar();
@@ -2958,18 +3017,150 @@
   // one call for anywhere a note is displayed rather than edited
   function noteDisplayHtml(html){ return autoLinkHtml(wikiLinkHtml(html)); }
   /* ---------- JOURNAL (Phase 13) — every day you wrote something, newest first ---------- */
-  function viewJournal(){
-    var keys=Object.keys(S.notes||{}).filter(function(k){ return htmlToText(S.notes[k]||"").trim(); }).sort().reverse();
-    var html='<h2 class="view-h">Journal</h2>';
-    if(!keys.length) return html+'<div class="card empty" style="padding:36px">Nothing written yet. The Notes card on Today is where these start.</div>';
-    html+=keys.map(function(d){
-      return '<div class="card" style="margin-bottom:14px">'+
-        '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px">'+
-        '<b>'+esc(niceDate(d))+'</b>'+(d===today()?'<span class="pill block">today</span>':'')+
-        '<button class="chip" data-act="panel-goday" data-d="'+d+'" style="margin-left:auto">Open this day</button></div>'+
-        '<div class="jr-body">'+noteDisplayHtml(S.notes[d])+'</div></div>';
-    }).join("");
+  /* ---------- JOURNAL (33a) ----------
+     One entry per day: what you wrote in Notes, the links you attached, and what the day held (done,
+     focused minutes). Today's entry is an editor at the top — the same "daily" RTE the Today card uses,
+     so the two never disagree. History is grouped by month with a month strip to jump, and a search
+     box. Attachments are links, not files: localStorage is ~5MB and syncs to a gist, so the file stays
+     where it lives (iCloud, Drive, a URL) and the Journal remembers where. */
+  var jrQuery="", jrMonth=null;
+  function jrHasEntry(d){ return !!(htmlToText(S.notes[d]||"").trim() || (S.jlinks[d]||[]).length); }
+  function jrDayStats(d){
+    var done=S.tasks.filter(function(k){ return k.status==="done" && k.completedOn===d; }).length;
+    var mins=focusMinutes(d), bits=[];
+    if(done) bits.push("✓ "+done+" done"); if(mins) bits.push("⏱ "+fmtMins(mins)+" focused");
+    var hl=S.habitLog[d]; if(hl){ var hv=Object.keys(hl).reduce(function(a,k){ return a+(hl[k]||0); },0); if(hv) bits.push("🌱 "+hv+" habit ticks"); }
+    return bits.join(" · ");
+  }
+  function jrLinksHtml(d){
+    var ls=S.jlinks[d]||[];
+    return '<div class="jr-links" data-jday="'+d+'">'+ls.map(function(l){
+      var label=l.title||l.url.replace(/^https?:\/\//,"").replace(/\/$/,""); if(label.length>44) label=label.slice(0,42)+"…";
+      return '<span class="jr-link"><a href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer">'+(/\.(png|jpe?g|gif|heic|webp)(\?|$)/i.test(l.url)?"🖼":(/\.pdf(\?|$)/i.test(l.url)?"📄":"🔗"))+' '+esc(label)+'</a>'+
+        '<button class="jr-unlink" data-act="jr-unlink" data-d="'+d+'" data-lid="'+l.id+'" aria-label="Remove link">✕</button></span>'; }).join("")+
+      '<span class="jr-addlink"><input class="jr-linkin" data-jday="'+d+'" placeholder="Paste a link — a photo, a file, a page…" aria-label="Add a link"/></span></div>';
+  }
+  function jrEntryHtml(d, editable){
+    var isT=d===today();
+    var stats=jrDayStats(d);
+    return '<div class="card jr-card" data-jday="'+d+'">'+
+      '<div class="jr-head"><div><b>'+esc(WDFULL[dow(d)])+'</b><span class="jr-date">'+esc(MONTHS[+d.slice(5,7)-1]+" "+(+d.slice(8)))+(isT?' · today':'')+'</span></div>'+
+      (stats?'<span class="jr-stats">'+stats+'</span>':'')+
+      '<button class="chip" data-act="panel-goday" data-d="'+d+'" title="Open this day on Today">Open day →</button></div>'+
+      (editable?richTextHtml("daily",S.notes[d]||"","What happened today? What did you learn? Try [[a project]] or [[a person]] to link it.",120)
+               :'<div class="jr-body">'+noteDisplayHtml(S.notes[d]||"")+'</div>')+
+      jrLinksHtml(d)+'</div>';
+  }
+  /* ---------- LEARN (33b) ----------
+     Short, original explainers on the ideas this planner is built around — written fresh, no book text —
+     each ending in a "try this today" that reads your own data back to you. Plus a reading list you
+     curate. Read state syncs per lesson (learnRead); the list is an id list (readlist). */
+  var LESSONS=[
+    {id:"yet",emoji:"🌱",title:"The power of “not yet”",min:2,
+     body:["Gena means “still / not yet” in Amharic, and that is the whole idea of a growth mindset in two words. When a task sits undone, there are two stories you can tell: “I can’t do this” or “I can’t do this yet.” The first is a verdict about who you are; the second is a status report about where you are.",
+           "Research on mindset (Carol Dweck’s work is the best known) finds that people who treat ability as something that grows with effort, strategy and feedback persist longer, recover faster from setbacks and, over time, do better — not because they believe harder, but because “yet” keeps the next step in view.",
+           "In this planner, a carried task is not a failure count. It is a task that is not done yet. The question is always the same: what is the smallest next step?"],
+     tryFn:function(){ var k=S.tasks.filter(function(x){return x.status==="todo"&&(x.rollover||0)>=2;}).sort(function(a,b){return (b.rollover||0)-(a.rollover||0);})[0];
+       return k?{text:"“"+esc(k.title)+"” has carried "+k.rollover+" days. It isn’t done <b>yet</b>. Write the smallest next step as a subtask.",task:"Next step for: "+k.title}
+               :{text:"Nothing is carrying right now. Pick one thing you avoid and write its smallest next step.",task:"Smallest next step on the thing I avoid"}; }},
+    {id:"ifthen",emoji:"⏰",title:"If–then plans",min:2,
+     body:["A goal says what. An implementation intention says when and where: “If it is 9 am, then I open the draft.” Peter Gollwitzer’s studies found that people who form these if–then plans follow through far more often than people with the same goal and the same motivation — the plan hands the decision to the situation, so willpower is not asked to decide again at 9 am.",
+           "That is what a time block is. Giving a task a start time is not bureaucracy; it is pre-deciding. And the cue does not have to be a clock: “when I finish lunch”, “when I sit down at the desk” work just as well.",
+           "Untimed tasks on the Day view are goals. Timed ones are plans."],
+     tryFn:function(){ var n=S.tasks.filter(function(x){return x.status==="todo"&&taskOnDay(x,today())&&!x.at;}).length;
+       return n?{text:"You have "+n+" untimed task"+(n===1?"":"s")+" today. Open Plan → Day and give the most important one a start time — or tap ✨ Plan my day.",go:"day"}
+               :{text:"Every task today has a time. Notice tonight which if–then you actually kept, and which cue was too vague."}; }},
+    {id:"efficacy",emoji:"💪",title:"Where confidence actually comes from",min:2,
+     body:["Self-efficacy — the belief that you can do a specific thing — is not a personality trait. Albert Bandura traced it to four sources, and the strongest by a wide margin is mastery experience: having done a version of it before. Second is watching someone like you do it; third is being told you can; last, and weakest, is how you feel in the moment.",
+           "This is why small, finished things matter more than big, intended ones. Each tick is a mastery experience, and mastery experiences compound into confidence you can spend on harder work.",
+           "The Done strip at the bottom of each card is not clutter. It is evidence."],
+     tryFn:function(){ var done=S.tasks.filter(function(x){return x.status==="done"&&x.completedOn&&x.completedOn>=addDays(today(),-6);}).length;
+       return {text:"You finished <b>"+done+"</b> thing"+(done===1?"":"s")+" in the last seven days. Break today’s hardest task into a 15-minute first slice so it becomes the next one.",task:"15-minute first slice of today’s hardest task"}; }},
+    {id:"habits",emoji:"🔁",title:"Habits are loops, not wishes",min:2,
+     body:["A habit is a cue, a routine and a reward that have run together often enough to become automatic. Wanting the routine is not enough; you design the cue (obvious, in your path), shrink the routine until it is easy to start, and make sure something rewarding happens right after.",
+           "The useful consequence: when a habit is not sticking, the fix is rarely more motivation. It is usually a clearer cue or a smaller first step. “Read” fails; “open the book on the pillow after brushing teeth” works.",
+           "The Habits card counts ticks per day for exactly this reason — the streak is the reward, and the goal number sets how small a “win” is."],
+     tryFn:function(){ var h=S.habits[0]; return h?{text:"For “"+esc(h.name)+"”, write the cue that starts it — the thing that happens right before. If you can’t name one, that is the problem to fix first.",task:"Cue for habit: "+h.name}
+               :{text:"You have no habits tracked yet. Add one tiny enough to do on your worst day.",go:"today"}; }},
+    {id:"planning",emoji:"📐",title:"Why everything takes longer",min:2,
+     body:["The planning fallacy is the reliable tendency to underestimate how long things take, even when we know we did last time. Kahneman and Tversky’s explanation: we plan from the inside — imagining the steps going well — instead of from the outside, asking how long this kind of thing usually takes.",
+           "The correction is boring and works: give tasks a length, then compare the plan to the day you actually have. A day with nine hours of tasks and five hours of time is not a productivity problem; it is an arithmetic problem, and it is better to see it at 9 am than at 9 pm.",
+           "That is what the capacity line under Today and Plan is for."],
+     tryFn:function(){ var L=dayLoad(today()); return {text:"Today: <b>"+fmtMins(L.planned)+"</b> planned"+(L.unsized?", "+L.unsized+" task"+(L.unsized===1?"":"s")+" without a length":"")+(L.left!==null?", "+fmtMins(L.left)+" left":"")+". Give every unsized task a length, then decide what to move.",go:"day"}; }},
+    {id:"loops",emoji:"🧠",title:"Open loops and why capture works",min:2,
+     body:["Unfinished things stay active in memory — the Zeigarnik effect — which is why an un-captured task nags all day while a captured one goes quiet. Later research refined this: the mind settles not when the task is done, but when there is a specific plan for it.",
+           "So capture is not about lists for their own sake. It is about closing loops so attention is free for the one thing in front of you. Backlog is where loops go to wait without costing anything.",
+           "The morning and evening reviews are the same mechanism at day scale: every open loop gets a decision, even if the decision is “not this week”."],
+     tryFn:function(){ var n=S.tasks.filter(function(x){return !x.day&&x.status!=="done";}).length;
+       return {text:"Backlog holds <b>"+n+"</b> open loop"+(n===1?"":"s")+". Add whatever is nagging you right now — then it can stop.",go:"backlog"}; }},
+    {id:"focus",emoji:"🎯",title:"Three things",min:1,
+     body:["Attention is the scarce resource, not time. A long list spreads it thin; a short one concentrates it. The most effective daily planners converge on the same rule: name the one to three things that would make today a good day, and protect those first.",
+           "Everything else on the day is fine to do. It is just not what the day is for.",
+           "Today’s Focus is that list. If it has seven things on it, it is a to-do list wearing a costume."],
+     tryFn:function(){ var n=(S.focus[today()]||[]).length; return n>3?{text:"Focus has "+n+" items. Move all but three back to To-do — they will still be there.",go:"today"}
+               :(n?{text:"Focus has "+n+" — good. Start with the hardest one before noon."}:{text:"Focus is empty. Pick the one thing that would make today worth it.",go:"today"}); }},
+    {id:"rest",emoji:"🌙",title:"Rest is part of the plan",min:1,
+     body:["Effort that never stops is not discipline; it is a plan without recovery, and it fails on a schedule. Sleep, breaks and days off are where learning consolidates and where the capacity for tomorrow’s effort is rebuilt.",
+           "A planner that only counts output will make you feel behind every evening. Count rest as a task with a length, and let the evening review close the day rather than extend it.",
+           "A streak is a record of showing up, not a debt."],
+     tryFn:function(){ var mt=focusMinutes(today()); return {text:(mt?"You have focused "+fmtMins(mt)+" today. ":"")+"Block 20 minutes of nothing this evening — a walk, music, no screen — and give it a time so it actually happens.",task:"20 minutes of rest",at:"20:30",dur:20}; }}
+  ];
+  function viewLearn(){
+    var readN=LESSONS.filter(function(l){ return S.learnRead[l.id]; }).length;
+    var html='<h2 class="view-h">Learn</h2>';
+    html+='<div class="learn-head"><div class="sub" style="margin:0">Short, original explainers on the ideas behind this planner — each with something to try today, built from your own data.</div>'+
+      '<span class="learn-prog">'+readN+' of '+LESSONS.length+' read</span></div>';
+    html+='<div class="learn-grid">'+LESSONS.map(function(l){
+      var read=!!S.learnRead[l.id], tr=l.tryFn();
+      return '<details class="card learn-card'+(read?" read":"")+'" data-fold="learn-'+l.id+'"'+(S.collapsed["learn-"+l.id]===false?" open":"")+'>'+
+        '<summary><span class="learn-emoji">'+l.emoji+'</span><span class="learn-title">'+esc(l.title)+'</span><span class="learn-meta">'+l.min+' min'+(read?' · ✓ read':'')+'</span></summary>'+
+        '<div class="learn-body">'+l.body.map(function(pp){ return '<p>'+pp+'</p>'; }).join("")+
+        '<div class="learn-try"><div class="learn-try-h">Try this today</div><p>'+tr.text+'</p><div class="chips">'+
+          (tr.task?'<button class="chip" data-act="learn-task" data-title="'+esc(tr.task)+'"'+(tr.at?' data-at="'+tr.at+'"':'')+(tr.dur?' data-dur="'+tr.dur+'"':'')+'>+ Add as a task today</button>':'')+
+          (tr.go?'<button class="chip" data-act="goview" data-v="'+tr.go+'">Open '+({day:"Plan",today:"Today",backlog:"Backlog"}[tr.go]||tr.go)+' →</button>':'')+
+          '<button class="chip" data-act="learn-read" data-lid="'+l.id+'" aria-pressed="'+read+'">'+(read?"Read ✓":"Mark as read")+'</button></div></div></div></details>';
+    }).join("")+'</div>';
+    // reading list
+    var RL=[["want","Want to read"],["reading","Reading"],["done","Finished"]];
+    var rows=(S.readlist||[]).slice().sort(function(a,b){ return RL.findIndex(function(x){return x[0]===a.status;})-RL.findIndex(function(x){return x[0]===b.status;}); });
+    html+='<div class="block-head" style="margin-top:22px"><p class="label">📚 Reading list</p><span class="cnt">'+rows.length+'</span></div>'+
+      '<div class="card"><div class="capture" style="margin:0 0 10px"><input class="q" id="rl-title" placeholder="Title — author, or paste a link" aria-label="Add to reading list"/><button class="add" id="rl-add">Add</button></div>'+
+      (rows.length?'<ul class="tasks">'+rows.map(function(r){
+        return '<li class="task rl-row" data-id="'+r.id+'"><div class="task-main" style="cursor:default"><div class="task-title">'+(r.url?'<a href="'+esc(r.url)+'" target="_blank" rel="noopener noreferrer" style="color:inherit">'+esc(r.title)+'</a>':esc(r.title))+(r.by?' <span class="sub" style="display:inline;color:var(--ink-soft);font-size:12.5px">— '+esc(r.by)+'</span>':'')+'</div>'+
+          '<div class="task-meta">'+RL.map(function(x){ return '<button class="chip rl-st" data-act="rl-status" data-id="'+r.id+'" data-st="'+x[0]+'" aria-pressed="'+(r.status===x[0])+'">'+x[1]+'</button>'; }).join("")+'</div>'+
+          '<input class="rl-note" data-id="'+r.id+'" value="'+esc(r.note||"")+'" placeholder="Your note — what to take from it" aria-label="Note"/></div>'+
+          '<button class="task-x" data-act="rl-del" data-id="'+r.id+'" aria-label="Remove">✕</button></li>'; }).join("")+'</ul>'
+        :'<div class="empty">Add the books, papers and pages you mean to read. Your notes stay with them.</div>')+'</div>';
     return html;
+  }
+  function viewJournal(){
+    var t=today();
+    var days=Object.keys(S.notes).concat(Object.keys(S.jlinks)).filter(function(d,i,a){ return a.indexOf(d)===i && jrHasEntry(d); }).sort().reverse();
+    var months=[]; days.forEach(function(d){ var m=d.slice(0,7); if(months.indexOf(m)<0) months.push(m); });
+    var html='<h2 class="view-h">Journal</h2>';
+    html+='<div class="jr-tools"><input class="q jr-search" id="jr-q" placeholder="Search your journal…" value="'+esc(jrQuery)+'" aria-label="Search the journal"/>'+
+      (months.length>1?'<div class="chips jr-months">'+'<button class="chip" data-act="jr-month" data-m="" aria-pressed="'+(!jrMonth)+'">All</button>'+months.map(function(m){
+        return '<button class="chip" data-act="jr-month" data-m="'+m+'" aria-pressed="'+(jrMonth===m)+'">'+MONTHS[+m.slice(5,7)-1].slice(0,3)+' '+m.slice(2,4)+'</button>'; }).join("")+'</div>':'')+'</div>';
+    // today, always editable, always first
+    if(!jrQuery && (!jrMonth || jrMonth===t.slice(0,7))) html+=jrEntryHtml(t,true);
+    var q=norm(jrQuery);
+    var hist=days.filter(function(d){ return d!==t && (!jrMonth || d.slice(0,7)===jrMonth) &&
+      (!q || norm(htmlToText(S.notes[d]||"")).indexOf(q)>=0 || (S.jlinks[d]||[]).some(function(l){ return norm(l.title||l.url).indexOf(q)>=0; })); });
+    if(!hist.length && (q||jrMonth)) html+='<div class="empty" style="padding:28px">Nothing matches.</div>';
+    else if(!hist.length) html+='<div class="empty" style="padding:20px">Past days will gather here. Write a line about today above — even one is worth having next month.</div>';
+    var lastM=null;
+    hist.forEach(function(d){ var m=d.slice(0,7);
+      if(m!==lastM){ html+='<div class="jr-month-h">'+MONTHS[+m.slice(5,7)-1]+' '+m.slice(0,4)+'</div>'; lastM=m; }
+      html+=jrEntryHtml(d,false); });
+    return html;
+  }
+  function jrAddLink(d,text){
+    var m=String(text||"").match(/https?:\/\/[^\s<>"']+|www\.[^\s<>"']+/i); if(!m) return false;
+    var url=m[0]; if(/^www\./i.test(url)) url="https://"+url;
+    S.jlinks[d]=S.jlinks[d]||[];
+    if(S.jlinks[d].some(function(l){ return l.url===url; })) return true;
+    var title=String(text).replace(m[0],"").replace(/[\s—–-]+$/,"").trim().slice(0,80);
+    S.jlinks[d].push({id:uid(),url:url,title:title||"",added:today()}); save(); return true;
   }
   /* ---------- TIMELINE ---------- */
   function viewTimeline(){
@@ -3372,6 +3563,37 @@
     v.onchange=function(e){
       if(e.target.id==="day-jump" && e.target.value){ viewDay=e.target.value; render(); }
     };
+    if(view==="learn"){
+      var rla=v.querySelector("#rl-add"), rlt=v.querySelector("#rl-title");
+      function rlAdd(){ var t=(rlt.value||"").trim(); if(!t) return;
+        var m=t.match(/https?:\/\/[^\s]+|www\.[^\s]+/i), url=m?m[0]:""; if(url&&/^www\./i.test(url)) url="https://"+url;
+        var rest=t.replace(m?m[0]:"","").replace(/[\s—–-]+$/,"").trim(), parts=rest.split(/\s[—–-]\s/);
+        S.readlist.push({id:uid(),title:parts[0]||url.replace(/^https?:\/\//,""),by:(parts[1]||"").trim(),url:url,status:"want",note:"",added:today()});
+        save(); render(); toast("Added to the reading list"); }
+      if(rla) rla.onclick=rlAdd; if(rlt) rlt.onkeydown=function(e){ if(e.key==="Enter"){ e.preventDefault(); rlAdd(); } };
+      v.querySelectorAll(".rl-note").forEach(function(inp){ inp.onchange=function(){ var r=S.readlist.find(function(x){return x.id===inp.dataset.id;}); if(r){ r.note=inp.value; save(); } }; });
+      v.querySelectorAll("details.learn-card").forEach(function(d){ d.addEventListener("toggle",function(){ S.collapsed["learn-"+d.dataset.fold.slice(6)]=!d.open; save(); }); });
+    }
+    if(view==="journal"){
+      var jq=v.querySelector("#jr-q");
+      if(jq){ var jt=null; jq.oninput=function(){ clearTimeout(jt); jt=setTimeout(function(){ jrQuery=jq.value; var pos=jq.selectionStart; render(); var q2=v.querySelector("#jr-q"); if(q2){ q2.focus(); q2.setSelectionRange(pos,pos); } },220); }; }
+      v.querySelectorAll(".jr-linkin").forEach(function(inp){
+        inp.onkeydown=function(e){ if(e.key!=="Enter") return; e.preventDefault();
+          if(jrAddLink(inp.dataset.jday,inp.value)){ render(); toast("Link attached"); } else toast("Paste a web link (https://…)"); };
+        inp.onpaste=function(e){ var txt=(e.clipboardData||{}).getData&&e.clipboardData.getData("text"); if(txt&&/https?:\/\/|www\./i.test(txt)){ e.preventDefault(); if(jrAddLink(inp.dataset.jday,txt)){ render(); toast("Link attached"); } } };
+      });
+      // drop a link (or a file's URL from Finder / a browser tab) onto a day
+      v.querySelectorAll(".jr-card").forEach(function(card){
+        card.addEventListener("dragover",function(e){ if(dragTaskId||dragSub) return; e.preventDefault(); card.classList.add("drag-over"); });
+        card.addEventListener("dragleave",function(){ card.classList.remove("drag-over"); });
+        card.addEventListener("drop",function(e){ card.classList.remove("drag-over"); if(dragTaskId||dragSub) return;
+          var dt=e.dataTransfer; if(!dt) return;
+          var txt=dt.getData("text/uri-list")||dt.getData("text/plain")||"";
+          if(/https?:\/\/|www\./i.test(txt)){ e.preventDefault(); if(jrAddLink(card.dataset.jday,txt.split(/\r?\n/).filter(function(l){return l&&l[0]!=="#";})[0])){ render(); toast("Link attached"); } }
+          else if(dt.files&&dt.files.length){ e.preventDefault(); toast("Files stay where they live — paste a link to it instead (iCloud, Drive, a URL)."); }
+        });
+      });
+    }
     // generic clicks
     v.onclick=function(e){
       var a=e.target.closest("[data-act]"); if(!a)return; var act=a.dataset.act;
@@ -3405,6 +3627,14 @@
       else if(act==="planday"){ planDay(viewDay); }
       else if(act==="seg"){ segGo(a.dataset.seg); }
       else if(act==="goview"){ goView(a.dataset.v); }
+      else if(act==="jr-month"){ jrMonth=a.dataset.m||null; render(); }
+      else if(act==="learn-read"){ if(S.learnRead[a.dataset.lid]) delete S.learnRead[a.dataset.lid]; else S.learnRead[a.dataset.lid]=today(); save(); render(); }
+      else if(act==="learn-task"){ var lt={id:uid(),title:a.dataset.title,projectId:null,personIds:[],status:"todo",day:today(),block:a.dataset.at?blockForTime(a.dataset.at):null,at:a.dataset.at||null,dur:+a.dataset.dur||null,priority:false,rollover:0,subs:[],created:today()};
+        S.tasks.push(lt); save(); toast("Added to today"); }
+      else if(act==="rl-status"){ var rr=S.readlist.find(function(x){return x.id===a.dataset.id;}); if(rr){ rr.status=a.dataset.st; save(); render(); } }
+      else if(act==="rl-del"){ var ri=S.readlist.findIndex(function(x){return x.id===a.dataset.id;}); if(ri>=0){ var rrm=S.readlist.splice(ri,1)[0]; save(); render(); toastUndo("Removed from the reading list",function(){ S.readlist.push(rrm); save(); render(); }); } }
+      else if(act==="jr-unlink"){ var jl=S.jlinks[a.dataset.d]||[]; var ji=jl.findIndex(function(x){return x.id===a.dataset.lid;});
+        if(ji>=0){ var rm=jl.splice(ji,1)[0]; save(); render(); toastUndo("Link removed",function(){ (S.jlinks[a.dataset.d]=S.jlinks[a.dataset.d]||[]).push(rm); save(); render(); }); } }
       else if(act==="rowmenu"){ openRowSheet(a.closest("li.task")); }
       else if(act==="panel-focus"){ var pfk=S.tasks.find(function(x){return x.id===a.dataset.id;});
         if(pfk){ var pfd=(view==="today")?viewDay:today(); if(!taskOnDay(pfk,pfd)) rescheduleTask(pfk,pfd); addTaskToFocus(pfk.id); } }
@@ -4387,9 +4617,11 @@
     });
   }
   function doGhPush(after){
-    var files={"daybook.json":{content:JSON.stringify(S)}};
-    try{ files["daybook.ics"]={content:buildICS(true)}; }catch(e){} // keep the subscribable reminder feed current
-    ghApi("PATCH","/gists/"+GH.gistId,{files:files})
+    (ENC?encString(JSON.stringify(S)):Promise.resolve(JSON.stringify(S))).then(function(content){
+    var files={"daybook.json":{content:content}};
+    // the reminder feed is plaintext by nature — with a passcode on, it stays off the cloud
+    if(!ENC){ try{ files["daybook.ics"]={content:buildICS(true)}; }catch(e){} }
+    return ghApi("PATCH","/gists/"+GH.gistId,{files:files}); })
       .then(function(){ ghLastSync=Date.now(); ghError=null; ghDirty=false; })
       .catch(function(e){ ghError=e.message; })
       .then(function(){ if(after) after(); else { ghBusy=false; updateSyncStatus(); } });
@@ -4398,11 +4630,16 @@
     ghApi("GET","/gists/"+GH.gistId).then(function(g){
       var f=g&&g.files&&g.files[GH_FILE];
       if(!f){ cb(null); return; }                          // gist exists but no data file yet -> safe to create
-      if(f.truncated){ fetch(f.raw_url).then(function(r){return r.text();}).then(function(t){ cb(parseGh(t)); }).catch(function(){ cb(null,"Couldn't read cloud data"); }); }
-      else cb(parseGh(f.content));
+      if(f.truncated){ fetch(f.raw_url).then(function(r){return r.text();}).then(function(t){ resolveGh(t,cb); }).catch(function(){ cb(null,"Couldn't read cloud data"); }); }
+      else resolveGh(f.content,cb);
     }).catch(function(e){ cb(null,e.message); });           // network/API error -> signal so we don't clobber
   }
   function parseGh(t){ try{ var d=JSON.parse(t); return (d&&d.version)?d:null; }catch(e){ return null; } }
+  // cloud text may be an envelope: decrypt with the unlocked key, or say clearly why not
+  function resolveGh(t,cb){ var e=EC.isEnv(t);
+    if(!e){ cb(parseGh(t)); return; }
+    if(!ENC){ cb(null,"Cloud data is encrypted — turn on the same passcode on this device first"); return; }
+    EC.decrypt(ENC.key,e).then(function(pt){ cb(parseGh(pt)); }).catch(function(){ cb(null,"Cloud data was encrypted with a different passcode"); }); }
   function openGhModal(){
     var connected=GH&&GH.token&&GH.gistId;
     if(connected){
@@ -4469,14 +4706,15 @@
           toast("Loading that version…");
           ghApi("GET","/gists/"+GH.gistId+"/"+ver).then(function(g){
             var f=g&&g.files&&g.files[GH_FILE];
-            var apply=function(txt){ var d=parseGh(txt);
+            var applyTxt=function(txt){ resolveGh(txt,function(d,err){ if(!d&&err){ toast(err); return; } apply(d); }); };
+            var apply=function(d){
               if(!d){ toast("That revision has no readable data"); return; }
               confirmModal("Restore this version?","It has "+(d.tasks||[]).length+" task"+((d.tasks||[]).length===1?"":"s")+", saved "+(d.savedAt?new Date(d.savedAt).toLocaleString():"earlier")+". This replaces the current data on this device, then syncs the restore to the cloud.","Restore",function(){
                 S=normalize(d); baseState=clone(S); S.savedAt=Date.now(); persist(); applyTheme(); fillProjSelect(); render(); close(); toast("Restored — syncing…"); ghDirty=true; doGhPush();
               });
             };
             if(!f){ toast("Couldn't read that revision"); return; }
-            if(f.truncated){ fetch(f.raw_url).then(function(r){return r.text();}).then(apply).catch(function(){ toast("Couldn't fetch that revision"); }); }
+            if(f.truncated){ fetch(f.raw_url).then(function(r){return r.text();}).then(applyTxt).catch(function(){ toast("Couldn't fetch that revision"); }); }
             else apply(f.content);
           }).catch(function(e){ toast("Couldn't load revision — "+e.message); });
         };
@@ -4510,7 +4748,7 @@
   function exportBackup(){
     var blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});
     var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="daybook-backup-"+today()+".json"; a.click();
-    S.lastExport=today(); save(); toast("Backup downloaded");
+    S.lastExport=today(); save(); toast(ENC?"Backup downloaded — note: the file itself is not encrypted":"Backup downloaded");
   }
   /* ---------- share a read-only snapshot (Phase 6) ---------- */
   function b64urlEncode(str){ return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
@@ -4577,7 +4815,7 @@
   }
   function openRestoreModal(){
     var items=[];
-    try{ var lg=localStorage.getItem(KEY+"-lastgood"); if(lg){ var dl=JSON.parse(lg); items.push({label:"Most recent good save", t:dl.savedAt, n:(dl.tasks||[]).length, raw:lg}); } }catch(e){}
+    try{ var lg=localStorage.getItem(KEY+"-lastgood"); if(lg){ var dl=JSON.parse(lg); items.push({label:"Most recent good save", t:dl.savedAt, n:dl.enc?"🔒":(dl.tasks||[]).length, raw:lg}); } }catch(e){}
     try{ JSON.parse(localStorage.getItem(SNAP_KEY)||"[]").slice().reverse().forEach(function(s){ items.push({label:"Snapshot", t:s.t, n:s.n, raw:s.data}); }); }catch(e){}
     try{ var cr=localStorage.getItem(KEY+"-corrupt"); if(cr){ items.push({label:"Recovered (last readable)", t:null, n:"?", raw:cr}); } }catch(e){}
     var body='<h3>🛟 Restore from a local backup</h3><p class="sub">Gena keeps automatic on-device snapshots. Pick one to roll back to — it replaces the current data on this device (and re-syncs afterward).</p>';
@@ -4591,7 +4829,11 @@
     document.getElementById("modal-root").querySelectorAll("[data-ri]").forEach(function(b){
       b.onclick=function(){ var it=items[+b.dataset.ri];
         confirmModal("Restore this backup?", it.n+" task"+(it.n===1?"":"s")+" from "+(it.t?new Date(it.t).toLocaleString():"an earlier save")+" will replace the current data on this device.","Restore",function(){
-          try{ var d=JSON.parse(it.raw); S=normalize(d); save(); applyTheme(); fillProjSelect(); render(); toast("Restored from local backup"); }catch(e){ toast("Couldn't read that backup"); }
+          var applyD=function(d){ S=normalize(d); save(); applyTheme(); fillProjSelect(); render(); toast("Restored from local backup"); };
+          var envR=EC.isEnv(it.raw);
+          if(envR){ if(!ENC){ toast("That backup is encrypted — turn the passcode on first"); return; }
+            EC.decrypt(ENC.key,envR).then(function(pt){ applyD(JSON.parse(pt)); }).catch(function(){ toast("Couldn’t decrypt that backup with the current passcode"); }); }
+          else { try{ applyD(JSON.parse(it.raw)); }catch(e){ toast("Couldn't read that backup"); } }
         }); };
     });
   }
@@ -4633,7 +4875,7 @@
       '<button class="btn" id="x-feed">📡 Reminder calendar feed (subscribe)</button>'+
       '<button class="btn" id="x-share">🔗 Share a read-only snapshot</button>'+
       '<button class="btn" id="x-capture">⚡ Quick capture (bookmarklet / share)</button>'+
-      '<button class="btn" id="x-lock">🔒 App lock: '+(lockCfg()?"on":"off")+'</button>'+
+      '<button class="btn" id="x-lock">🔒 Passcode &amp; encryption: '+(ENC?"on":(lockCfg()?"screen lock only":"off"))+'</button>'+
       '<button class="btn" id="x-archive">🗄 Archive done tasks older than 60 days'+(archN?' ('+archN+')':'')+'</button>'+
       '<button class="btn" id="x-install">📱 Add to phone home screen</button>'+
       '<button class="btn" id="x-host">🌐 Put it online (GitHub Pages)</button>'+
@@ -4648,7 +4890,7 @@
     document.getElementById("x-feed").onclick=function(){ close(); openFeedModal(); };
     document.getElementById("x-share").onclick=function(){ close(); openShareModal(); };
     document.getElementById("x-capture").onclick=function(){ close(); openCaptureModal(); };
-    document.getElementById("x-lock").onclick=function(){ close(); openLockModal(); };
+    document.getElementById("x-lock").onclick=function(){ close(); openEncModal(); };
     document.getElementById("x-remind").onclick=function(){
       if(!S.remind){
         if(typeof Notification==="undefined"){ toast("This browser can't show notifications"); return; }
@@ -4852,6 +5094,7 @@
     // flagged emails
     html+=fold("hub-emails","📌 Flagged emails",
       '<p class="sub" style="margin:0 0 8px;font-size:12px">“Subject — Sender”, one per line. Tick them off as you handle them.</p>'+
+      '<div class="drop-zone" id="em-drop" tabindex="0" aria-label="Drop an email here">📨 <b>Drop an email here</b> — drag it from Mail, Outlook or Gmail, or drop an .eml file. Sender, subject and date are read locally; nothing leaves this device.</div>'+
       '<div class="capture" style="margin:0 0 12px"><input class="q" id="em-in" placeholder="Reply to budget thread — Sarah" aria-label="Flagged email"/><button class="add" id="em-add">Add</button></div>'+
       '<ul class="tasks">'+(S.emails.length?S.emails.map(emailRow).join(""):'<div class="empty">No flagged emails</div>')+'</ul>');
 
@@ -4875,7 +5118,7 @@
   }
   function emailRow(e){
     return '<li class="task '+(e.done?"done":"")+'" data-id="'+e.id+'"><button class="chk '+(e.done?"done":"")+'" data-act="email-toggle" aria-label="done" aria-pressed="'+!!e.done+'"></button>'+
-      '<div class="task-main"><div class="task-title">'+esc(e.subject)+'</div>'+(e.sender?'<div class="task-meta"><span class="pill block">'+esc(e.sender)+'</span></div>':"")+'</div>'+
+      '<div class="task-main"><div class="task-title">'+esc(e.subject)+'</div>'+((e.sender||e.date)?'<div class="task-meta">'+(e.sender?'<span class="pill block">'+esc(e.sender)+'</span>':"")+(e.date?'<span class="pill block">'+esc(niceDate(e.date))+'</span>':"")+'</div>':"")+(e.note?'<div class="sub" style="font-size:12px;margin-top:2px;color:var(--ink-faint)">'+esc(e.note.slice(0,140))+'</div>':"")+'</div>'+
       '<button class="chip" data-act="email-task" data-id="'+e.id+'" style="flex:none;margin-right:6px" title="Turn this into a task">→ task</button>'+
       '<button class="task-x" data-act="email-del" style="opacity:1" aria-label="delete">✕</button></li>';
   }
@@ -4896,11 +5139,61 @@
   function bindHub(){
     var g=function(id){return document.getElementById(id);};
     if(g("em-add")) g("em-add").onclick=function(){ addEmails(g("em-in").value); };
+    var dz=g("em-drop");
+    if(dz){
+      dz.addEventListener("dragover",function(e){ e.preventDefault(); e.dataTransfer.dropEffect="copy"; dz.classList.add("drag-over"); });
+      dz.addEventListener("dragleave",function(){ dz.classList.remove("drag-over"); });
+      dz.addEventListener("drop",function(e){ e.preventDefault(); dz.classList.remove("drag-over");
+        var dt=e.dataTransfer; if(!dt) return;
+        if(dt.files&&dt.files.length){ var f=dt.files[0]; var r=new FileReader();
+          r.onload=function(){ if(!addDroppedEmail(parseDroppedEmail("file",r.result))) toast("Couldn’t read that file as an email"); };
+          r.readAsText(f); return; }
+        var html=dt.getData("text/html"), uri=dt.getData("text/uri-list"), txt=dt.getData("text/plain");
+        var parsed = txt&&/^(from|subject):/im.test(txt) ? parseDroppedEmail("text",txt)
+                   : (html ? parseDroppedEmail("text/html",html) : (uri ? parseDroppedEmail("uri",uri) : parseDroppedEmail("text",txt)));
+        if(!addDroppedEmail(parsed)) toast("Nothing readable was dropped — try dragging the message itself, or paste its subject");
+      });
+      dz.addEventListener("paste",function(e){ var txt=(e.clipboardData||{}).getData&&e.clipboardData.getData("text"); if(txt){ e.preventDefault(); addDroppedEmail(parseDroppedEmail("text",txt)); } });
+    }
     if(g("em-in")) g("em-in").addEventListener("keydown",function(e){ if(e.key==="Enter") addEmails(g("em-in").value); });
     if(g("job-add")) g("job-add").onclick=function(e){ e.preventDefault(); openJobModal(); };
     if(g("imp-add")) g("imp-add").onclick=function(){ addImprove(g("imp-type").value,g("imp-in").value); };
     if(g("imp-in")) g("imp-in").addEventListener("keydown",function(e){ if(e.key==="Enter") addImprove(g("imp-type").value,g("imp-in").value); });
     if(g("imp-copy")) g("imp-copy").onclick=function(e){ e.preventDefault(); copyImprove(); };
+  }
+  /* Best-effort parse of whatever a mail app hands over on drop: an .eml file (RFC 822 headers), a
+     text/plain body that begins with headers, an HTML fragment, a mailto:/message: URL, or plain
+     "Subject — Sender". Returns {subject, sender, date, note} or null. */
+  function parseDroppedEmail(kind, text){
+    text=String(text||""); if(!text.trim()) return null;
+    var out={subject:"",sender:"",date:"",note:""};
+    var hdr=function(name){ var m=text.match(new RegExp("^"+name+":\\s*(.+)$","im")); return m?m[1].replace(/\s+/g," ").trim():""; };
+    if(/^(from|subject|date|to):/im.test(text)){                       // headers present (.eml, or a pasted source)
+      out.subject=hdr("subject"); out.sender=hdr("from"); out.date=hdr("date");
+      var body=text.split(/\r?\n\r?\n/).slice(1).join("\n").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim();
+      out.note=body.slice(0,240);
+    } else if(kind==="text/html"){
+      var doc=document.implementation.createHTMLDocument("");
+      doc.body.innerHTML=text;
+      var t=(doc.querySelector("title")||{}).textContent||"", plain=(doc.body.textContent||"").replace(/\s+/g," ").trim();
+      out.subject=(t||plain.split(/[.!?]\s/)[0]).slice(0,120); out.note=plain.slice(0,240);
+    } else if(/^(mailto|message|outlook|googlegmail):/i.test(text.trim())){
+      var u=text.trim(); var sm=u.match(/subject=([^&]+)/i); out.subject=sm?decodeURIComponent(sm[1].replace(/\+/g," ")):"Email"; out.note=u;
+    } else {
+      var lines=text.split(/\r?\n/).map(function(l){return l.trim();}).filter(Boolean);
+      var first=lines[0]||""; var parts=first.split(/\s[—–-]\s/);
+      out.subject=parts[0].slice(0,120); out.sender=(parts[1]||"").slice(0,80); out.note=lines.slice(1).join(" ").slice(0,240);
+    }
+    // "Name <addr>" → Name; a bare address stays
+    out.sender=out.sender.replace(/^"?([^"<]+)"?\s*<[^>]+>$/,"$1").trim();
+    if(out.date){ var dd=new Date(out.date); if(!isNaN(dd)) out.date=fmt(dd); else out.date=""; }
+    if(!out.subject) out.subject=out.note.slice(0,80)||"Email";
+    return out;
+  }
+  function addDroppedEmail(parsed){
+    if(!parsed) return false;
+    S.emails.unshift({id:uid(),subject:parsed.subject,sender:parsed.sender,date:parsed.date||"",note:parsed.note||"",done:false,created:today()});
+    save(); render(); toast("Flagged: "+parsed.subject.slice(0,40)); return true;
   }
   function addEmails(text){ text=(text||"").trim(); if(!text)return; text.split(/\n/).forEach(function(line){ line=line.trim(); if(!line)return; var parts=line.split(/\s[—–-]\s/); S.emails.unshift({id:uid(),subject:parts[0].trim(),sender:(parts[1]||"").trim(),done:false,created:today()}); }); save(); render(); toast("Flagged"); }
   function addImprove(type,text){ text=(text||"").trim(); if(!text)return; S.improve.unshift({id:uid(),type:type||"idea",text:text,date:today()}); save(); render(); }
@@ -5584,6 +5877,49 @@
     document.getElementById("lock-go").onclick=tryUnlock;
     inp.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); tryUnlock(); } });
   }
+  /* Passcode = encryption. Turning it on re-writes the store as an envelope and drops the old
+     screen-only lock; turning it off writes plaintext back. Changing it re-encrypts with a new salt.
+     Other devices need the same passcode to read the synced copy. */
+  function openEncModal(){
+    if(!EC||!EC.ok){ modal('<h3>🔒 Passcode</h3><p class="sub">This browser can’t do the encryption (no WebCrypto). Use a current Safari, Chrome or Edge.</p><div class="modal-actions"><button class="btn primary" data-x>OK</button></div>'); return; }
+    var on=!!ENC, old=!!lockCfg();
+    modal('<h3>🔒 Passcode &amp; encryption</h3>'+
+      (on?'<p class="sub">Everything Gena stores on this device — and what it sends to cloud sync — is encrypted with AES-256. The key comes from your passcode and lives only in memory; closing the tab locks it.</p>'+
+          '<div class="stack"><button class="btn" id="en-lock">🔒 Lock now</button><button class="btn" id="en-change">Change passcode</button><button class="btn ghost danger" id="en-off">Turn encryption off</button></div>'+
+          '<div class="modal-actions"><button class="btn ghost" data-x>Close</button></div>'
+        :'<p class="sub">Set a passcode and Gena encrypts your data on this device (AES-256, key derived from the passcode, never stored). Cloud sync then carries only encrypted copies — use the same passcode on each device.</p>'+
+          '<p class="sub" style="color:var(--warn)"><b>If you forget it, nothing can recover the data.</b> Keep a backup file (⋯ → Export) somewhere safe first.</p>'+
+          (old?'<p class="sub">Your old screen-only lock will be replaced — it hid the screen but didn’t protect the data.</p>':'')+
+          '<div class="row"><div class="fld"><label>Passcode (6+ characters)</label><input id="en-new" type="password" autocomplete="new-password" placeholder="Something you’ll remember"/></div>'+
+          '<div class="fld"><label>Again</label><input id="en-new2" type="password" autocomplete="new-password"/></div></div>'+
+          '<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="en-set">Encrypt &amp; set passcode</button></div>'));
+    var dx0=document.querySelector(".modal [data-x]"); if(dx0) dx0.onclick=close;
+    function busy(msg){ var b=document.getElementById("en-set")||document.getElementById("en-change"); if(b){ b.disabled=true; b.textContent=msg; } }
+    function enable(pass, done){
+      var salt=crypto.getRandomValues(new Uint8Array(16)), it=150000;
+      return EC.derive(pass,salt,it).then(function(key){ ENC={key:key,salt:salt,it:it}; return encString(JSON.stringify(S)); })
+        .then(function(envStr){ localStorage.setItem(KEY,envStr); localStorage.removeItem(LOCK_KEY);
+          try{ localStorage.removeItem(KEY+"-corrupt"); localStorage.removeItem(KEY+"-guard"); }catch(e){}
+          keepLocalBackups(); ghDirty=true; scheduleGh(); updateSyncStatus(); if(done) done(); });
+    }
+    if(on){
+      document.getElementById("en-lock").onclick=function(){ location.reload(); };
+      document.getElementById("en-off").onclick=function(){ confirmModal("Turn encryption off?","Your data will be stored readable again on this device and in cloud sync.","Turn off",function(){
+        ENC=null; encSeq++; try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} keepLocalBackups(); ghDirty=true; scheduleGh(); updateSyncStatus(); toast("Encryption off"); }); };
+      document.getElementById("en-change").onclick=function(){ close();
+        modal('<h3>Change passcode</h3><div class="row"><div class="fld"><label>New passcode (6+ characters)</label><input id="en-new" type="password" autocomplete="new-password"/></div><div class="fld"><label>Again</label><input id="en-new2" type="password" autocomplete="new-password"/></div></div>'+
+          '<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="en-set">Re-encrypt</button></div>');
+        var dx1=document.querySelector(".modal [data-x]"); if(dx1) dx1.onclick=close;
+        document.getElementById("en-set").onclick=function(){ var a=document.getElementById("en-new").value, b=document.getElementById("en-new2").value;
+          if(a.length<6){ toast("Use at least 6 characters"); return; } if(a!==b){ toast("The two don’t match"); return; }
+          busy("Re-encrypting…"); enable(a,function(){ close(); toast("Passcode changed"); }).catch(function(){ toast("Couldn’t re-encrypt"); }); };
+      };
+    } else {
+      document.getElementById("en-set").onclick=function(){ var a=document.getElementById("en-new").value, b=document.getElementById("en-new2").value;
+        if(a.length<6){ toast("Use at least 6 characters"); return; } if(a!==b){ toast("The two don’t match"); return; }
+        busy("Encrypting…"); enable(a,function(){ close(); toast("Encrypted — you’ll be asked for the passcode next time Gena opens"); }).catch(function(){ ENC=null; toast("Couldn’t encrypt — nothing changed"); }); };
+    }
+  }
   function openLockModal(){
     var has=!!lockCfg();
     modal('<h3>🔒 App lock</h3><p class="sub">Shows a passcode screen when Gena opens on this device. Note: this hides the screen, it does not encrypt your data — someone with deep browser access could still read it. Good for casual privacy.</p>'+
@@ -5965,7 +6301,7 @@
     if(e.metaKey||e.ctrlKey||e.altKey) return;
     if(gSeq && Date.now()-gSeq<900){
       gSeq=0;
-      var map={t:"today",d:"day",w:"week",b:"backlog",h:"hub",p:"projects",e:"people",c:"calendar",l:"timeline",j:"journal"};
+      var map={t:"today",d:"day",w:"week",b:"backlog",h:"hub",p:"projects",e:"people",c:"calendar",l:"timeline",j:"journal",n:"learn"};
       var v2=map[e.key.toLowerCase()];
       if(v2){ e.preventDefault(); goView(v2,{today:true}); return; }
     }
@@ -6074,5 +6410,52 @@
       "Restore the untouched copy",
       function(){ try{ var g=localStorage.getItem(KEY+"-guard"); if(g){ localStorage.setItem(KEY,g); location.reload(); } }catch(e){} });
   }, 700);
+}
+/* ---------- Phase 34: encryption at rest ----------
+   When a passcode is set, everything in localStorage["gena-v1"] (and what cloud sync pushes) is an
+   AES-256-GCM envelope; the key comes from the passcode through PBKDF2 (150k rounds, SHA-256) and
+   lives only in memory. This gate runs before the app: with a plaintext store it just starts the app;
+   with an envelope it asks for the passcode, decrypts, and hands the plaintext over. The app never
+   boots against an envelope, so a wrong guess can't overwrite the store with a fresh seed. */
+(function(){
+  var KEY="gena-v1";
+  var C={
+    b64:function(buf){ var b=new Uint8Array(buf), out=""; for(var i=0;i<b.length;i++) out+=String.fromCharCode(b[i]); return btoa(out); },
+    unb64:function(str){ var b=atob(str), a=new Uint8Array(b.length); for(var i=0;i<b.length;i++) a[i]=b.charCodeAt(i); return a; },
+    derive:function(pass,salt,it){
+      return crypto.subtle.importKey("raw",new TextEncoder().encode(pass),"PBKDF2",false,["deriveKey"]).then(function(km){
+        return crypto.subtle.deriveKey({name:"PBKDF2",salt:salt,iterations:it,hash:"SHA-256"},km,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]); }); },
+    encrypt:function(key,salt,it,plain){ var iv=crypto.getRandomValues(new Uint8Array(12));
+      return crypto.subtle.encrypt({name:"AES-GCM",iv:iv},key,new TextEncoder().encode(plain)).then(function(ct){
+        return JSON.stringify({enc:1,v:1,it:it,salt:C.b64(salt),iv:C.b64(iv),ct:C.b64(ct),savedAt:Date.now()}); }); },
+    decrypt:function(key,env){ return crypto.subtle.decrypt({name:"AES-GCM",iv:C.unb64(env.iv)},key,C.unb64(env.ct)).then(function(pt){ return new TextDecoder().decode(pt); }); },
+    isEnv:function(raw){ if(!raw||raw.charAt(0)!=="{"||raw.indexOf('"enc":1')<0) return null; try{ var e=JSON.parse(raw); return (e&&e.enc===1&&e.ct)?e:null; }catch(x){ return null; } },
+    ok:!!(window.crypto&&crypto.subtle&&window.TextEncoder)
+  };
+  window.__genaCrypto=C;
+  var raw=null; try{ raw=localStorage.getItem(KEY); }catch(e){}
+  var env=C.isEnv(raw);
+  if(!env){ GENA_MAIN(); return; }
+  var box=document.createElement("div"); box.className="lock-scrim"; box.id="enc-gate";
+  box.innerHTML='<div class="lock-box"><div style="font-size:34px">🔒</div><h3 style="margin:8px 0 4px">Gena is locked</h3>'+
+    '<p class="sub" style="margin:0 0 10px;justify-content:center">Your data is encrypted on this device</p>'+
+    '<input id="enc-in" type="password" inputmode="text" autocomplete="current-password" placeholder="Passcode" aria-label="Passcode" style="width:100%;font-family:inherit;font-size:16px;padding:10px 12px;border:1.5px solid var(--line);border-radius:11px;background:var(--sheet);color:var(--ink)"/>'+
+    '<button class="btn primary" id="enc-go" style="width:100%;margin-top:10px">Unlock</button>'+
+    '<div id="enc-err" class="sub" style="min-height:18px;margin:8px 0 0;justify-content:center;color:var(--warn)"></div>'+
+    '<p class="sub" style="font-size:11.5px;margin:10px 0 0;justify-content:center;text-align:center">The passcode never leaves this device and cannot be recovered. If it is lost, restore a backup file instead.</p></div>';
+  document.body.appendChild(box);
+  var inp=document.getElementById("enc-in"), err=document.getElementById("enc-err"), busy=false;
+  setTimeout(function(){ inp.focus(); },60);
+  function go(){
+    if(busy) return; var pass=inp.value; if(!pass) return;
+    busy=true; err.style.color="var(--ink-faint)"; err.textContent="Unlocking…";
+    var salt=C.unb64(env.salt), it=env.it||150000;
+    C.derive(pass,salt,it).then(function(key){ return C.decrypt(key,env).then(function(plain){
+      window.__genaPlain=plain; window.__genaEnc={key:key,salt:salt,it:it};
+      box.remove(); GENA_MAIN(); }); })
+    .catch(function(){ busy=false; err.style.color="var(--warn)"; err.textContent="Wrong passcode"; inp.value=""; inp.focus(); });
+  }
+  document.getElementById("enc-go").onclick=go;
+  inp.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); go(); } });
 })();
 </script>
