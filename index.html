@@ -238,6 +238,8 @@
   .sugg-dismiss{ background:transparent; border:none; color:var(--terra-deep); cursor:pointer; font-size:15px; opacity:.6; padding:0 2px; }
   .sugg-dismiss:hover{ opacity:1; }
   .sugg-note{ font-size:11px; color:var(--ink-faint); margin:2px 0 10px; display:flex; align-items:center; gap:5px; }
+  .pane-sugg{ flex-wrap:wrap; font-size:12.5px; padding:8px 10px; margin-bottom:6px; }
+  .pane-sugg .stxt{ flex:1 1 100%; }
 
   /* projects board */
   .board{ display:grid; grid-template-columns: repeat(auto-fill, minmax(270px,1fr)); gap:16px; }
@@ -483,7 +485,9 @@
   .ie-sub .chk{ flex:none; }
   .ie-sub input{ flex:1; }
   .ie-subnew{ margin-top:6px; }
-  .ie-acts{ display:flex; gap:9px; justify-content:flex-end; flex-wrap:wrap;
+  /* pinned to the bottom of the viewport while a long editor scrolls, so Save / Delete / Focus never
+     need a scroll to reach — the same promise the wide modal makes */
+  .ie-acts{ position:sticky; bottom:0; z-index:3; background:var(--card); display:flex; gap:9px; justify-content:flex-end; flex-wrap:wrap;
     margin-top:14px; padding-top:12px; border-top:1px solid var(--line-soft); }
   @media (max-width:760px){
     .ie-wrap{ flex-direction:column; gap:0; }
@@ -526,6 +530,7 @@
   .inline-plus{ flex:none; width:20px; text-align:center; color:var(--ink-faint); font-weight:700; font-size:16px; }
   .at-btn{ flex:none; width:26px; height:26px; border-radius:8px; border:1px solid var(--line-soft); background:var(--sheet); color:var(--ink-faint); font-family:inherit; font-size:14px; font-weight:800; cursor:pointer; padding:0; opacity:.55; }
   .at-btn:hover, .inline-row:focus-within .at-btn{ opacity:1; color:var(--terra-deep); border-color:var(--terra); }
+  .at-btn.q-at{ width:34px; height:34px; opacity:.8; align-self:center; }
   .inline-add{ flex:1; min-width:0; border:none; background:transparent; font-family:inherit; font-size:15px; color:var(--ink); padding:4px 0; }
   .inline-add:focus{ outline:none; }
   .inline-add::placeholder{ color:var(--ink-faint); }
@@ -546,6 +551,23 @@
   details.hub-cap[open] summary.label{ margin-bottom:10px; }
 
   .wk-cols{ display:grid; gap:8px; }
+  .wk-tg-wrap{ overflow-x:auto; padding-bottom:6px; }
+  .wk-tg{ display:grid; gap:0 6px; align-items:stretch; }
+  .wk-tg-head{ font-size:12px; font-weight:700; color:var(--ink-soft); text-align:center; padding:4px 0 6px; cursor:pointer; border-radius:8px; }
+  .wk-tg-head:hover{ background:var(--line-soft); }
+  .wk-tg-head.today{ color:var(--terra-deep); }
+  .wk-tg-head.today b{ background:var(--terra); color:#fff; border-radius:50%; padding:2px 6px; }
+  .wk-allday{ min-height:26px; max-height:128px; overflow-y:auto; margin:0 0 6px; padding:4px; background:var(--sheet); border:1px dashed var(--line-soft); border-radius:8px; list-style:none; display:flex; flex-direction:column; gap:3px; }
+  .wk-allday.drag-over{ background:var(--terra-bg); border-color:var(--terra); }
+  .wk-allday .cal-ev{ margin:0; cursor:pointer; }
+  .wk-allday .cal-ev.plain{ background:var(--card); color:var(--ink); border:1px solid var(--line); }
+  .wk-tg-labels .hour-label{ height:48px; border-right:none; padding-top:2px; font-size:10.5px; }
+  .wk-tg-labels .hour-label:first-child{ height:48px; }
+  .wk-tg-col{ border-radius:10px; }
+  .wk-tg-col.today{ background:var(--terra-bg); }
+  .wk-tg-col .tb-layer{ left:2px; right:2px; }
+  .wk-tg-col .tblock{ font-size:11px; padding:2px 6px; }
+  .wk-tg-col .tb-time{ font-size:9.5px; }
   .wk-col{ background:var(--card); border:1.5px solid var(--line); border-radius:12px; padding:8px; min-height:150px; cursor:pointer; transition:border-color .12s; overflow:hidden; }
   .wk-col:hover{ border-color:var(--terra); }
   .wk-col.today{ border-color:var(--terra); background:var(--terra-bg); }
@@ -768,6 +790,8 @@
      They already occupy their space at opacity 0, so showing them costs no layout. */
   @media (hover: none){
     .task .task-x, .task .task-addsub, .task .task-focus, .task .task-bump{ opacity:1; }
+    .sub-move{ opacity:1; }
+    .sub-mv{ font-size:14px; padding:2px 7px; }
   }
   .sub .inline-add{ font-size:13px; padding:2px 0; }
   .ac{ position:fixed; z-index:70; background:var(--card); border:1.5px solid var(--line); border-radius:12px; box-shadow:0 14px 34px -12px rgba(0,0,0,.35); min-width:220px; max-width:320px; max-height:262px; overflow-y:auto; }
@@ -903,6 +927,7 @@
   <div class="global-head" id="global-head"></div>
   <div class="capture">
     <input class="q" id="q-input" type="text" placeholder="Add a task…  (press Enter)" aria-label="Quick add task" />
+    <button type="button" class="at-btn q-at" title="Pick a project, person, day or time" aria-label="Pick a project, person, day or time">@</button>
     <select id="q-proj" aria-label="Project"></select>
     <button class="add" id="q-add">Add</button>
     <button class="add" id="q-more" style="background:var(--slate);border-color:var(--slate);" title="More options">⋯</button>
@@ -995,7 +1020,7 @@
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-09 23:59";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-10 00:36";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1960,22 +1985,21 @@
     return k;
   }
   /* ---------- time-blocking hour-grid Day view ---------- */
-  function viewDayGrid(){
-    var d=viewDay, isToday=d===today();
-    var START=6, END=23;                       // 6am–11pm rows
-    var HOURH=48;                              // px per hour — every block position derives from this
-    // Done TIMED tasks stay on the grid struck-through (the day's record); done UNTIMED ones leave the
-    // Unscheduled tray — a to-triage list is no place for finished work.
-    var all=S.tasks.filter(function(k){ return taskOnDay(k,d) && inScope(k.projectId); });
-    var isTimed=function(k){ return /^\d{2}:\d{2}$/.test(k.at||""); };
-    var timed=all.filter(isTimed), unsched=all.filter(function(k){ return !isTimed(k) && k.status!=="done"; });
-    var mins=function(at){ return +at.slice(0,2)*60 + +at.slice(3,5); };
+  var HOURH=48;                                // px per hour — every block position derives from this
+  var isTimed=function(k){ return /^\d{2}:\d{2}$/.test(k.at||""); };
+  // The hour range a set of timed tasks needs: 6am–11pm unless something sits outside it.
+  function hourRange(timed){
+    var START=6, END=23;
     var earliest=timed.reduce(function(m,k){ return Math.min(m,+k.at.slice(0,2)); }, START);
-    var latest=timed.reduce(function(m,k){ return Math.max(m, Math.ceil((mins(k.at)+(k.dur||60))/60)-1); }, END);
-    var lo=Math.min(START,earliest), hi=Math.max(END,latest);
+    var latest=timed.reduce(function(m,k){ return Math.max(m, Math.ceil((toMins(k.at)+(k.dur||60))/60)-1); }, END);
+    return {lo:Math.min(START,earliest), hi:Math.max(END,latest)};
+  }
+  // The positioned blocks for one day against a given hour range — shared by the Day view and the
+  // week time grid, so both look and behave the same (edit on click, drag to move, resize strip).
+  function dayBlocksLayer(timed, lo){
     // ---- overlap layout, the way calendar apps do it: overlapping blocks form a cluster and share
     // the width in columns; a long block and the short ones inside its window sit side by side ----
-    var blocks=timed.map(function(k){ var st=mins(k.at); return {k:k, s:st, e:st+(k.dur||60)}; })
+    var blocks=timed.map(function(k){ var st=toMins(k.at); return {k:k, s:st, e:st+(k.dur||60)}; })
       .sort(function(a,b){ return a.s-b.s || (b.e-b.s)-(a.e-a.s); });
     (function(){
       var cluster=[], cols=[], clusterEnd=-1;
@@ -1988,7 +2012,7 @@
       });
       flush();
     })();
-    var layer=blocks.map(function(b){
+    return blocks.map(function(b){
       var k=b.k, p=k.projectId?proj(k.projectId):null;
       var top=((b.s-lo*60)/60*HOURH).toFixed(1);
       var hpx=Math.max(24,((b.e-b.s)/60*HOURH)-3).toFixed(1);
@@ -2001,6 +2025,25 @@
         '<span class="tb-title">'+(k.priority?"★ ":"")+esc(k.title)+'</span>'+
         '<span class="tb-resize" title="Drag to change the length"></span></div>';
     }).join("");
+  }
+  function hourRowsHtml(lo,hi,isToday,withLabels){
+    var now=new Date(), nowH=now.getHours(), nowM=now.getMinutes(), rows='';
+    for(var h=lo; h<=hi; h++){
+      var hh=String(h).padStart(2,"0");
+      var line=(isToday&&nowH===h)?'<div class="now-line" style="top:'+(nowM/60*100).toFixed(1)+'%"></div>':'';
+      rows+='<div class="hour-row">'+(withLabels?'<div class="hour-label">'+(h%12||12)+(h<12?'am':'pm')+'</div>':'')+
+        '<div class="hourslot" data-hour="'+hh+'">'+line+'</div></div>';
+    }
+    return rows;
+  }
+  function viewDayGrid(){
+    var d=viewDay, isToday=d===today();
+    // Done TIMED tasks stay on the grid struck-through (the day's record); done UNTIMED ones leave the
+    // Unscheduled tray — a to-triage list is no place for finished work.
+    var all=S.tasks.filter(function(k){ return taskOnDay(k,d) && inScope(k.projectId); });
+    var timed=all.filter(isTimed), unsched=all.filter(function(k){ return !isTimed(k) && k.status!=="done"; });
+    var hr=hourRange(timed), lo=hr.lo, hi=hr.hi;
+    var layer=dayBlocksLayer(timed, lo);
     var evs=S.events.filter(function(e){ return evOnDay(e,d); });
     var head='<div class="day-head">'+
       '<button class="icon-btn" data-act="daynav" data-d="-1" aria-label="Previous day" title="Previous day">‹</button>'+
@@ -2014,15 +2057,7 @@
     var tray='<div class="day-unsched"><div class="day-unsched-h">Unscheduled ('+unschedOpen+') — drag onto an hour to time-block</div>'+
       (unsched.length?'<ul class="tasks day-tray" data-unsched="1">'+unsched.map(taskLi).join("")+'</ul>'
                      :'<div class="day-tray empty-tray" data-unsched="1">Nothing unscheduled — drop a task here to clear its time.</div>')+'</div>';
-    var now=new Date(), nowH=now.getHours(), nowM=now.getMinutes();
-    var rows='';
-    for(var h=lo; h<=hi; h++){
-      var hh=String(h).padStart(2,"0");
-      var label=(h%12||12)+(h<12?'am':'pm');
-      var line=(isToday&&nowH===h)?'<div class="now-line" style="top:'+(nowM/60*100).toFixed(1)+'%"></div>':'';
-      rows+='<div class="hour-row"><div class="hour-label">'+label+'</div>'+
-        '<div class="hourslot" data-hour="'+hh+'">'+line+'</div></div>';
-    }
+    var rows=hourRowsHtml(lo,hi,isToday,true);
     return head+evBanner+'<div class="day-split"><div class="day-gridwrap"><div class="day-grid" data-lo="'+lo+'" data-hi="'+hi+'">'+rows+
       '<div class="tb-layer">'+layer+'</div></div></div>'+tray+'</div>';
   }
@@ -2160,7 +2195,8 @@
     var p=proj(k.projectId);
     return '<div class="panel-task" data-id="'+k.id+'"><div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title" style="font-size:13.5px">'+esc(k.title)+'</div>'+
       (p?'<div class="task-meta"><span class="pill proj" style="'+cbg(p.color)+'">'+esc(p.name)+'</span></div>':"")+'</div>'+
-      '<div class="panel-move"><button data-act="sched" data-id="'+k.id+'" data-d="'+today()+'">📅 Today</button><button data-act="sched" data-id="'+k.id+'" data-d="'+addDays(today(),1)+'">→ Tmrw</button><button data-act="sched" data-id="'+k.id+'" data-d="pick">📅…</button></div></div>';
+      '<div class="panel-move"><button data-act="sched" data-id="'+k.id+'" data-d="'+today()+'">📅 Today</button><button data-act="sched" data-id="'+k.id+'" data-d="'+addDays(today(),1)+'">→ Tmrw</button><button data-act="sched" data-id="'+k.id+'" data-d="pick">📅…</button>'+
+      '<button data-act="panel-focus" data-id="'+k.id+'" title="Put it on today and into Today’s Focus">◎ Focus</button></div></div>';
   }
   // Group tasks under their project, "No project" last — used by the Carried-over card and anywhere
   // else a long flat list needs to become scannable.
@@ -2186,12 +2222,16 @@
     var doneV=S.tasks.filter(function(k){return k.status==="done" && k.completedOn===vd && inScope(k.projectId);});
     var MOVES=[["morning","☀️ Morning"],["afternoon","🌤 Afternoon"],["evening","🌙 Evening"],["anytime","⏳ Anytime"],["someday","💭 Someday"]];
     var blAdd='<ul class="tasks" data-list="someday" style="padding:0;margin:0 0 4px"><li class="task inline-row" style="padding:6px 4px"><span class="inline-plus">+</span><input class="inline-add" data-block="someday" placeholder="Add to backlog…" aria-label="Add to backlog"/></li></ul>';
-    var blBody=blAdd+(backlog.length?backlog.map(backlogSideRow).join(""):'<div class="empty">Backlog is empty</div>');
+    var blBody=blAdd+(backlog.length?groupByProject(backlog).map(function(g){
+      return '<div class="grp-head"><span class="pdot" style="'+cbg(g.color)+'"></span>'+esc(g.name)+'<span class="cnt">'+g.items.length+'</span></div>'+
+        g.items.map(backlogSideRow).join("");
+    }).join(""):'<div class="empty">Backlog is empty</div>');
     var vdLabel = vd===today() ? "today" : niceDate(vd);
     function carriedRow(k){
       return '<div class="panel-task" data-id="'+k.id+'"><div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title" style="font-size:13.5px">'+esc(k.title)+'</div>'+
         '<div class="task-meta"><span class="pill aged'+(k.rollover>=7?" hot":"")+'">carried '+k.rollover+'d</span></div></div>'+
         '<div class="panel-move"><button class="pm-primary" data-act="sched" data-id="'+k.id+'" data-d="'+vd+'">➕ Add to '+esc(vdLabel)+'</button>'+
+        '<button data-act="panel-focus" data-id="'+k.id+'" title="Put it on '+esc(vdLabel)+' and into Focus">◎ Focus</button>'+
         '<details class="pm-fold"><summary title="More places">⋯</summary><div class="panel-move">'+
           MOVES.map(function(m){return '<button data-act="panel-move" data-to="'+m[0]+'" data-id="'+k.id+'">'+m[1]+'</button>';}).join("")+
         '</div></details></div></div>';
@@ -2210,7 +2250,15 @@
       return '<div class="log-day" data-act="panel-goday" data-d="'+d+'" title="View this day">'+niceDate(d)+' · '+byDay[d].length+'</div>'+
         byDay[d].map(function(k){return '<div class="log-item">✓ '+esc(k.title)+'</div>';}).join("");
     }).join(""):'<div class="empty">No completed tasks yet</div>';
+    // the same nudges the Today banner shows, so they follow you to every tab
+    var sg=computeSuggestions();
+    var sgBody=sg.length?sg.map(function(x){
+      return '<div class="sugg pane-sugg" data-sid="'+esc(x.id)+'"><div class="stxt">'+x.text+'</div>'+
+        (x.action?'<button class="sugg-act" data-act="sugg" data-sid="'+esc(x.id)+'">'+x.action+'</button>':'')+
+        '<button class="sugg-dismiss" data-act="sugg-x" data-sid="'+esc(x.id)+'" aria-label="Dismiss">✕</button></div>';
+    }).join(""):'<div class="empty">Nothing to nudge you about 🎉</div>';
     rb.innerHTML='<div class="pane-grip" data-pane="rb" title="Drag to resize"></div><div class="rb-brand">📋 Panel<button class="sb-act" data-act="panel-toggle" title="Hide the panel">hide ⟩</button></div>'+
+      fold("panel-sugg","✨ Suggestions"+(sg.length?" · "+sg.length:""),sgBody)+
       fold("panel-backlog","🗃 Backlog"+(backlog.length?" · "+backlog.length:""),blBody)+
       fold("panel-carried","⏳ Carried over"+(carried.length?" · "+carried.length:""),cb)+
       fold("panel-done","✓ Completed"+(doneV.length?" · "+doneV.length:""),db)+
@@ -2576,7 +2624,7 @@
     if(S.calSources.length) html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+S.calSources.map(function(s){return '<span class="pill" style="background:'+(s.enabled?s.color:"var(--line)")+';color:#fff">'+esc(s.name)+(s.error?" ⚠":"")+'</span>';}).join("")+'</div>';
     if(cv==="month") html+=monthGridHtml(a);
     else if(cv==="year") html+=yearGridHtml(+a.slice(0,4));
-    else html+=weekGridHtml(cv,a);
+    else html+=weekTimeGridHtml(spanDays(cv,a));
     return html;
   }
   function monthGridHtml(a){
@@ -2595,6 +2643,35 @@
       html+='<div class="cal-cell '+(ds===t?"today":"")+'" data-act="calday" data-d="'+ds+'"><div class="cal-daynum">'+day+'</div>'+cells+'</div>';
     }
     return html+'</div>';
+  }
+  /* Week / Work week / 3 days as a real time grid: one shared hour axis, a column per day, timed tasks
+     as positioned blocks (same layer as the Day view, so click-to-edit, drag-to-move, resize all work
+     across days), and an all-day strip above for anything without a clock time — drag a pill down
+     into the grid to give it one, or a block up into the strip to take it away. */
+  function weekTimeGridHtml(days){
+    var t=today(), perDay=days.map(function(ds){
+      var all=S.tasks.filter(function(k){ return taskOnDay(k,ds) && inScope(k.projectId); });
+      return {ds:ds, timed:all.filter(isTimed), loose:all.filter(function(k){ return !isTimed(k) && k.status!=="done"; }),
+              evs:S.events.filter(function(e){ return evOnDay(e,ds)&&sourceEnabled(e)&&!(e.projectId&&!inScope(e.projectId)); })};
+    });
+    var hr=hourRange([].concat.apply([],perDay.map(function(x){return x.timed;}))), lo=hr.lo, hi=hr.hi;
+    var BI={morning:"☀︎ ",afternoon:"🌤 ",evening:"🌙 "};
+    var cols='repeat('+days.length+',minmax('+(days.length>5?118:150)+'px,1fr))';
+    var h='<div class="wk-tg-wrap"><div class="wk-tg" style="grid-template-columns:52px '+cols+'">';
+    h+='<div class="wk-tg-corner"></div>'+perDay.map(function(x){ var d=parse(x.ds);
+      return '<div class="wk-tg-head'+(x.ds===t?" today":"")+'" data-act="calday" data-d="'+x.ds+'" title="Open this day">'+DOWNAMES[d.getDay()]+' <b>'+d.getDate()+'</b></div>'; }).join("");
+    h+='<div class="wk-tg-corner"></div>'+perDay.map(function(x){
+      return '<ul class="tasks wk-allday" data-list="day:'+x.ds+'" title="Anything without a time — drop a block here to clear its time">'+
+        x.evs.map(function(e){ var c=e.color||(e.projectId?projColor(e.projectId):null); return '<div class="cal-ev '+(c?"":"evt")+'" style="'+(c?"background:"+c:"")+'">📅 '+esc(e.title)+'</div>'; }).join("")+
+        orderTasks(x.loose,false).map(function(k){ var c=projColor(k.projectId);
+          return '<div class="cal-ev'+(c?"":" plain")+'" draggable="true" data-tid="'+k.id+'" data-act="tb-edit" data-id="'+k.id+'" style="'+(c?cbg(c):"")+'">'+(k.priority?"★ ":"")+(k.block?BI[k.block]:"")+esc(k.title)+'</div>'; }).join("")+'</ul>'; }).join("");
+    h+='<div class="wk-tg-labels">';
+    for(var hh=lo; hh<=hi; hh++) h+='<div class="hour-label">'+(hh%12||12)+(hh<12?'am':'pm')+'</div>';
+    h+='</div>';
+    h+=perDay.map(function(x){
+      return '<div class="day-grid wk-tg-col'+(x.ds===t?" today":"")+'" data-d="'+x.ds+'" data-lo="'+lo+'" data-hi="'+hi+'">'+hourRowsHtml(lo,hi,x.ds===t,false)+
+        '<div class="tb-layer">'+dayBlocksLayer(x.timed,lo)+'</div></div>'; }).join("");
+    return h+'</div></div>';
   }
   function weekGridHtml(cv,a){
     var days=spanDays(cv,a); var t=today();
@@ -3023,10 +3100,10 @@
         dragFocusId=null; clearDrag(); return; }
       if(dragTaskId){ var hs=e.target.closest(".hourslot[data-hour], .day-tray[data-unsched], .day-grid");
         if(hs){ e.preventDefault(); var kt=S.tasks.find(function(x){return x.id===dragTaskId;});
-          if(kt){ kt.day=viewDay; kt.rollover=0;
+          if(kt){ var grid=hs.classList.contains("day-grid")?hs:hs.closest(".day-grid");
+            kt.day=(grid&&grid.dataset.d)||viewDay; kt.rollover=0;
             if(hs.dataset.unsched){ kt.at=null; }
-            else { var grid=hs.classList.contains("day-grid")?hs:hs.closest(".day-grid");
-              kt.at=minsToAt(gridMinutes(grid,e.clientY)); kt.block=blockForTime(kt.at); }
+            else { kt.at=minsToAt(gridMinutes(grid,e.clientY)); kt.block=blockForTime(kt.at); }
             save(); render(); toast(hs.dataset.unsched?"Cleared time":"Blocked at "+fmtTime(kt.at)); }
           dragTaskId=null; dragNestTarget=null; dragGrabY=0; clearDrag(); hideDragDock(); return; }
         // month / week calendar: a pill dropped on another day moves the task there (spans keep their length)
@@ -3040,7 +3117,7 @@
         var k=S.tasks.find(function(x){return x.id===dragTaskId;});
         if(k){ var listName=ul.dataset.list;
           if(listName==="someday"){ k.day=null; k.block=null; }
-          else if(listName.indexOf("day:")===0){ k.day=listName.slice(4); k.rollover=0; }
+          else if(listName.indexOf("day:")===0){ k.day=listName.slice(4); k.rollover=0; if(ul.classList.contains("wk-allday")) k.at=null; }
           else if(listName==="master"){ if(!k.day) k.day=viewDay; }
           else { k.block= listName==="loose"?null:listName; if(!k.day) k.day=viewDay; }
           // master / someday / a specific day = the global order; time blocks & Anytime = a local order that won't disturb the master
@@ -3056,7 +3133,7 @@
     // ---- touch-drag (Phase 6): long-press to pick up, drag to move. Reuses the mouse drag/drop handlers via synthesized events. ----
     if(!v.__touchDragBound){ v.__touchDragBound=true; (function(){
       var tEl=null, tDragging=false, tTimer=null, tStartY=0, tStartX=0, tLastX=0, tLastY=0;
-      function fakeEvt(el,cy){ return { target:el||document.body, clientY:cy, preventDefault:function(){}, dataTransfer:{ dropEffect:"", effectAllowed:"", setData:function(){} } }; }
+      function fakeEvt(el,cy){ return { target:el||document.body, clientY:cy, preventDefault:function(){}, stopPropagation:function(){}, dataTransfer:{ dropEffect:"", effectAllowed:"", setData:function(){} } }; }
       function begin(){ if(!tEl) return; tDragging=true; tEl.classList.add("touch-dragging");
         try{ v.ondragstart(fakeEvt(tEl,tStartY)); }catch(e){} navigator.vibrate&&navigator.vibrate(8); }
       function endDrag(){ if(tTimer){ clearTimeout(tTimer); tTimer=null; }
@@ -3067,7 +3144,7 @@
       }
       v.addEventListener("touchstart",function(e){
         if(e.touches.length!==1) return;
-        var el=e.target.closest&&e.target.closest(".task[data-id], .job-card[data-id], .today-unit[data-unit], .tblock[data-id], .cal-ev[data-tid]");
+        var el=e.target.closest&&e.target.closest("li.sub[data-subof], .task[data-id], .job-card[data-id], .today-unit[data-unit], .tblock[data-id], .cal-ev[data-tid]");
         if(!el || e.target.closest("input,textarea,select,[contenteditable=true],button,a,.tb-resize")) return;
         tEl=el; var t=e.touches[0]; tStartX=tLastX=t.clientX; tStartY=tLastY=t.clientY;
         tTimer=setTimeout(begin,240); // long-press so normal taps/scroll still work
@@ -3112,6 +3189,8 @@
           if(fx2>=0){ fa.splice(fx2,1); save(); render(); toast("Removed from Today’s Focus"); } }
         else addTaskToFocus(tf); }
       else if(act==="planday"){ planDay(viewDay); }
+      else if(act==="panel-focus"){ var pfk=S.tasks.find(function(x){return x.id===a.dataset.id;});
+        if(pfk){ var pfd=(view==="today")?viewDay:today(); if(!taskOnDay(pfk,pfd)) rescheduleTask(pfk,pfd); addTaskToFocus(pfk.id); } }
       else if(act==="tb-edit"){ var tbk=S.tasks.find(function(x){return x.id===(id||anyId);});
         if(tbk) openTaskModal({edit:tbk}); }   // a positioned block has no room for the inline editor
       else if(act==="bump"){ var bk=S.tasks.find(function(x){return x.id===a.dataset.id;});
