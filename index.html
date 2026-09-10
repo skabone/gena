@@ -128,7 +128,7 @@
     border-radius: 0 0 18px 18px; box-shadow: 0 4px 20px -8px var(--shadow);
   }
   .appbar-inner { max-width:none; margin:0; padding: 12px 18px 12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  @media (min-width:1001px){ .appbar-inner{ flex-wrap:nowrap; } .appbar .nav{ flex:0 1 auto; min-width:0; } .sync-chip{ flex:none; } }
+  @media (min-width:1001px){ .appbar-inner{ flex-wrap:nowrap; } .appbar .nav{ flex:none; } .sync-chip{ flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; } .appbar .brand{ flex:none; } }
   #theme-btn{ display:none; }   /* light / dark lives in ⋯ (and ◐ there) — one icon fewer in the bar */
   .brand { color: var(--slate-ink); font-weight: 800; letter-spacing:.12em; text-transform:uppercase; font-size:15px; white-space:nowrap; display:flex; align-items:center; gap:8px; }
   .brand-mark { flex:none; width:19px; height:19px; color: var(--terra); }
@@ -234,7 +234,10 @@
   .empty{ color:var(--ink-faint); font-size:13.5px; padding:14px 4px; text-align:center; }
 
   .block-head{ display:flex; align-items:center; gap:8px; margin:18px 0 6px; }
-  .block-head .label{ margin:0; }
+  .block-head .label{ margin:0; text-transform:none; letter-spacing:0; font-size:13.5px; font-weight:700; color:var(--ink); }
+  .panel-task:hover .task-focus, .panel-task:hover .task-star, .panel-task:hover .task-x, .panel-task .task-star.on, .panel-task .task-focus.on{ opacity:1; }
+  .panel-task .task-focus, .panel-task .task-star, .panel-task .task-x{ opacity:0; transition:opacity var(--dur) var(--ease); }
+  @media (hover:none){ .panel-task .task-focus, .panel-task .task-star, .panel-task .task-x{ opacity:1; } }
   .block-head .cnt{ font-size:11px; color:var(--ink-faint); }
 
   /* habits */
@@ -332,7 +335,7 @@
   .modal{ background:var(--sheet); border-radius:var(--r-card); width:min(460px,100%); max-height:100%; overflow:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:22px; box-shadow:0 30px 60px -20px rgba(0,0,0,.5); }
   .modal h3{ margin:0 0 4px; font-size:18px; font-weight:800; }
   .modal .fld{ margin:14px 0; }
-  .modal label{ display:block; font-size:12px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
+  .modal label{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); text-transform:none; letter-spacing:0; margin-bottom:6px; }
   .modal input, .modal select, .modal textarea{ width:100%; font-family:inherit; font-size:15px; color:var(--ink); background:var(--card); border:1.5px solid var(--line); border-radius:11px; padding:10px 12px; }
   .modal input:focus,.modal select:focus,.modal textarea:focus{ outline:none; border-color:var(--terra); }
   .row{ display:flex; gap:10px; }
@@ -521,7 +524,7 @@
   .ie-wrap{ display:flex; gap:20px; align-items:flex-start; }
   .ie-main{ flex:1 1 58%; min-width:0; }
   .ie-side{ flex:1 1 42%; min-width:0; border-left:1px solid var(--line-soft); padding-left:18px; }
-  .ie-lbl{ font-size:10.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase;
+  .ie-lbl{ font-size:12px; font-weight:600; color:var(--ink-soft); text-transform:none;
     letter-spacing:.08em; margin:12px 0 5px; }
   .ie-main > .ie-lbl:first-child, .ie-side > .ie-lbl:first-child{ margin-top:0; }
   .ie-row input, .ie-row select, .ie-row textarea{ width:100%; font-family:inherit; font-size:14px;
@@ -680,6 +683,13 @@
   /* motion & polish */
   html{ accent-color: var(--terra); }
   .task{ border-radius:8px; transition:background var(--dur) var(--ease); }
+  /* the project's colour as a bar on the row's left edge — colour where it means something */
+  li.task.pc{ box-shadow:inset 3px 0 0 var(--pc); }
+  li.task.pc.done{ box-shadow:inset 3px 0 0 color-mix(in srgb, var(--pc) 45%, transparent); }
+  /* time of day, in colour: the three block cards carry a warm / sky / indigo top edge */
+  details.fold[data-fold="block-morning"]{ border-top:3px solid #e6b35a; }
+  details.fold[data-fold="block-afternoon"]{ border-top:3px solid #5fa8d3; }
+  details.fold[data-fold="block-evening"]{ border-top:3px solid #6b5fc7; }
   .task:not(.inline-row):hover{ background:var(--line-soft); }
   .chk.done::after{ animation:pop .2s ease; }
   .task.completing{ animation:settle .38s ease forwards; }
@@ -944,6 +954,8 @@
   .rte-body p,.rte-body div{ margin:0 0 4px; }
   .rte-compact .rte-body{ font-size:13px; background:var(--sheet); border:1px solid var(--line-soft); border-radius:10px; padding:8px 10px; min-height:54px; }
   .rte-compact .rte-tools button{ min-width:22px; height:22px; font-size:11px; }
+  .rte-compact .rte-tools{ display:none; }
+  .rte-compact:focus-within .rte-tools{ display:flex; }
   .rte-compact:focus-within .rte-body{ border-color:var(--terra); }
 
   @media print{
@@ -971,6 +983,11 @@
     .today-head{ gap:8px; align-items:center; }
     .today-head h2.view-h{ font-size:19px; margin:0; flex:1 1 auto; min-width:0; }
     .day-nav .icon-btn{ width:32px; height:32px; }
+    .day-head{ flex-wrap:wrap; row-gap:8px; }
+    .day-head .day-title{ font-size:19px; flex:1 1 auto; min-width:0; }
+    .day-head .icon-btn{ width:32px; height:32px; background:var(--slate); color:var(--slate-ink); }
+    .day-head .chip[data-act="planday"]{ margin-left:0 !important; }
+    .day-unsched-h .hint{ display:none; }
     [data-act="panel-toggle"], #rb-toggle{ display:none !important; }  /* the side panel isn't beside you on a phone */
     /* two rows, not three: burger ‹ › brand … icons on the first, the view tabs on the second */
     .appbar-inner{ row-gap:6px; padding:10px 12px 10px; gap:6px; }
@@ -1110,7 +1127,7 @@
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-10 02:00";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-10 02:30";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -2033,7 +2050,7 @@
     if(ieOpensHere(k.id)) return inlineEditorLi(k);
     if(pendingSubAdd===k.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+k.id+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
     var subsHtml=subRows?'<ul class="subs">'+subRows+'</ul>':'';
-    return '<li class="task '+(k.status==="done"?"done":"")+'" data-id="'+k.id+'" draggable="true">'+
+    return '<li class="task '+(k.status==="done"?"done":"")+(p?" pc":"")+'" data-id="'+k.id+'" draggable="true"'+(p?' style="--pc:'+esc(p.color)+'"':'')+'>'+
       '<button class="chk '+(k.status==="done"?"done":"")+'" data-act="toggle" aria-label="Toggle done" aria-pressed="'+(k.status==="done")+'"></button>'+
       '<div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title">'+subsCaret(k.id,(k.subs||[]).length)+esc(k.title)+'</div>'+
       (pills?'<div class="task-meta">'+pills+'</div>':'')+subsHtml+'</div>'+
@@ -2073,7 +2090,7 @@
       }
       if(pendingSubAdd===k.id) lsubRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+k.id+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
       var lsubsHtml=lsubRows?'<ul class="subs">'+lsubRows+'</ul>':'';
-      return '<li class="task '+(done?"done":"")+'" data-id="'+f.id+'" data-focus="1" draggable="true">'+
+      return '<li class="task '+(done?"done":"")+(kp?" pc":"")+'" data-id="'+f.id+'" data-focus="1" draggable="true"'+(kp?' style="--pc:'+esc(kp.color)+'"':'')+'>'+
         '<button class="chk '+(done?"done":"")+'" data-act="focus-tasktoggle" data-tid="'+k.id+'" aria-label="Complete task" aria-pressed="'+done+'"></button>'+
         '<div class="task-main" data-act="focus-editlinked" data-tid="'+k.id+'" title="Tap to edit the task"><div class="task-title">'+subsCaret(k.id,(k.subs||[]).length)+esc(k.title)+'</div><div class="task-meta">'+lpills+'</div>'+lsubsHtml+'</div>'+
         '<button class="task-addsub" data-act="sub-add" data-tid="'+k.id+'" aria-label="Add a subtask" title="Add a subtask">⤷+</button>'+
@@ -2164,7 +2181,7 @@
   function dayBlocksLayer(timed, lo){
     // ---- overlap layout, the way calendar apps do it: overlapping blocks form a cluster and share
     // the width in columns; a long block and the short ones inside its window sit side by side ----
-    var blocks=timed.map(function(k){ var st=toMins(k.at); return {k:k, s:st, e:st+(k.dur||60)}; })
+    var blocks=timed.map(function(k){ var st=toMins(k.at), en=st+(k.dur||60); return {k:k, s:st, e:en, eL:Math.max(en,st+30)}; })
       .sort(function(a,b){ return a.s-b.s || (b.e-b.s)-(a.e-a.s); });
     (function(){
       var cluster=[], cols=[], clusterEnd=-1;
@@ -2172,8 +2189,8 @@
       blocks.forEach(function(b){
         if(cluster.length && b.s>=clusterEnd) flush();
         var i=0; while(i<cols.length && cols[i]>b.s) i++;
-        b.col=i; cols[i]=b.e; cluster.push(b);
-        clusterEnd=Math.max(clusterEnd,b.e);
+        b.col=i; cols[i]=b.eL; cluster.push(b);
+        clusterEnd=Math.max(clusterEnd,b.eL);
       });
       flush();
     })();
@@ -2220,7 +2237,7 @@
       '</div>'+capacityHtml(d);
     var evBanner=evs.length?'<div class="day-events">'+evs.map(function(e){ return '<span class="pill block">📅 '+esc(e.title)+'</span>'; }).join("")+'</div>':'';
     var unschedOpen=unsched.filter(function(k){ return k.status!=="done"; }).length;
-    var tray='<div class="day-unsched"><div class="day-unsched-h">Unscheduled ('+unschedOpen+') — drag onto an hour to time-block</div>'+
+    var tray='<div class="day-unsched"><div class="day-unsched-h">Unscheduled ('+unschedOpen+')<span class="hint"> — drag onto an hour to time-block</span></div>'+
       (unsched.length?'<ul class="tasks day-tray" data-unsched="1">'+unsched.map(taskLi).join("")+'</ul>'
                      :'<div class="day-tray empty-tray" data-unsched="1">Nothing unscheduled — drop a task here to clear its time.</div>')+'</div>';
     var rows=hourRowsHtml(lo,hi,isToday,true);
@@ -2562,18 +2579,18 @@
   /* ---------- BACKLOG — undated tasks you schedule when ready (Structured-style) ---------- */
   function backlogRow(k){
     var p=proj(k.projectId);
-    var pills=(k.priority?'<span class="pill imp">★</span>':"")+((k.rollover||0)>=1?'<span class="pill aged'+(k.rollover>=7?" hot":"")+'">carried '+k.rollover+'d</span>':"")+(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+
+    var pills=(k.priority?'<span class="pill imp">★</span>':"")+((k.rollover||0)>=1?'<span class="pill aged'+(k.rollover>=7?" hot":"")+'">carried '+k.rollover+'d</span>':"")+(p?'<span class="pill proj" style="--pc:'+esc(p.color)+'"><i class="pdot"></i>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+
       (k.subs&&k.subs.length?'<span class="pill subs-n">☑ '+k.subs.filter(function(s){return s.done;}).length+'/'+k.subs.length+'</span>':"");
     var chips='<button data-act="sched" data-id="'+k.id+'" data-d="'+today()+'">📅 Today</button>'+
       '<button data-act="sched" data-id="'+k.id+'" data-d="'+addDays(today(),1)+'">→ Tomorrow</button>';
-    for(var i=2;i<=6;i++){ var dd=addDays(today(),i); chips+='<button data-act="sched" data-id="'+k.id+'" data-d="'+dd+'">'+DOWNAMES[dow(dd)]+' '+(+dd.slice(8))+'</button>'; }
+    var nm=nextDow(1); chips+='<button data-act="sched" data-id="'+k.id+'" data-d="'+nm+'">⏭ Mon '+(+nm.slice(8))+'</button>';
     chips+='<button data-act="sched" data-id="'+k.id+'" data-d="pick">📅 Date…</button>';
     return '<div class="panel-task" data-id="'+k.id+'">'+
       '<div style="display:flex;gap:11px;align-items:flex-start"><button class="chk" data-act="toggle" aria-label="Complete" aria-pressed="false"></button>'+
       '<div class="task-main" data-act="edit" style="flex:1" title="Tap to edit"><div class="task-title">'+esc(k.title)+'</div>'+(pills?'<div class="task-meta">'+pills+'</div>':"")+'</div>'+
-      '<button class="task-focus'+(inFocus(k.id)?" on":"")+'" data-act="tofocus" style="opacity:1" aria-label="Add to Today’s Focus" title="Add to Today’s Focus">◎</button>'+
+      '<button class="task-focus'+(inFocus(k.id)?" on":"")+'" data-act="tofocus" aria-label="Add to Today’s Focus" title="Add to Today’s Focus">◎</button>'+
       '<button class="task-star '+(k.priority?"on":"")+'" data-act="star" aria-label="Important">'+(k.priority?"★":"☆")+'</button>'+
-      '<button class="task-x" data-act="del" aria-label="Delete" style="opacity:1">✕</button></div>'+
+      '<button class="task-x" data-act="del" aria-label="Delete">✕</button></div>'+
       '<div class="panel-move" style="margin-left:31px">'+chips+'</div></div>';
   }
   function viewBacklog(){
@@ -2943,7 +2960,7 @@
   /* ---------- JOURNAL (Phase 13) — every day you wrote something, newest first ---------- */
   function viewJournal(){
     var keys=Object.keys(S.notes||{}).filter(function(k){ return htmlToText(S.notes[k]||"").trim(); }).sort().reverse();
-    var html='<h2 class="view-h">Journal</h2><p class="sub">Everything you\'ve jotted in a day\'s Notes, newest first. Type <b>[[a project, person, or task name]]</b> in any note and it becomes a link here.</p>';
+    var html='<h2 class="view-h">Journal</h2>';
     if(!keys.length) return html+'<div class="card empty" style="padding:36px">Nothing written yet. The Notes card on Today is where these start.</div>';
     html+=keys.map(function(d){
       return '<div class="card" style="margin-bottom:14px">'+
@@ -3819,7 +3836,8 @@
   // whatever --terra currently resolves to, so the picker opens on the colour you're actually looking at
   function curAccent(){ var v=getComputedStyle(document.documentElement).getPropertyValue("--terra").trim();
     return /^#[0-9a-f]{3,6}$/i.test(v)?v:"#c99a3a"; }
-  var EMOJIS=["📋","📚","🎓","🧠","💼","🏠","💡","🎯","✍️","🗂","📈","🔬","🧾","💬","☎️","✈️","🏃","🧘","🍽","🌱","🎨","🎵","💰","❤️","🐈","🌼","⭐","🔥","🌙","☀️","🧩","🛠"];
+  var EMOJIS=["📋","📚","🎓","🧠","💼","🏠","💡","🎯","✍️","🗂","📈","🔬","🧾","💬","☎️","✈️","🏃","🧘","🍽","🌱","🎨","🎵","💰","❤️","🐈","🌼","⭐","🔥","🌙","☀️","🧩","🛠",
+    "🧑‍💻","🧑‍🏫","🧑‍⚕️","🧑‍🍳","👨‍👩‍👧","🤝","🎉","🎁","🏋️","🚴","⚽","🏖️","🚗","🛒","🧺","🧹","🐶","🌳","🌊","⛰️","🎬","🎮","📷","🎧","🧪","🧮","🗳️","⚖️","🩺","💊","🪴","🔑"];
   // A compact emoji grid that writes into a text input — the input still accepts anything you type or
   // paste, including from the OS emoji keyboard, so this is a shortcut and not a restriction.
   function emojiPickerHtml(inputId){
@@ -4737,7 +4755,7 @@
   function personById(id){ return S.people.find(function(x){return x.id===id;}); }
   // person chips for a task row, so a tagged task reads the same everywhere it appears
   function peoplePills(k){ return (k.personIds||[]).map(function(id){ var pp=personById(id);
-    return pp?'<span class="pill proj" style="'+cbg(pp.color||"var(--p5)")+'">@'+esc(pp.name)+'</span>':""; }).join(""); }
+    return pp?'<span class="pill proj" style="--pc:'+esc(pp.color||"var(--p5)")+'"><i class="pdot"></i>'+(pp.emoji?esc(pp.emoji)+" ":"@")+esc(pp.name)+'</span>':""; }).join(""); }
   function viewPeople(){
     var t=today();
     var html='<h2 class="view-h">People</h2><p class="sub">Keep up with the people who matter — follow-ups, context, and your next touch.</p>';
@@ -4749,7 +4767,7 @@
     people.forEach(function(p){
       var isDue=p.next&&p.next<=t;
       html+='<div class="proj-card"><div class="proj-top" style="background:'+(p.color||"var(--slate)")+'">'+
-        '<h3>'+esc(p.name)+'</h3><div class="pmeta">'+esc(p.relationship||"—")+(p.company?" · "+esc(p.company):"")+'</div></div>'+
+        '<h3>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</h3><div class="pmeta">'+esc(p.relationship||"—")+(p.company?" · "+esc(p.company):"")+'</div></div>'+
         '<div class="proj-body">';
       if(p.next) html+='<div style="margin-bottom:8px"><span class="pill '+(isDue?"aged":"block")+'">'+(isDue?"⏰ Follow up due":"Next: "+niceDate(p.next))+'</span></div>';
       if(p.last) html+='<div class="sub" style="font-size:12px">Last touch: '+niceDate(p.last)+(p.cadence?" · every "+p.cadence+"d":"")+'</div>';
@@ -4771,7 +4789,9 @@
   function openPersonModal(p){
     var editing=!!p; p=p||{name:"",relationship:"",company:"",cadence:"",last:"",next:"",notes:"",color:COLORS[S.people.length%COLORS.length]};
     modal('<h3>'+(editing?"Edit person":"Add person")+'</h3>'+
-      '<div class="row"><div class="fld"><label>Name</label><input id="pe-name" value="'+esc(p.name)+'"/></div>'+
+      '<div class="row"><div class="fld" style="flex:0 0 96px"><label>Icon</label><input id="pe-emoji" value="'+esc(p.emoji||"")+'" maxlength="4" placeholder="🙂"/></div>'+
+      '<div class="fld"><label>Name</label><input id="pe-name" value="'+esc(p.name)+'"/></div></div>'+emojiPickerHtml("pe-emoji")+
+      '<div class="row">'+
       '<div class="fld"><label>Relationship</label><input id="pe-rel" value="'+esc(p.relationship)+'" placeholder="Recruiter, mentor, friend…"/></div></div>'+
       '<div class="row"><div class="fld"><label>Company / context</label><input id="pe-co" value="'+esc(p.company)+'"/></div>'+
       '<div class="fld"><label>Follow up every N days</label><input id="pe-cad" type="number" min="0" value="'+(p.cadence||"")+'" placeholder="e.g. 14"/></div></div>'+
@@ -4786,7 +4806,7 @@
     if(hexIn) hexIn.oninput=function(){ color=hexIn.value; [].forEach.call(sw.querySelectorAll(".sw"),function(c){c.setAttribute("aria-pressed",false);}); };
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("m-save").onclick=function(){ var name=document.getElementById("pe-name").value.trim(); if(!name){toast("Name?");return;}
-      var data={name:name,relationship:document.getElementById("pe-rel").value.trim(),company:document.getElementById("pe-co").value.trim(),cadence:+document.getElementById("pe-cad").value||0,last:document.getElementById("pe-last").value,next:document.getElementById("pe-next").value,notes:rteValue("pe-notes"),color:color};
+      var data={name:name,emoji:(document.getElementById("pe-emoji")||{value:""}).value.trim(),relationship:document.getElementById("pe-rel").value.trim(),company:document.getElementById("pe-co").value.trim(),cadence:+document.getElementById("pe-cad").value||0,last:document.getElementById("pe-last").value,next:document.getElementById("pe-next").value,notes:rteValue("pe-notes"),color:color};
       if(editing){ for(var k in data) p[k]=data[k]; } else { data.id=uid(); S.people.push(data); }
       save(); close(); render(); };
     if(editing) document.getElementById("pe-del").onclick=function(){ confirmModal("Delete this person?","Their card and notes are removed.","Delete",function(){ S.people=S.people.filter(function(x){return x.id!==p.id;}); save(); render(); }); };
@@ -5764,7 +5784,7 @@
       if(!hit(p.name)) return;
       var pr=p.profileId?profileById(p.profileId):null;
       out.push({ins:"@"+p.name.replace(/\s+/g,"-"),label:(p.emoji?esc(p.emoji)+" ":"")+esc(p.name),dot:p.color,hint:pr?esc(pr.name):"project"}); });
-    S.people.forEach(function(pp){ if(hit(pp.name)) out.push({ins:"@"+pp.name.replace(/\s+/g,"-"),label:"👤 "+esc(pp.name),dot:pp.color||"var(--p5)",hint:"person"}); });
+    S.people.forEach(function(pp){ if(hit(pp.name)) out.push({ins:"@"+pp.name.replace(/\s+/g,"-"),label:(pp.emoji?esc(pp.emoji):"👤")+" "+esc(pp.name),dot:pp.color||"var(--p5)",hint:"person"}); });
     if(projOnly) return out.slice(0,8);
     [["morning","☀️ morning"],["afternoon","🌤 afternoon"],["evening","🌙 evening"]].forEach(function(b){ if(hit(b[0])) out.push({ins:"@"+b[0],label:b[1],hint:"time of day"}); });
     ["today","tomorrow","someday","anytime","tonight"].forEach(function(d2){ if(hit(d2)) out.push({ins:"@"+d2,label:d2,hint:"day"}); });
