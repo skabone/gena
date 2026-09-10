@@ -273,6 +273,12 @@
   .proj-top h3{ margin:0; font-size:16px; font-weight:800; }
   .proj-top .pmeta{ font-size:12px; opacity:.9; margin-top:3px; }
   .proj-body{ padding:12px 16px 16px; }
+  .person-card{ box-shadow:inset 4px 0 0 var(--pc); }
+  .person-top{ background:var(--card); color:var(--ink); border-bottom:1px solid var(--line-soft); }
+  .person-top h3{ display:flex; align-items:center; gap:10px; }
+  .person-top .pmeta{ color:var(--ink-soft); }
+  .person-emoji{ width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:19px; background:color-mix(in srgb, var(--pc) 18%, var(--card)); }
+  .person-emoji.pdot-big{ background:var(--pc); }
   .mini-cols{ display:flex; flex-direction:column; gap:4px; }
   .prog{ height:7px; border-radius:999px; background:var(--line-soft); overflow:hidden; margin:8px 0 12px; }
   .prog span{ display:block; height:100%; border-radius:999px; }
@@ -1174,7 +1180,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-10 03:22";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-10 03:27";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -2256,7 +2262,7 @@ function GENA_MAIN() {
     return blocks.map(function(b){
       var k=b.k, p=k.projectId?proj(k.projectId):null;
       var top=((b.s-lo*60)/60*HOURH).toFixed(1);
-      var hpx=Math.max(24,((b.e-b.s)/60*HOURH)-3).toFixed(1);
+      var hpx=Math.max(20,((b.e-b.s)/60*HOURH)-3).toFixed(1);   // a 30-min block must not overlap the next
       var w=(100/b.cols), l=(b.col*w);
       var endT=String(Math.floor(b.e/60)%24).padStart(2,"0")+":"+String(b.e%60).padStart(2,"0");
       return '<div class="tblock'+(k.status==="done"?" done":"")+(p?"":" plain")+'" draggable="true" data-id="'+k.id+'" data-act="tb-edit" '+
@@ -4858,6 +4864,7 @@ function GENA_MAIN() {
       '<div class="fld"><label>Your name (for the greeting)</label><input id="set-name" value="'+esc(S.name||"")+'" placeholder="e.g. Sam"/></div>'+
       '<div class="stack">'+
       '<p class="label" style="margin:4px 0 0">Protect &amp; move your data</p>'+
+      (S.hasDemo?'<button class="btn ghost danger" id="x-demo">🧹 Remove sample data</button>':'')+
       '<button class="btn" id="x-export">⤒ Export backup (.json)</button>'+
       '<button class="btn" id="x-csv">⤒ Export tasks (.csv — for Excel/Sheets)</button>'+
       '<button class="btn" id="x-ics">⤒ Export calendar (.ics)</button>'+
@@ -4945,6 +4952,7 @@ function GENA_MAIN() {
     if(fontRow) fontRow.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; S.font=b.dataset.f; applyTheme(); save();
       [].forEach.call(fontRow.children,function(c){c.setAttribute("aria-pressed",c===b);}); };
     document.getElementById("x-export").onclick=exportBackup;
+    if(document.getElementById("x-demo")) document.getElementById("x-demo").onclick=function(){ close(); confirmModal("Remove the sample day?","Everything tagged as sample data goes; anything you added yourself stays.","Remove",removeSampleData); };
     document.getElementById("x-gh").onclick=function(){ close(); openGhModal(); };
     var xs=document.getElementById("x-sync"); if(xs) xs.onclick=linkSyncFile;
     var xu=document.getElementById("x-unsync"); if(xu) xu.onclick=function(){ syncHandle=null; syncName=null; idbSet("syncHandle",null); idbSet("syncName",null); close(); toast("Sync file unlinked"); };
@@ -5008,8 +5016,8 @@ function GENA_MAIN() {
     html+='<div class="board">';
     people.forEach(function(p){
       var isDue=p.next&&p.next<=t;
-      html+='<div class="proj-card"><div class="proj-top" style="background:'+(p.color||"var(--slate)")+'">'+
-        '<h3>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</h3><div class="pmeta">'+esc(p.relationship||"—")+(p.company?" · "+esc(p.company):"")+'</div></div>'+
+      html+='<div class="proj-card person-card" style="--pc:'+esc(p.color||"var(--p5)")+'"><div class="proj-top person-top">'+
+        '<h3>'+(p.emoji?'<span class="person-emoji">'+esc(p.emoji)+'</span>':'<span class="person-emoji pdot-big"></span>')+esc(p.name)+'</h3><div class="pmeta">'+esc(p.relationship||"—")+(p.company?" · "+esc(p.company):"")+'</div></div>'+
         '<div class="proj-body">';
       if(p.next) html+='<div style="margin-bottom:8px"><span class="pill '+(isDue?"aged":"block")+'">'+(isDue?"⏰ Follow up due":"Next: "+niceDate(p.next))+'</span></div>';
       if(p.last) html+='<div class="sub" style="font-size:12px">Last touch: '+niceDate(p.last)+(p.cadence?" · every "+p.cadence+"d":"")+'</div>';
@@ -5437,6 +5445,7 @@ function GENA_MAIN() {
       ["☑","Select multiple tasks (bulk edit)",function(){ view="today"; syncNav(); bulkMode=true; bulkIds={}; render(); toast("Tap tasks to select them"); }],
       ["⌨️","Keyboard shortcuts",function(){ openShortcutsModal(); }],
       ["⤒","Export backup (.json)",exportBackup],
+      ["👋","Welcome tour / load a sample day",openWelcomeModal],
       ["⤒","Export tasks (.csv)",exportCSV],
       ["⤒","Export calendar (.ics)",exportICSFile],
       ["☁️","Cloud sync settings",function(){ openGhModal(); }],
@@ -5937,15 +5946,58 @@ function GENA_MAIN() {
 
   /* ---------- first-run welcome ---------- */
   function openWelcomeModal(){
-    modal('<h3>👋 Welcome to Gena</h3><p class="sub">A day planner that lives entirely in your browser — no account, no server, your data stays yours.</p>'+
+    modal('<h3>👋 Welcome to Gena</h3><p class="sub">A planner that lives entirely on your device — no account, no server, your data stays yours.</p>'+
       '<div class="stack" style="font-size:14px;line-height:1.6;margin-top:6px">'+
-      '<div>📅 <b>Today</b> is home — focus list, tasks, and morning / afternoon / evening blocks.</div>'+
-      '<div>⌨️ Type naturally: <b>“Call the bank tomorrow @errands @3pm”</b> files itself. Press <b>⌘K</b> for every command.</div>'+
-      '<div>📆 <b>Week</b> shows the next seven days — drag tasks between them.</div>'+
-      '<div>👤 <b>Profiles</b> in the sidebar keep Work, School, and Home worlds separate.</div>'+
-      '<div>☁️ Everything saves in this browser automatically — add <b>Cloud sync</b> (⋯ menu) to carry it across devices.</div>'+
-      '</div><div class="modal-actions"><button class="btn primary" data-x>Let\'s plan</button></div>');
-    document.querySelector("[data-x]").onclick=close;
+      '<div>☀️ <b>Today</b> — pick one to three things for Focus, then work the morning / afternoon / evening blocks.</div>'+
+      '<div>🗓 <b>Plan</b> — a real calendar: drag tasks onto hours, resize them, or tap <b>✨ Plan my day</b> to fill the gaps.</div>'+
+      '<div>⌨️ Type naturally: <b>“Call Sara tomorrow 4pm @Thesis”</b> files itself. The <b>@</b> button lists projects, people and times.</div>'+
+      '<div>🌅 Each morning, a one-minute <b>review</b> clears yesterday and sets today.</div>'+
+      '<div>🔒 Optional <b>passcode encryption</b> and <b>cloud sync</b> live in ⋯.</div>'+
+      '</div><div class="modal-actions"><button class="btn ghost" data-x>Start empty</button><button class="btn primary" id="w-sample">Load a sample day</button></div>');
+    var dx=document.querySelector(".modal [data-x]"); if(dx) dx.onclick=close;
+    document.getElementById("w-sample").onclick=function(){ close(); loadSampleDay(); };
+  }
+  /* A believable day to explore with — every item is tagged demo:1 so "Remove sample data" (⋯) can
+     take it all back out without touching anything you added yourself. */
+  function loadSampleDay(){
+    var t=today(), tm=addDays(t,1), y=addDays(t,-1), D={demo:1};
+    function P(name,color,emoji,prof){ var p={id:uid(),name:name,color:color,emoji:emoji,notes:"",profileId:prof||null,fav:true,demo:1}; S.projects.push(p); return p; }
+    var home=S.profiles.find(function(x){return x.name==="Home";}), work=S.profiles.find(function(x){return x.name==="Work";});
+    var thesis=P("Thesis","#4a6fa5","🎓",work&&work.id), health=P("Health","#2a9d8f","🏃",home&&home.id), house=P("Home projects","#d98324","🏠",home&&home.id);
+    var sara={id:uid(),name:"Sara Bekele",emoji:"🧑‍🏫",relationship:"advisor",company:"University",cadence:14,last:y,next:addDays(t,13),notes:"Prefers short emails. Ask about the conference deadline.",color:"#b5528a",demo:1};
+    S.people.push(sara);
+    function T(title,o){ var k={id:uid(),title:title,projectId:null,personIds:[],status:"todo",day:t,block:null,at:null,priority:false,rollover:0,subs:[],created:t,demo:1};
+      for(var kk in o) k[kk]=o[kk]; S.tasks.push(k); return k; }
+    var a=T("Morning run",{projectId:health.id,block:"morning",at:"07:00",dur:45});
+    var b=T("Write chapter 3 introduction",{projectId:thesis.id,block:"morning",at:"09:00",dur:120,priority:true,subs:[{id:uid(),text:"Re-read the outline",done:true},{id:uid(),text:"Draft the first two paragraphs",done:false},{id:uid(),text:"Send to Sara",done:false}]});
+    var c=T("Reply to Sara about the grant",{projectId:thesis.id,personIds:[sara.id],block:"afternoon",at:"13:30",dur:30});
+    T("Deep work: literature review",{projectId:thesis.id,block:"afternoon",at:"14:00",dur:90});
+    T("Book dentist",{projectId:health.id,block:"afternoon",dur:15});
+    T("Fix the kitchen tap",{projectId:house.id,block:"evening",dur:60});
+    T("Call mom",{block:"evening",at:"19:30",dur:20});
+    T("Read 20 pages",{projectId:thesis.id,block:"evening"});
+    T("Groceries",{block:null,day:tm,projectId:house.id});
+    T("Order replacement filter",{projectId:house.id,day:null});
+    T("Plan the conference trip",{projectId:thesis.id,day:null,due:addDays(t,10)});
+    T("Weekly review",{day:addDays(t,-3),rollover:3,projectId:null});
+    var done=T("Submit expense report",{block:"morning",status:"done",completedOn:t}); done.at="08:30"; done.dur=15;
+    S.focus[t]=(S.focus[t]||[]).concat([{id:uid(),taskId:b.id},{id:uid(),taskId:c.id}]);
+    S.phases.push({id:uid(),projectId:thesis.id,title:"Chapter 3 draft",start:addDays(t,-5),end:addDays(t,16),demo:1});
+    S.notes[y]=S.notes[y]||"<p>Long day, but the outline finally clicked. Sara suggested splitting chapter 3 in two.</p>";
+    S.demoNoteDays=(S.demoNoteDays||[]).concat(S.notes[y]?[y]:[]);
+    if(S.habits.length){ S.habitLog[t]=S.habitLog[t]||{}; S.habitLog[t][S.habits[0].id]=3; }
+    S.hasDemo=true;
+    save(); goView("today"); toast("Sample day loaded — remove it any time from ⋯");
+  }
+  function removeSampleData(){
+    var ids=S.tasks.filter(function(k){return k.demo;}).map(function(k){return k.id;});
+    S.tasks=S.tasks.filter(function(k){return !k.demo;});
+    S.projects=S.projects.filter(function(p){return !p.demo;});
+    S.people=S.people.filter(function(p){return !p.demo;});
+    S.phases=S.phases.filter(function(p){return !p.demo;});
+    Object.keys(S.focus).forEach(function(d){ S.focus[d]=(S.focus[d]||[]).filter(function(f){ return ids.indexOf(f.taskId)<0; }); });
+    (S.demoNoteDays||[]).forEach(function(d){ delete S.notes[d]; }); delete S.demoNoteDays;
+    S.hasDemo=false; save(); render(); toast("Sample data removed");
   }
 
   /* ---------- data exports (CSV / ICS) ---------- */
