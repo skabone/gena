@@ -301,11 +301,20 @@
   /* timeline */
   .tl-scroll{ overflow-x:auto; padding-bottom:8px; }
   .tl{ min-width:640px; }
-  .tl-months{ display:flex; border-bottom:1.5px solid var(--line); margin-bottom:6px; }
+  .tl-months{ display:flex; border-bottom:1.5px solid var(--line); margin-bottom:6px; position:sticky; top:62px; background:var(--paper); z-index:4; }
   .tl-month{ font-size:11.5px; font-weight:700; color:var(--ink-soft); padding:4px 8px; border-left:1px solid var(--line-soft); }
-  .tl-row{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line-soft); }
-  .tl-name{ width:120px; flex:none; font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .tl-track{ position:relative; flex:1; height:26px; background:var(--line-soft); border-radius:8px; }
+  .tl-row{ display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--line-soft); }
+  .tl-name{ width:120px; flex:none; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; position:sticky; left:0; background:var(--paper); z-index:3; padding-right:6px; display:flex; align-items:center; gap:7px; }
+  .tl-name .pdot{ width:8px; height:8px; border-radius:50%; flex:none; }
+  .tl-track{ position:relative; flex:1; height:30px; background:var(--sheet); border:1px solid var(--line-soft); border-radius:8px; }
+  .tl-today::after{ content:"today"; position:absolute; top:-15px; left:-16px; font-size:9px; font-weight:800; color:var(--terra-deep); letter-spacing:.06em; }
+  /* the eight-week strip in a project card: phases as bars, tasks as ticks, today as a line */
+  .mini-tl{ position:relative; height:22px; margin:10px 0 4px; background:var(--sheet); border:1px solid var(--line-soft); border-radius:6px; overflow:hidden; cursor:pointer; }
+  .mini-tl .mt-bar{ position:absolute; top:4px; height:14px; border-radius:4px; opacity:.5; }
+  .mini-tl .mt-tick{ position:absolute; top:6px; width:3px; height:10px; border-radius:2px; opacity:.85; }
+  .mini-tl .mt-tick.done{ opacity:.3; }
+  .mini-tl .mt-today{ position:absolute; top:0; bottom:0; width:2px; background:var(--terra); }
+  .mini-tl .mt-lbl{ position:absolute; right:6px; top:4px; font-size:9.5px; color:var(--ink-faint); font-weight:700; }
   .tl-bar{ position:absolute; top:3px; height:20px; border-radius:7px; color:#fff; font-size:11px; font-weight:700; padding:2px 8px; overflow:hidden; white-space:nowrap; display:flex; align-items:center; }
   .tl-today{ position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--terra); }
   .tl-dot{ position:absolute; top:4px; width:15px; height:15px; border-radius:50%; transform:translateX(-7px); cursor:pointer; color:#fff; font-size:9px; font-weight:800; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.35); border:1.5px solid var(--card); z-index:2; }
@@ -408,14 +417,25 @@
   .rv-extra[open] summary{ background:var(--line-soft); color:var(--ink); }
   .rv-extra-row{ display:inline-flex; gap:5px; flex-wrap:wrap; align-items:center; margin-left:5px; }
   .ins-tile b{ font-size:16px; letter-spacing:.01em; }
-  .rv-tabs{ display:flex; gap:6px; margin:12px 0 2px; flex-wrap:wrap; }
+  /* the three review scopes as one segmented control — the same control Plan and Lists use */
+  .rv-tabs{ display:flex; gap:2px; margin:12px 0 4px; padding:3px; background:var(--line-soft); border-radius:12px; }
+  .rv-tabs .chip{ flex:1; text-align:center; border:none; background:transparent; border-radius:9px; padding:6px 4px; font-size:12.5px; font-weight:600; color:var(--ink-soft); white-space:nowrap; }
+  .modal .ins-tiles{ display:flex; gap:8px; margin-top:10px; }
+  .modal .ins-tile{ flex:1; padding:7px 9px; min-width:0; }
+  .modal .ins-tile b{ font-size:14px; } .modal .ins-tile span{ font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  @media (max-width:760px){
+    .modal.wide h3{ font-size:16px; }
+    .modal.wide > p.sub{ display:none; }          /* the greeting carries the message; the subtitle is room */
+    .modal .ins-tile{ padding:6px 7px; } .modal .ins-tile b{ font-size:13px; } .modal .ins-tile span{ font-size:9.5px; }
+    .sg-box{ padding:8px 10px; }
+  }
   .rv-fold>summary{ list-style:none; cursor:pointer; }
   .rv-fold>summary::-webkit-details-marker{ display:none; }
   .rv-fold>summary label{ cursor:pointer; margin-bottom:0; }
   .rv-fold>summary label::before{ content:"▸ "; color:var(--ink-faint); }
   .rv-fold[open]>summary label::before{ content:"▾ "; }
   .rv-fold[open]>summary{ margin-bottom:8px; }
-  .rv-tabs .chip[aria-pressed="true"]{ background:var(--terra); border-color:var(--terra); color:#fff; }
+  .rv-tabs .chip[aria-pressed="true"]{ background:var(--card); color:var(--ink); box-shadow:0 1px 2px var(--shadow); }
   .ds-list{ margin:4px 0 2px; }
   .ds-list .grp-head{ position:sticky; top:0; background:var(--sheet); z-index:2; padding:7px 2px 5px; }
   /* Stacked, not side-by-side: with ten controls on a row, a two-column layout crushed the title into
@@ -542,7 +562,8 @@
   .step b{ font-size:14.5px; }
   .jobs-cols{ display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; }
   .jobs-col{ flex:0 0 210px; background:var(--sheet); border:1.5px solid var(--line); border-radius:14px; padding:10px; }
-  .jobs-col h4{ margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); display:flex; justify-content:space-between; font-weight:700; }
+  .jobs-col h4{ margin:0 0 8px; font-size:12.5px; text-transform:none; letter-spacing:0; color:var(--ink); display:flex; justify-content:space-between; font-weight:700; }
+  .jobs-col h4 span{ color:var(--ink-faint); font-weight:600; }
   .job-card{ background:var(--card); border:1.5px solid var(--line); border-radius:11px; padding:9px 11px; margin-bottom:8px; cursor:pointer; transition:border-color .12s; }
   .job-card:hover{ border-color:var(--terra); }
   .job-card b{ font-size:14px; } .job-card .jr{ font-size:12.5px; color:var(--ink-soft); margin-top:1px; } .job-card .jn{ font-size:11.5px; color:var(--terra-deep); font-weight:600; margin-top:4px; }
@@ -757,6 +778,7 @@
   .tblock:hover .tb-resize::after, .tblock.resizing .tb-resize::after{ opacity:1; }
   .tblock.resizing{ z-index:5; box-shadow:0 6px 18px -6px rgba(0,0,0,.4); }
   .day-grid.drag-over{ outline:2px dashed var(--terra); outline-offset:-2px; }
+  .tb-ghost{ position:absolute; left:2px; right:2px; border:2px dashed var(--terra); background:var(--terra-bg); border-radius:7px; pointer-events:none; z-index:6; font-size:10.5px; font-weight:800; color:var(--terra-deep); padding:2px 6px; opacity:.9; }
   .tb-title{ font-weight:650; line-height:1.25; }
   .dragging .tblock{ pointer-events:none; }
   .hour-row:first-child{ border-top:0; }
@@ -1088,7 +1110,7 @@
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-10 01:13";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-10 02:00";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -2577,6 +2599,19 @@
   }
 
   /* ---------- PROJECTS ---------- */
+  // A project's next eight weeks at a glance — the Timeline, folded into the card it belongs to.
+  function miniTimelineHtml(p,ts){
+    var t=today(), from=addDays(t,-7), to=addDays(t,56), span=diffDays(to,from);
+    var pct=function(d){ return Math.max(0,Math.min(100, diffDays(d,from)/span*100)); };
+    var phs=S.phases.filter(function(ph){ return ph.projectId===p.id && ph.end>=from && ph.start<=to; });
+    var dated=ts.filter(function(k){ return k.day && k.day>=from && k.day<=to; });
+    if(!phs.length && !dated.length) return "";
+    return '<div class="mini-tl" data-act="goview" data-v="timeline" title="Next eight weeks — open the Timeline">'+
+      phs.map(function(ph){ var l=pct(ph.start), w=Math.max(1.5,pct(addDays(ph.end,1))-l);
+        return '<div class="mt-bar" style="left:'+l.toFixed(1)+'%;width:'+w.toFixed(1)+'%;background:'+p.color+'" title="'+esc(ph.title)+'"></div>'; }).join("")+
+      dated.map(function(k){ return '<div class="mt-tick'+(k.status==="done"?" done":"")+'" style="left:'+pct(k.day).toFixed(1)+'%;background:'+p.color+'" title="'+esc(k.title)+' · '+niceDate(k.day)+'"></div>'; }).join("")+
+      '<div class="mt-today" style="left:'+pct(t).toFixed(1)+'%"></div><span class="mt-lbl">8 wks</span></div>';
+  }
   function viewProjects(){
     var html='<h2 class="view-h">Projects</h2><p class="sub">Every task across every day, grouped by project.'+(scopeActive()?' <b>Filtered:</b> '+esc(scopeLabel())+' — <button class="chip" data-act="clearscope" style="padding:2px 9px">show all</button>':'')+'</p>';
     html+='<button class="btn primary" data-act="newproj" style="margin-bottom:16px">+ New project</button>';
@@ -2597,6 +2632,7 @@
         '<div class="proj-body"><div class="prog-row"><div class="prog"><span style="width:'+pct+'%;background:'+p.color+'"></span></div>'+
         '<span class="prog-pct">'+pct+'%</span>'+
         (open&&quiet!==null&&quiet>=7?'<span class="pill aged" title="No task added, scheduled or completed in '+quiet+' days">quiet '+quiet+'d</span>':'')+'</div>';
+      html+=miniTimelineHtml(p,ts);
       var openTasks=orderTasks(ts.filter(function(k){return k.status==="todo";}),false).slice(0,6);
       html+='<ul class="tasks">'+(openTasks.length?openTasks.map(function(k){
         return '<li class="task" data-id="'+k.id+'"><button class="chk" data-act="toggle" aria-label="done" aria-pressed="false"></button>'+
@@ -2923,7 +2959,7 @@
     var tv=S.tlView||"months";
     var html='<h2 class="view-h">Timeline</h2><p class="sub">Your scheduled work over time — project phases (bars), tasks (dots), and events (◆). It fills in automatically from your tasks.'+(scopeActive()?' <b>Filtered:</b> '+esc(scopeLabel())+' — <button class="chip" data-act="clearscope" style="padding:2px 9px">show all</button>':'')+'</p>';
     html+='<div class="chips" style="margin-bottom:8px">'+[["months","Months"],["weeks","Weeks"],["days","Days"]].map(function(v){return '<button class="chip" data-act="tlview" data-v="'+v[0]+'" aria-pressed="'+(tv===v[0])+'">'+v[1]+'</button>';}).join("")+'</div>';
-    html+='<div class="tl-legend"><span>▬ phase</span><span>● task (number = count; click to open the day)</span><span>◆ event</span><span style="color:var(--terra-deep)">▏ today</span></div>';
+    html+='<div class="tl-legend"><span>▬ phase</span><span>● tasks on a day — click to open it</span><span>◆ event</span></div>';
     // completed work stays on the timeline — it is a record of the term, not just a to-do forecast
     var datedTasks=S.tasks.filter(function(k){ return k.day && inScope(k.projectId); });
     var scopedPhases=S.phases.filter(function(ph){ return inScope(ph.projectId); });
@@ -2983,7 +3019,7 @@
       var pt=datedTasks.filter(function(k){return k.projectId===p.id;});
       var pe=scopedEvents.filter(function(ev){return ev.projectId===p.id;});
       if(!phs.length && !pt.length && !pe.length) return;
-      html+='<div class="tl-row"><div class="tl-name" title="'+esc(p.name)+'">'+esc(p.name)+'</div>'+
+      html+='<div class="tl-row"><div class="tl-name" title="'+esc(p.name)+'"><span class="pdot" style="background:'+p.color+'"></span><span style="overflow:hidden;text-overflow:ellipsis">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span></div>'+
         '<div class="tl-track" style="flex:0 0 '+trackW+'px">'+trackFor(p.color,phs,pt,pe)+'</div></div>';
     });
     var noneTasks=datedTasks.filter(function(k){return !k.projectId;});
@@ -3141,7 +3177,17 @@
         S.habitLog[t][hid]= cur===i?i-1:i; save(); render(); };
     });
     // drag & drop — tasks between today lists, job cards between stages
-    function clearDrag(){ [].forEach.call(v.querySelectorAll(".drag-over,.nest-over,.unit-over"),function(x){ x.classList.remove("drag-over"); x.classList.remove("nest-over"); x.classList.remove("unit-over"); }); }
+    function clearDrag(){ [].forEach.call(v.querySelectorAll(".drag-over,.nest-over,.unit-over"),function(x){ x.classList.remove("drag-over"); x.classList.remove("nest-over"); x.classList.remove("unit-over"); });
+      var gh=v.querySelector(".tb-ghost"); if(gh) gh.remove(); }
+    // A translucent block at the snapped time while you drag, so you see exactly where it will land.
+    function showGhost(grid,clientY){
+      var k=S.tasks.find(function(x){return x.id===dragTaskId;}); if(!k) return;
+      var m=gridMinutes(grid,clientY), lo=+grid.dataset.lo||6, dur=k.dur||60, en=m+dur;
+      var layer=grid.querySelector(".tb-layer"); if(!layer) return;
+      var gh=layer.querySelector(".tb-ghost"); if(!gh){ gh=document.createElement("div"); gh.className="tb-ghost"; layer.appendChild(gh); }
+      gh.style.top=((m-lo*60)/60*48).toFixed(1)+"px"; gh.style.height=Math.max(22,dur/60*48-3).toFixed(1)+"px";
+      gh.textContent=fmtTime(minsToAt(m))+"–"+fmtTime(minsToAt(en));
+    }
     var dragGrabY=0;
     // Where a drop on the hour grid lands, to the quarter hour. Works from the grid's own geometry
     // rather than which hourslot happened to be under the cursor, so dropping onto another block
@@ -3192,9 +3238,10 @@
       if(dragFocusId){ var ulf=e.target.closest('.tasks[data-list="focus"]'); if(ulf){ e.preventDefault(); e.dataTransfer.dropEffect="move"; clearDrag(); ulf.classList.add("drag-over"); } return; }
       if(dragTaskId){
         var hs0=e.target.closest(".hourslot[data-hour], .day-tray[data-unsched]");
-        if(hs0){ e.preventDefault(); e.dataTransfer.dropEffect="move"; clearDrag(); hs0.classList.add("drag-over"); return; }
+        if(hs0){ e.preventDefault(); e.dataTransfer.dropEffect="move"; clearDrag(); hs0.classList.add("drag-over");
+          var g0=hs0.closest(".day-grid"); if(g0) showGhost(g0,e.clientY); return; }
         var dg0=e.target.closest(".day-grid");
-        if(dg0){ e.preventDefault(); e.dataTransfer.dropEffect="move"; clearDrag(); dg0.classList.add("drag-over"); return; }
+        if(dg0){ e.preventDefault(); e.dataTransfer.dropEffect="move"; clearDrag(); dg0.classList.add("drag-over"); showGhost(dg0,e.clientY); return; }
         var cc0=e.target.closest(".cal-cell[data-d], .wk-col[data-d]");
         if(cc0){ e.preventDefault(); e.dataTransfer.dropEffect="move"; clearDrag(); cc0.classList.add("drag-over"); return; }
         var li=e.target.closest(".task[data-id]");
@@ -3340,6 +3387,7 @@
         else addTaskToFocus(tf); }
       else if(act==="planday"){ planDay(viewDay); }
       else if(act==="seg"){ segGo(a.dataset.seg); }
+      else if(act==="goview"){ goView(a.dataset.v); }
       else if(act==="rowmenu"){ openRowSheet(a.closest("li.task")); }
       else if(act==="panel-focus"){ var pfk=S.tasks.find(function(x){return x.id===a.dataset.id;});
         if(pfk){ var pfd=(view==="today")?viewDay:today(); if(!taskOnDay(pfk,pfd)) rescheduleTask(pfk,pfd); addTaskToFocus(pfk.id); } }
@@ -4773,7 +4821,7 @@
   }
   function viewHub(){
     var t=today();
-    var html='<h2 class="view-h">Hub</h2><p class="sub">Capture things fast, track your job search, flag emails, and note what to improve — all in one place.</p><div class="stack">';
+    var html='<h2 class="view-h">Hub</h2><div class="stack">';
 
     // AI capture
     html+=captureCardHtml(true);
@@ -4783,7 +4831,7 @@
 
     // flagged emails
     html+=fold("hub-emails","📌 Flagged emails",
-      '<p class="sub" style="margin:0 0 10px">Paste subjects from Outlook or Gmail (one per line — “Subject — Sender”). Check them off as you handle them.</p>'+
+      '<p class="sub" style="margin:0 0 8px;font-size:12px">“Subject — Sender”, one per line. Tick them off as you handle them.</p>'+
       '<div class="capture" style="margin:0 0 12px"><input class="q" id="em-in" placeholder="Reply to budget thread — Sarah" aria-label="Flagged email"/><button class="add" id="em-add">Add</button></div>'+
       '<ul class="tasks">'+(S.emails.length?S.emails.map(emailRow).join(""):'<div class="empty">No flagged emails</div>')+'</ul>');
 
@@ -4796,7 +4844,7 @@
 
     // improve
     html+=fold("hub-improve","🛠 Learnings &amp; improvements",
-      '<p class="sub" style="margin:0 0 12px">Jot what works or annoys you while using this day to day. When you want upgrades, copy the log into a chat with Claude.</p>'+
+      '<p class="sub" style="margin:0 0 8px;font-size:12px">What works, what annoys you. Copy the log into a chat with Claude when you want upgrades.</p>'+
       '<div class="capture" style="margin:0 0 12px"><select class="q" id="imp-type" style="flex:0 0 120px" aria-label="Type">'+Object.keys(IMP_META).map(function(k){return '<option value="'+k+'">'+IMP_META[k][0]+'</option>';}).join("")+'</select>'+
       '<input class="q" id="imp-in" placeholder="What happened, or what would be better?" aria-label="Note"/><button class="add" id="imp-add">Log</button></div>'+
       '<div>'+(S.improve.length?S.improve.map(impRow).join(""):'<div class="empty">Nothing logged yet</div>')+'</div>',
