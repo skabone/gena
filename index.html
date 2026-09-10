@@ -1051,7 +1051,7 @@
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-10 00:53";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-10 01:00";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1630,6 +1630,23 @@
      for free, including ones added later. A step is a (view, day) pair; re-rendering the same pair
      after an edit is not a step. */
   var navHist=[], navPos=-1, navReplaying=false;
+  /* Scroll anchoring across a re-render. render() swaps the whole view's HTML, so the browser's own
+     anchoring can't help: click ◎ on a To-do row, the Focus card above grows, and the list slides out
+     from under the cursor. v.onclick notes the row you acted on and where it was; render() puts it
+     back there. Same task can appear in several lists, so the anchor is (id, nth instance). */
+  var renderAnchor=null;
+  function noteAnchor(el){
+    var row=el&&el.closest&&el.closest(".task[data-id]"); if(!row) return;
+    var same=[].slice.call(document.querySelectorAll('.task[data-id="'+row.dataset.id+'"]'));
+    renderAnchor={id:row.dataset.id, i:same.indexOf(row), top:row.getBoundingClientRect().top, at:Date.now()};
+  }
+  function restoreAnchor(m){
+    var a=renderAnchor; renderAnchor=null;
+    if(!a || Date.now()-a.at>1500) return;                 // a stale anchor must never move the page
+    var same=m.querySelectorAll('.task[data-id="'+a.id+'"]'), el=same[a.i]||same[0]; if(!el) return;
+    var d=el.getBoundingClientRect().top-a.top;
+    if(Math.abs(d)>2) window.scrollBy(0,d);
+  }
   function navRecord(){
     if(navReplaying) return;
     var k=view+"|"+viewDay;
@@ -1669,6 +1686,7 @@
     renderRightbar();
     renderGlobalHead();
     bind();
+    restoreAnchor(m);
     if(lastRenderedView!==view && view==="day" && viewDay===today()){
       // arriving on the Day view: bring "now" into the upper third instead of starting at 6am
       var nl=m.querySelector(".now-line"); if(nl) setTimeout(function(){ var y=nl.getBoundingClientRect().top+window.scrollY-Math.round(window.innerHeight*0.35); window.scrollTo({top:Math.max(0,y),behavior:"smooth"}); },30);
@@ -3199,6 +3217,7 @@
     // generic clicks
     v.onclick=function(e){
       var a=e.target.closest("[data-act]"); if(!a)return; var act=a.dataset.act;
+      noteAnchor(e.target);
       var taskEl=e.target.closest(".task"); var id=taskEl&&taskEl.dataset.id;
       var idEl=e.target.closest("[data-id]"); var anyId=idEl&&idEl.dataset.id;
       if(a.closest("summary")) e.preventDefault();
