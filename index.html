@@ -202,6 +202,15 @@
   .task.skipped{ opacity:.62; }
   .task.skipped .task-title{ text-decoration:line-through; text-decoration-style:dotted; color:var(--ink-faint); }
   .pill.skip{ background:var(--line); color:var(--ink-faint); }
+  .task.waiting{ opacity:.9; }
+  .task.waiting .wait-ico{ width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center; color:var(--ink-faint); flex:0 0 22px; font-size:13px; }
+  .task.waiting.landed{ background:var(--warn-bg); border-radius:10px; }
+  .wait-acts{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .wait-q{ font-size:12px; margin-top:4px; color:var(--warn); }
+  .cnt-hot{ color:var(--warn); font-weight:800; }
+  .waitbox{ margin:4px 0 6px; padding:8px 10px; border:1px dashed var(--line); border-radius:10px; }
+  .waitbox input,.waitbox select{ width:100%; margin-bottom:4px; }
+  .cyc-row{ display:flex; gap:6px; } .cyc-row input{ width:64px; flex:0 0 64px; }
   .imp-item.shipped{ opacity:.6; }
   .imp-item.shipped>div>div:first-child{ text-decoration:line-through; }
   .imp-n{ display:inline-block; min-width:18px; margin-right:6px; padding:0 4px; border-radius:6px;
@@ -1210,7 +1219,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-11 12:27";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-11 16:18";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1386,7 +1395,7 @@ function GENA_MAIN() {
     }
     d.focus=d.focus||{}; Object.keys(d.focus).forEach(function(k){ var v=d.focus[k]; if(typeof v==="string"){ d.focus[k]=v?[{id:uid(),text:v,done:false}]:[]; } (d.focus[k]||[]).forEach(function(f){ if(!Array.isArray(f.subs)) f.subs=[]; }); });
     if(!d.tlView)d.tlView="months"; if(typeof d.panelOpen!=="boolean")d.panelOpen=true;
-    d.tasks.forEach(function(k){ if(!Array.isArray(k.subs)) k.subs=[]; });
+    d.tasks.forEach(function(k){ if(!Array.isArray(k.subs)) k.subs=[]; if(k.status==="waiting"&&!k.nextAt) k.nextAt=addDays(today(),14); });
     d.profiles=d.profiles||[]; if(!d.activeProfile)d.activeProfile="all"; d.filterProjects=d.filterProjects||[];
     if(typeof d.sbOpen!=="boolean")d.sbOpen=true;
     if(typeof d.remind!=="boolean")d.remind=false;
@@ -1689,8 +1698,39 @@ function GENA_MAIN() {
   /* ---------- helpers ---------- */
   // "Open" means still awaiting a decision. Done and skipped are both resolved, so every list that
   // used to ask `status!=="done"` asks this instead — a lapsed repeat must not come back as a loose end.
-  function isOpen(k){ return k.status!=="done" && k.status!=="skipped"; }
+  function isOpen(k){ return k.status!=="done" && k.status!=="skipped" && k.status!=="waiting"; }
   function isSkipped(k){ return k.status==="skipped"; }
+  function isWaiting(k){ return k.status==="waiting"; }
+  /* ---------- 40a: the comes-back field ----------
+     {every:N, unit:"day"|"week"|"month", from:"done"|"date"} — one shape, several owners: a Waiting
+     item's check-back rhythm (40a), an ordinary task that nags (40c), a person you meet on a rhythm
+     (44). `advanceCycle` is the only place the arithmetic lives. */
+  var CYCLE_UNITS=[["day","days"],["week","weeks"],["month","months"]];
+  function cycleDesc(c){ if(!c||!c.every) return ""; var u=c.unit||"day"; return "every "+(c.every===1?u:c.every+" "+u+"s"); }
+  function advanceCycle(c, from){
+    if(!c||!c.every) return null;
+    var d=new Date((from||today())+"T12:00:00");
+    if(c.unit==="month"){ d.setMonth(d.getMonth()+c.every); }
+    else d.setDate(d.getDate()+c.every*(c.unit==="week"?7:1));
+    return d.toISOString().slice(0,10);
+  }
+  // ---- Waiting: parked on someone or something, with a check-back ----
+  function parkTask(k, opts){
+    opts=opts||{};
+    k.status="waiting"; k.waitSince=k.waitSince||today(); k.rounds=k.rounds||0;
+    if(opts.waitOn!==undefined) k.waitOn=opts.waitOn||null;
+    if(opts.personId!==undefined) k.waitPersonId=opts.personId||null;
+    if(opts.cycle!==undefined) k.cycle=opts.cycle||null;
+    k.nextAt=opts.nextAt||(k.cycle?advanceCycle(k.cycle,today()):addDays(today(),14));
+    k.day=null; k.block=null; k.rollover=0; delete k.carriedFrom;
+  }
+  function stillWaiting(k){ k.rounds=(k.rounds||0)+1; k.nextAt=k.cycle?advanceCycle(k.cycle,today()):addDays(today(),14); }
+  function wakeTask(k){ k.status="todo"; k.rounds=(k.rounds||0)+1; k.day=today(); k.woke=today(); delete k.nextAt; }
+  function letGoTask(k){ k.status="skipped"; k.skippedOn=today(); k.letGo=1; delete k.nextAt; }
+  function waitLabel(k){
+    var who=k.waitPersonId?(S.people.find(function(p){return p.id===k.waitPersonId;})||{}).name:null;
+    return who||k.waitOn||"";
+  }
   function proj(id){ return S.projects.find(function(p){return p.id===id;}); }
   function projColor(id){ var p=proj(id); return p?p.color:"var(--ink-faint)"; }
   function esc(s){ return (s||"").replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
@@ -2118,6 +2158,7 @@ function GENA_MAIN() {
             return /class="(wl|reflink)/.test(disp) ? '<div class="ie-lbl">Links in this note</div><div class="jr-body">'+disp+'</div>' : ''; })()+
         '</div>'+
         '<div class="ie-side">'+
+          typeFieldsHtml("ie",k)+
           '<div class="ie-lbl">Project</div><select id="ie-proj" aria-label="Project"><option value="">None</option>'+projOpts+'<option value="__new">+ New project…</option></select>'+
           (S.people.length?'<div class="ie-lbl">People</div><div class="chips" id="ie-people">'+
             S.people.map(function(pp){return '<button type="button" class="chip" data-pid="'+pp.id+'" aria-pressed="'+((k.personIds||[]).indexOf(pp.id)>=0)+'">'+esc(pp.name)+'</button>';}).join("")+'</div>':'')+
@@ -2192,6 +2233,47 @@ function GENA_MAIN() {
       '<button class="task-star '+(k.priority?"on":"")+'" data-act="star" aria-label="Toggle important" aria-pressed="'+!!k.priority+'">'+(k.priority?"★":"☆")+'</button>'+
       '<button class="task-x" data-act="del" aria-label="Delete">✕</button>'+
       '<button class="task-more" data-act="rowmenu" aria-label="More actions">⋯</button></li>';
+  }
+  // The Type row both editors share. A task, a Waiting item and (40c) a cycle are one object with
+  // different fields set, so changing type is a chip, not a migration.
+  function typeFieldsHtml(px,k){
+    var isW=isWaiting(k), c=k.cycle||{};
+    var who=S.people.length?'<select id="'+px+'-waitwho" aria-label="Waiting on whom"><option value="">— someone / something —</option>'+
+      S.people.map(function(pp){return '<option value="'+pp.id+'"'+(pp.id===k.waitPersonId?" selected":"")+'>'+esc(pp.name)+'</option>';}).join("")+'</select>':'';
+    return '<div class="ie-lbl">Type</div><div class="chips" id="'+px+'-type">'+
+      '<button type="button" class="chip" data-t="task" aria-pressed="'+(!isW)+'">Task</button>'+
+      '<button type="button" class="chip" data-t="waiting" aria-pressed="'+isW+'">⏸ Waiting</button></div>'+
+      '<div id="'+px+'-waitbox" class="waitbox"'+(isW?'':' hidden')+'>'+
+        '<div class="ie-lbl">Waiting on</div>'+who+
+        '<input id="'+px+'-waiton" value="'+esc(k.waitOn||"")+'" placeholder="e.g. their reply, the letter, the recruiter" aria-label="Waiting on what"/>'+
+        '<div class="ie-lbl">Check back</div><input type="date" id="'+px+'-checkback" value="'+esc(k.nextAt||"")+'" aria-label="Check back on"/>'+
+        '<div class="ie-lbl">…or every</div><div class="cyc-row"><input type="number" min="1" max="99" id="'+px+'-cev" value="'+(c.every||"")+'" aria-label="Every how many"/>'+
+        '<select id="'+px+'-ceu" aria-label="Unit">'+CYCLE_UNITS.map(function(u){return '<option value="'+u[0]+'"'+((c.unit||"week")===u[0]?" selected":"")+'>'+u[1]+'</option>';}).join("")+'</select></div>'+
+        ((k.rounds||0)?'<div class="sub" style="font-size:11px;margin-top:4px">'+k.rounds+' check-in'+(k.rounds===1?'':'s')+' so far'+(k.waitSince?' · since '+esc(niceDate(k.waitSince)):'')+'</div>':'')+
+      '</div>';
+  }
+  // Reads the row back onto the task. Returns true when the type changed, so callers can toast.
+  function readTypeFields(px,k){
+    var box=document.getElementById(px+"-type"); if(!box) return false;
+    var want=(box.querySelector('[aria-pressed="true"]')||{}).dataset; want=want?want.t:"task";
+    var was=isWaiting(k);
+    var g=function(id){ return document.getElementById(px+"-"+id); };
+    var ev=+((g("cev")||{}).value)||0, eu=(g("ceu")||{}).value||"week";
+    var cyc=ev?{every:ev,unit:eu,from:"done"}:null;
+    if(want==="waiting"){
+      var cb=(g("checkback")||{}).value||null;
+      parkTask(k,{waitOn:(g("waiton")||{}).value||null, personId:(g("waitwho")||{}).value||null, cycle:cyc, nextAt:cb||undefined});
+      if(!k.nextAt) k.nextAt=cyc?advanceCycle(cyc,today()):addDays(today(),14);
+      return !was;
+    }
+    if(was){ k.status="todo"; delete k.nextAt; k.cycle=null; }
+    return was;
+  }
+  function wireTypeRow(px){
+    var box=document.getElementById(px+"-type"); if(!box) return;
+    box.onclick=function(e){ var b=e.target.closest("[data-t]"); if(!b) return; e.preventDefault(); e.stopPropagation();
+      [].forEach.call(box.children,function(c){ c.setAttribute("aria-pressed",c===b); });
+      var wb=document.getElementById(px+"-waitbox"); if(wb) wb.hidden=(b.dataset.t!=="waiting"); };
   }
   var AT_BTN='<button type="button" class="at-btn" title="Pick a project, person, day or time" aria-label="Pick a project, person, day or time">@</button>';
   function inlineAddRow(key,label){
@@ -2484,7 +2566,8 @@ function GENA_MAIN() {
         '<p class="sub" style="margin:0 0 8px;font-size:12px">Deadlines inside the next two weeks that aren’t on a day yet — give each one a day and it joins the list above.</p>'+
         '<ul class="tasks">'+cd.map(comingDueRow).join("")+'</ul>');
     }
-    var DEF_UNITS=["focus","comingdue","tasks","blocks","habitsnotes"];
+    if(isToday){ var wc=waitingCardHtml(); if(wc) units.waiting=wc; }
+    var DEF_UNITS=["focus","comingdue","waiting","tasks","blocks","habitsnotes"];
     var uorder=(S.todayOrder&&S.todayOrder.length)?S.todayOrder.slice():DEF_UNITS.slice();
     DEF_UNITS.forEach(function(k){ if(uorder.indexOf(k)<0) uorder.push(k); });
     uorder=uorder.filter(function(k){ return units[k]!==undefined; });
@@ -2633,6 +2716,42 @@ function GENA_MAIN() {
     if(next) return {ph:next,state:"next"};
     var last=ph[ph.length-1];
     return last?{ph:last,state:"past"}:null;
+  }
+  // ---- 40a: the Waiting card ----
+  // Landed check-backs open on top with their three answers; the rest sit folded with a count.
+  function waitingRow(k, landed){
+    var p=k.projectId?proj(k.projectId):null, t=today();
+    var who=waitLabel(k);
+    var age=k.waitSince?diffDays(t,k.waitSince):0;
+    return '<li class="task waiting'+(landed?" landed":"")+(p?" pc":"")+'" data-id="'+k.id+'"'+(p?' style="--pc:'+esc(p.color)+'"':'')+'>'+
+      '<span class="wait-ico" title="Waiting">⏸</span>'+
+      '<div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title">'+esc(k.title)+'</div>'+
+      '<div class="task-meta">'+(who?'<span class="pill imp">on '+esc(who)+'</span>':'')+
+        (p?'<span class="pill proj" style="--pc:'+esc(p.color)+'"><i class="pdot"></i>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':'')+
+        (k.nextAt?'<span class="pill '+(landed?"aged":"block")+'">'+(landed?"check-back due":"check back "+esc(niceDate(k.nextAt)))+'</span>':'')+
+        (k.cycle?'<span class="pill rec">↻ '+esc(cycleDesc(k.cycle))+'</span>':'')+
+        ((k.rounds||0)?'<span class="pill block">'+k.rounds+' check-in'+(k.rounds===1?'':'s')+'</span>':'')+
+        (age>=1?'<span class="pill block">'+age+'d waiting</span>':'')+
+      '</div>'+
+      (landed&&(k.rounds||0)>=4?'<div class="sub wait-q">You’ve checked on this '+k.rounds+' times over '+age+' days — still worth waiting on?</div>':'')+
+      '</div>'+
+      (landed?'<span class="wait-acts"><button class="chip" data-act="wait-still" title="Push the check-back out again">⏸ Still waiting</button>'+
+        '<button class="chip" data-act="wait-live" title="Back onto today’s list">▶ It’s live</button>'+
+        '<button class="chip" data-act="wait-letgo" title="Close it — no response, not carrying">✕ Let it go</button></span>':
+        '<button class="chip" data-act="wait-live" title="Back onto today’s list">▶ It’s live</button>')+
+      '</li>';
+  }
+  function waitingCardHtml(){
+    var t=today();
+    var all=S.tasks.filter(function(k){ return isWaiting(k) && inScope(k.projectId); })
+      .sort(function(a,b){ return (a.nextAt||"9999").localeCompare(b.nextAt||"9999"); });
+    if(!all.length) return "";
+    var landed=all.filter(function(k){ return k.nextAt && k.nextAt<=t; }), rest=all.filter(function(k){ return !(k.nextAt && k.nextAt<=t); });
+    var body=(landed.length?'<ul class="tasks">'+landed.map(function(k){return waitingRow(k,true);}).join("")+'</ul>':'')+
+      (rest.length?(landed.length?'<details class="done-strip" data-fold="done-waiting"'+(S.collapsed["done-waiting"]===false?" open":"")+'><summary><span class="fold-chev">▸</span>⏸ '+rest.length+' more, not due yet</summary>':'')+
+        '<ul class="tasks">'+rest.map(function(k){return waitingRow(k,false);}).join("")+'</ul>'+(landed.length?'</details>':''):'')+
+      (landed.length||rest.length?'':'<div class="empty">Nothing parked</div>');
+    return fold("waiting","⏸ Waiting on"+(landed.length?' · <span class="cnt-hot">'+landed.length+' to check</span>':' · '+all.length), body);
   }
   function projectBriefsHtml(){
     var pinned=S.projects.filter(function(p){return p.pinned&&inScope(p.id);});
@@ -2836,11 +2955,12 @@ function GENA_MAIN() {
     projCards.forEach(function(pc){
       var p=pc.p, ts=pc.ts;
       var done=ts.filter(function(k){return k.status==="done";}).length;
-      var open=ts.length-done; var pct=ts.length?Math.round(done/ts.length*100):0;
+      var waitingN=ts.filter(isWaiting).length;
+      var open=ts.filter(isOpen).length; var pct=ts.length?Math.round(done/ts.length*100):0;
       var quiet=pc.lastTouch?diffDays(today(),pc.lastTouch):null;
       var pfk="proj-"+p.id;
       html+='<details class="proj-card pfold" data-fold="'+pfk+'"'+(S.collapsed[pfk]?"":" open")+'><summary class="proj-top" style="'+cbg(p.color)+'">'+
-        '<span class="ptop-main"><h3>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</h3><div class="pmeta">'+open+' open · '+done+' done</div></span><span class="fold-chev">▸</span></summary>'+
+        '<span class="ptop-main"><h3>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</h3><div class="pmeta">'+open+' open · '+done+' done'+(waitingN?' · ⏸ '+waitingN+' waiting':'')+'</div></span><span class="fold-chev">▸</span></summary>'+
         '<div class="proj-body"><div class="prog-row"><div class="prog"><span style="width:'+pct+'%;background:'+p.color+'"></span></div>'+
         '<span class="prog-pct">'+pct+'%</span>'+
         (open&&quiet!==null&&quiet>=7?'<span class="pill aged" title="No task added, scheduled or completed in '+quiet+' days">quiet '+quiet+'d</span>':'')+'</div>';
@@ -3433,6 +3553,7 @@ function GENA_MAIN() {
         t.subs=ieSubs.filter(function(sb){return (sb.text||"").trim();});
         var nv=(document.getElementById("ie-notes").value||"").trim();
         t.notes=nv?plainToHtml(nv):null;
+        readTypeFields("ie",t);
         return t;
       }
       function ieClose(){ editingTaskId=null; render(); }
@@ -3461,7 +3582,9 @@ function GENA_MAIN() {
         var w=e.target.dataset?e.target.dataset.ie:null;
         if(w==="subtext") ieSubs[+e.target.dataset.i].text=e.target.value;
       });
+      wireTypeRow("ie");
       ieRow.addEventListener("click",function(e){
+        if(e.target.closest("#ie-type")) return;          // the type chips wire themselves
         var b=e.target.closest("[data-ie],[data-pid],[data-b],[data-i]"); if(!b) return;
         var w=b.dataset.ie;
         if(w==="subtoggle"){ ieSubs[+b.dataset.i].done=!ieSubs[+b.dataset.i].done; ieRenderSubs(); return; }
@@ -3872,6 +3995,17 @@ function GENA_MAIN() {
         toast(pp0.pinned?"Pinned to Today — its brief shows at the top":"Unpinned"); } }
       else if(act==="newproj"){ openProjModal(); }
       else if(act==="editproj"){ openProjModal(proj(a.dataset.pid)); }
+      else if(act==="wait-still"||act==="wait-live"||act==="wait-letgo"){
+        var wk=S.tasks.find(function(x){return x.id===(id||anyId);}); if(!wk) return;
+        var wb={status:wk.status,rounds:wk.rounds,nextAt:wk.nextAt,day:wk.day,skippedOn:wk.skippedOn,letGo:wk.letGo,woke:wk.woke};
+        if(act==="wait-still") stillWaiting(wk); else if(act==="wait-live") wakeTask(wk); else letGoTask(wk);
+        save(); render();
+        toastUndo(act==="wait-still"?"Check back "+niceDate(wk.nextAt):(act==="wait-live"?"“"+wk.title.slice(0,28)+"” is live — on today":"Let go — closed after "+(wk.rounds||0)+" check-in"+((wk.rounds||0)===1?"":"s")),
+          function(){ wk.status=wb.status; wk.rounds=wb.rounds; wk.nextAt=wb.nextAt; wk.day=wb.day;
+            if(wb.skippedOn===undefined) delete wk.skippedOn; else wk.skippedOn=wb.skippedOn;
+            if(wb.letGo===undefined) delete wk.letGo; else wk.letGo=wb.letGo;
+            if(wb.woke===undefined) delete wk.woke; else wk.woke=wb.woke;
+            save(); render(); }); }
       else if(act==="dueday"){ var dk=S.tasks.find(function(x){return x.id===(id||anyId);});
         if(dk){ rescheduleTask(dk,a.dataset.d); save(); render();
           toast("“"+dk.title.slice(0,28)+"” → "+niceDate(a.dataset.d)); } }
@@ -4253,6 +4387,7 @@ function GENA_MAIN() {
         '<div class="fld"><label>Notes</label>'+richTextHtml(null,base.notes||"","Details, links, context…",56,"m-notes","rte-compact")+'</div>'+
       '</div>'+
       '<div class="m-col-side">'+
+        (ed?'<div class="fld">'+typeFieldsHtml("m",ed)+'</div>':'')+
         '<div class="fld"><label>Project</label><select id="m-proj"><option value="">None</option>'+projOpts+'<option value="__new">+ New project…</option></select></div>'+
         (S.people.length?'<div class="fld"><label>People</label><div class="chips" id="m-people">'+S.people.map(function(pp){return '<button type="button" class="chip" data-pid="'+pp.id+'" aria-pressed="'+(selPeople.indexOf(pp.id)>=0)+'">'+esc(pp.name)+'</button>';}).join("")+'</div><div class="sub" style="font-size:11px;margin-top:6px">Tagged people see this task on their card in People.</div></div>':'')+
         '<div class="fld"><label>Day <span style="text-transform:none;letter-spacing:0;font-weight:600">(empty = someday)</span></label><input id="m-day" type="date" value="'+(ed?(base.day||""):(base.day||today()))+'"/></div>'+
@@ -4273,6 +4408,7 @@ function GENA_MAIN() {
       '<div class="modal-actions">'+
       (ed?'<button class="btn ghost danger" id="m-del" style="margin-right:auto">Delete</button><button class="btn" id="m-tofocus" title="Add to Today\'s Focus">◎ Focus</button><button class="btn" id="m-focus" title="Start a 25-minute focus timer on this task">⏱</button><button class="btn" id="m-skip" title="Didn\'t do it, and it isn\'t carrying">'+(ed.status==="skipped"?"↩ Un-skip":"⤬ Skip")+'</button><button class="btn" id="m-dup">Duplicate</button>':'')+
       '<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">'+(ed?"Save":"Add task")+'</button></div>',"wide");
+    if(ed) wireTypeRow("m");
     var mb=document.getElementById("m-block");
     mb.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; var val=b.dataset.b;
       if(ed||val==="allday"){ selBlocks={}; selBlocks[val]=true; }
@@ -4377,6 +4513,7 @@ function GENA_MAIN() {
       var cleanSubs=subs.filter(function(s){return (s.text||"").trim();});
       var ntv=rteValue("m-notes")||null;
       if(ed){ ed.title=title; ed.projectId=pid; ed.day=day; ed.end=endD; ed.due=dueD; ed.dur=durV; ed.block=chosen[0]; ed.at=tv; ed.priority=priorityV; ed.subs=cleanSubs; ed.notes=ntv; ed.personIds=selPeople.slice();
+        readTypeFields("m",ed);
         if(etp){
           if(freq==="once"){ S.templates=S.templates.filter(function(x){return x.id!==etp.id;}); delete ed.tplId; }
           else { etp.title=title; etp.projectId=pid; etp.block=chosen[0]; etp.freq=freq; etp.weekdays=weekdays; etp.interval=+(document.getElementById("m-int")||{}).value||intervalV; etp.priority=priorityV; }
@@ -4551,8 +4688,8 @@ function GENA_MAIN() {
     S.templates.forEach(function(tp){ dueVal[tp.id]=addDays(today(),7); });
 
     var OPTS=[["keep","Keep repeating"],["merge","Merge into the copy above"],
-              ["convert","Make it one task with a due date"],["stop","Stop repeating (keep the history)"],
-              ["wipe","Delete it and all its rows"]];
+              ["convert","Make it one task with a due date"],["wait","Park it as Waiting — check back every 3 weeks"],
+              ["stop","Stop repeating (keep the history)"],["wipe","Delete it and all its rows"]];
     function body(){
       var dayDupes=0, seen={};
       S.tasks.forEach(function(k){ if(!k.tplId||!isOpen(k)) return; var key=k.tplId+"|"+k.day;
@@ -4612,6 +4749,18 @@ function GENA_MAIN() {
           block:tp.block||null,at:null,priority:true,rollover:0,due:dueVal[tp.id]||addDays(today(),7),
           subs:[],created:today()});
         madeTasks++;
+        S.templates=S.templates.filter(function(x){return x.id!==tp.id;}); removedT++;
+      });
+      // 2b. a correspondence loop (a dispute, an application) becomes one Waiting item on a rhythm
+      S.templates.slice().forEach(function(tp){
+        if(choice[tp.id]!=="wait") return;
+        var before=S.tasks.length;
+        S.tasks=S.tasks.filter(function(k){ return !(k.tplId===tp.id && isOpen(k)); });
+        removedRows+=before-S.tasks.length;
+        var wk={id:uid(),title:tp.title,projectId:tp.projectId||null,status:"todo",day:null,block:null,at:null,
+          priority:false,rollover:0,subs:[],created:today()};
+        parkTask(wk,{waitOn:null,cycle:{every:3,unit:"week",from:"done"}});
+        S.tasks.push(wk); madeTasks++;
         S.templates=S.templates.filter(function(x){return x.id!==tp.id;}); removedT++;
       });
       // 3. stop repeating: the rule and its unfinished rows go, the history stays
@@ -5333,6 +5482,8 @@ function GENA_MAIN() {
       if(p.next) html+='<div style="margin-bottom:8px"><span class="pill '+(isDue?"aged":"block")+'">'+(isDue?"⏰ Follow up due":"Next: "+niceDate(p.next))+'</span></div>';
       if(p.last) html+='<div class="sub" style="font-size:12px">Last touch: '+niceDate(p.last)+(p.cadence?" · every "+p.cadence+"d":"")+'</div>';
       if(p.notes) html+='<div style="font-size:13px;margin-top:8px;white-space:pre-wrap">'+esc(p.notes)+'</div>';
+      var wOn=S.tasks.filter(function(k){ return isWaiting(k) && k.waitPersonId===p.id; });
+      if(wOn.length) html+='<div class="label" style="margin:12px 0 4px">⏸ Waiting on them</div><ul class="tasks">'+wOn.map(function(k){return waitingRow(k, !!(k.nextAt&&k.nextAt<=today()));}).join("")+'</ul>';
       var rel=relatedTasks(p);
       if(rel.length){ html+='<div class="label" style="margin:12px 0 4px">Related tasks</div><ul class="tasks">'+rel.slice(0,6).map(function(k){var kp=proj(k.projectId);
         return '<li class="task" data-id="'+k.id+'"><button class="chk '+(k.status==="done"?"done":"")+'" data-act="toggle" aria-label="done" aria-pressed="'+(k.status==="done")+'"></button>'+
@@ -5939,6 +6090,7 @@ function GENA_MAIN() {
     return [["done","✓ Did it",null],
             ["skip","⤬ Skipped",null],
             ["tomorrow","→ Tomorrow",addDays(today(),1)],
+            ["wait","⏸ Waiting",null],
             ["today","📅 Today",today()],
             ["eow","🌤 "+DOWNAMES[dow(eow)]+" "+(+eow.slice(8)),eow],
             ["nextweek","⏭ "+DOWNAMES[dow(nw)]+" "+(+nw.slice(8)),nw],
@@ -6075,7 +6227,7 @@ function GENA_MAIN() {
       loose.sort(byUrgency);
       if(loose.length){
         h+='<div class="modal-actions" style="justify-content:flex-start;margin:2px 0 6px">'+
-          picks.filter(function(m){ return m[0]!=="drop"&&m[0]!=="someday"; }).map(function(m){
+          picks.filter(function(m){ return m[0]!=="drop"&&m[0]!=="someday"&&m[0]!=="wait"; }).map(function(m){
             var lbl=m[0]==="done" ? "All done" : "All → "+m[1].replace(/^\S+\s/,"");
             return '<button class="chip" data-all="'+m[0]+'"'+(m[2]?' title="Move everything to '+esc(niceDate(m[2]))+'"':'')+'>'+lbl+'</button>'; }).join("")+
           '</div><div class="ds-list">';
@@ -6114,6 +6266,12 @@ function GENA_MAIN() {
       } else h+='<div class="empty">'+(isEve?"Today is clear — nicely done 🎉":(scope==="morning"?"Nothing left hanging 🎉":"Nothing carried 🎉"))+'</div>';
       h+='</div>';
 
+      // 40a: check-backs that have landed are decisions too — the same three answers as the card
+      var landedW=S.tasks.filter(function(k){ return isWaiting(k) && k.nextAt && k.nextAt<=t && inScope(k.projectId); });
+      if(landedW.length){
+        h+='<div class="fld"><label>⏸ Check-backs due — still waiting, live, or let go?</label><ul class="tasks">'+
+          landedW.map(function(k){ return waitingRow(k,true); }).join("")+'</ul></div>';
+      }
       if(isEve){
         var tm=addDays(t,1);
         var tomorrow=S.tasks.filter(function(k){ return isOpen(k) && taskOnDay(k,tm) && inScope(k.projectId); });
@@ -6150,6 +6308,7 @@ function GENA_MAIN() {
       else if(m==="someday"){ k.day=null; k.end=null; k.block=null; k.rollover=0; delete k.carriedFrom; }
       else if(m==="done"){ k.status="done"; k.completedOn=k.completedOn||k.day||t; }
       else if(m==="skip"){ k.status="skipped"; k.skippedOn=k.day||t; }
+      else if(m==="wait"){ parkTask(k,{}); }
       else if(m==="drop"){
         var i=S.tasks.indexOf(k); if(i<0) return;
         S.tasks.splice(i,1);
@@ -6183,7 +6342,7 @@ function GENA_MAIN() {
           var hit=looseEnds();
           // one tap can move thirty tasks — keep the same escape hatch every single delete has
           var before=hit.map(function(k){ return {k:k, day:k.day, end:k.end, block:k.block, rollover:k.rollover,
-            status:k.status, completedOn:k.completedOn, carriedFrom:k.carriedFrom, skippedOn:k.skippedOn}; });
+            status:k.status, completedOn:k.completedOn, carriedFrom:k.carriedFrom, skippedOn:k.skippedOn, nextAt:k.nextAt, waitSince:k.waitSince}; });
           hit.forEach(function(k){ apply(k,all.dataset.all); }); save(); rebuild();
           toastUndo(hit.length+" task"+(hit.length===1?"":"s")+" — "+all.textContent.trim(), function(){
             before.forEach(function(b){ var k=b.k;
@@ -6192,6 +6351,8 @@ function GENA_MAIN() {
               if(b.completedOn===undefined) delete k.completedOn; else k.completedOn=b.completedOn;
               if(b.carriedFrom===undefined) delete k.carriedFrom; else k.carriedFrom=b.carriedFrom;
               if(b.skippedOn===undefined) delete k.skippedOn; else k.skippedOn=b.skippedOn;
+              if(b.nextAt===undefined) delete k.nextAt; else k.nextAt=b.nextAt;
+              if(b.waitSince===undefined) delete k.waitSince; else k.waitSince=b.waitSince;
             });
             save(); rebuild(); render();
           });
@@ -6212,6 +6373,10 @@ function GENA_MAIN() {
         if(tf){ var tmd=addDays(t,1), fa=S.focus[tmd]=S.focus[tmd]||[];
           var fi=fa.findIndex(function(f){return f.taskId===tf.dataset.tmfocus;});
           if(fi>=0) fa.splice(fi,1); else fa.push({id:uid(),taskId:tf.dataset.tmfocus});
+          save(); rebuild(); return; }
+        var wa=e.target.closest('[data-act="wait-still"],[data-act="wait-live"],[data-act="wait-letgo"]');
+        if(wa){ var wrow=wa.closest("[data-id]"), wk=wrow&&S.tasks.find(function(x){return x.id===wrow.dataset.id;}); if(!wk) return;
+          if(wa.dataset.act==="wait-still") stillWaiting(wk); else if(wa.dataset.act==="wait-live") wakeTask(wk); else letGoTask(wk);
           save(); rebuild(); return; }
         var b=e.target.closest("[data-rv]"); if(!b) return;
         var k=S.tasks.find(function(x){return x.id===b.dataset.id;}); if(!k) return;
