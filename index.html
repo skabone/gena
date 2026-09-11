@@ -379,6 +379,14 @@
   .tl-dot{ position:absolute; top:4px; width:15px; height:15px; border-radius:50%; transform:translateX(-7px); cursor:pointer; color:#fff; font-size:9px; font-weight:800; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.35); border:1.5px solid var(--card); z-index:2; }
   .tl-dot:hover{ transform:translateX(-7px) scale(1.25); }
   .tl-ev{ position:absolute; top:6px; width:11px; height:11px; background:var(--slate); transform:translateX(-6px) rotate(45deg); z-index:2; }
+  .tl-season{ position:absolute; top:0; bottom:0; background:repeating-linear-gradient(135deg, rgba(0,0,0,.05) 0 4px, transparent 4px 8px); border-radius:8px; }
+  .tl-bar.now{ box-shadow:0 0 0 2px var(--card), 0 0 0 3.5px currentColor; z-index:1; }
+  .tl-due,.tl-cb{ position:absolute; top:-7px; transform:translateX(-7px); font-size:13px; line-height:1; cursor:pointer; z-index:3; color:var(--terra-deep); text-shadow:0 0 2px var(--card); }
+  .tl-due.late{ color:#a2402c; animation:none; }
+  .tl-cb{ color:var(--ink-soft); }
+  .tl-row.dim{ opacity:.5; filter:saturate(.3); }
+  .tl-status{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 14px; margin:0 0 10px; font-size:13px; }
+  .tl-status .pill{ margin:0; }
   .tl-legend{ display:flex; gap:16px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-soft); margin:2px 0 10px; }
   .tl-legend span{ display:inline-flex; align-items:center; gap:5px; }
 
@@ -1246,7 +1254,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-11 16:58";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-11 17:04";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -3779,16 +3787,37 @@ function GENA_MAIN() {
     var tv=S.tlView||"months";
     var html='<h2 class="view-h">Timeline</h2><p class="sub">Your scheduled work over time — project phases (bars), tasks (dots), and events (◆). It fills in automatically from your tasks.'+(scopeActive()?' <b>Filtered:</b> '+esc(scopeLabel())+' — <button class="chip" data-act="clearscope" style="padding:2px 9px">show all</button>':'')+'</p>';
     html+='<div class="chips" style="margin-bottom:8px">'+[["months","Months"],["weeks","Weeks"],["days","Days"]].map(function(v){return '<button class="chip" data-act="tlview" data-v="'+v[0]+'" aria-pressed="'+(tv===v[0])+'">'+v[1]+'</button>';}).join("")+'</div>';
-    html+='<div class="tl-legend"><span>▬ phase</span><span>● tasks on a day — click to open it</span><span>◆ event</span></div>';
+    html+='<div class="tl-legend"><span>▬ phase (bright = now)</span><span>● tasks on a day</span><span>⚑ deadline</span><span>⏸ check-back</span><span>◆ event</span><span>▒ in season</span></div>';
     // completed work stays on the timeline — it is a record of the term, not just a to-do forecast
     var datedTasks=S.tasks.filter(function(k){ return k.day && inScope(k.projectId); });
     var scopedPhases=S.phases.filter(function(ph){ return inScope(ph.projectId); });
     var scopedEvents=S.events.filter(function(ev){ return ev.date && sourceEnabled(ev) && !(ev.projectId&&!inScope(ev.projectId)); });
-    if(!datedTasks.length && !scopedPhases.length && !scopedEvents.length){ html+='<div class="card empty" style="padding:40px">Nothing scheduled yet. Give tasks a date (or add project phases) and they\'ll appear here across time.</div>'; return html; }
+    // 45: deadlines and check-backs are dates too — the timeline is where "am I on track" gets answered
+    var dueMarks=S.tasks.filter(function(k){ return isOpen(k) && k.due && inScope(k.projectId); });
+    var cbMarks=S.tasks.filter(function(k){ return isWaiting(k) && k.nextAt && inScope(k.projectId); });
+    // the status line for every pinned, active project — phase N of M, what's due in it, on track or not
+    S.projects.filter(function(p){ return p.pinned && projActive(p) && inScope(p.id); }).forEach(function(p){
+      var phs=S.phases.filter(function(x){return x.projectId===p.id;}).sort(function(a,b){return a.start.localeCompare(b.start);});
+      var pn=phaseNow(p.id), idx=pn?phs.indexOf(pn.ph)+1:0;
+      var open=S.tasks.filter(function(k){return isOpen(k)&&k.projectId===p.id;});
+      var late=open.filter(function(k){return k.due&&k.due<today();}).length;
+      var endedOpen=phs.filter(function(ph){ return ph.end<today() && open.some(function(k){ return (k.due&&k.due<=ph.end)||(k.day&&k.day>=ph.start&&k.day<=ph.end); }); }).length;
+      var inPh=pn&&pn.state==="now"?open.filter(function(k){ return (k.due&&k.due>=pn.ph.start&&k.due<=pn.ph.end)||(k.day&&k.day>=pn.ph.start&&k.day<=pn.ph.end); }).length:0;
+      var last=phs[phs.length-1];
+      var verdict=(late||endedOpen)?'<span class="pill aged hot">behind — '+(late?late+' overdue':endedOpen+' phase'+(endedOpen===1?'':'s')+' ended with work open')+'</span>':'<span class="pill good">on track</span>';
+      html+='<div class="card tl-status"><span class="pdot" style="'+cbg(p.color)+'"></span><b>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</b>'+
+        (pn?'<span class="pill block">◧ '+(pn.state==="now"?"phase "+idx+" of "+phs.length+" · "+esc(pn.ph.title)+" · "+Math.max(0,diffDays(pn.ph.end,today()))+"d left":(pn.state==="next"?"next: "+esc(pn.ph.title)+" "+esc(niceDate(pn.ph.start)):"phases over"))+'</span>':'<span class="pill block">no phases yet</span>')+
+        (inPh?'<span class="pill block">'+inPh+' in this phase</span>':'')+
+        (last?'<span class="pill block">finish '+esc(niceDate(last.end))+'</span>':'')+verdict+'</div>';
+    });
+    if(!datedTasks.length && !scopedPhases.length && !scopedEvents.length && !dueMarks.length){ html+='<div class="card empty" style="padding:40px">Nothing scheduled yet. Give tasks a date (or add project phases) and they\'ll appear here across time.</div>'; return html; }
     var dates=[today()];
     scopedPhases.forEach(function(ph){ dates.push(ph.start); dates.push(ph.end); });
     datedTasks.forEach(function(k){ dates.push(k.day); });
     scopedEvents.forEach(function(ev){ dates.push(ev.date); });
+    dueMarks.forEach(function(k){ dates.push(k.due); });
+    cbMarks.forEach(function(k){ dates.push(k.nextAt); });
+    dates.push(addDays(today(),42));   // always show six weeks ahead, so the empty runway is visible too
     dates.sort();
     var min=dates[0], max=dates[dates.length-1];
     min=addDays(min,-3); max=addDays(max,3);
@@ -3819,34 +3848,55 @@ function GENA_MAIN() {
       ticks.map(function(tk){return '<div class="tl-tick'+(tk.major?" major":"")+'" style="flex:0 0 '+tk.w+'px">'+tk.label+'</div>';}).join("")+'</div>';
     // rows by project — phase bars + task dots + event diamonds
     var todayLeft=(today()>=min&&today()<=max)?diffDays(today(),min)*PPD:null;
-    function trackFor(color, phs, tasks, evs){
-      var track=(todayLeft!==null?'<div class="tl-today" style="left:'+todayLeft+'px"></div>':"");
+    function seasonBands(p){
+      if(!p||!p.window||!p.window.from||!p.window.to) return "";
+      var out="", d=min, runStart=null;
+      while(d<=max){
+        var on=inWindow(p.window,+d.slice(5,7));
+        if(on&&runStart===null) runStart=d;
+        if((!on||d===max)&&runStart!==null){ var end=on?d:addDays(d,-1);
+          out+='<div class="tl-season" style="left:'+(diffDays(runStart,min)*PPD)+'px;width:'+((diffDays(end,runStart)+1)*PPD)+'px" title="In season '+esc(windowDesc(p.window))+'"></div>'; runStart=null; }
+        d=addDays(d,1);
+      }
+      return out;
+    }
+    function trackFor(color, phs, tasks, evs, dues, cbs, p){
+      var track=seasonBands(p)+(todayLeft!==null?'<div class="tl-today" style="left:'+todayLeft+'px"></div>':"");
       (phs||[]).forEach(function(ph){
         var left=diffDays(ph.start,min)*PPD, width=Math.max((diffDays(ph.end,ph.start)+1)*PPD,18);
-        track+='<div class="tl-bar" style="left:'+left+'px;width:'+width+'px;background:'+color+';opacity:.55" data-act="delphase" data-id="'+ph.id+'" title="'+esc(ph.title)+' · '+niceDate(ph.start)+' → '+niceDate(ph.end)+' — click to remove">'+esc(ph.title)+'</div>';
+        var now=ph.start<=today()&&ph.end>=today(), past=ph.end<today();
+        var openIn=S.tasks.filter(function(k){ return isOpen(k)&&k.projectId===ph.projectId&&((k.due&&k.due>=ph.start&&k.due<=ph.end)||(k.day&&k.day>=ph.start&&k.day<=ph.end)); }).length;
+        track+='<div class="tl-bar'+(now?" now":"")+(past?" past":"")+'" style="left:'+left+'px;width:'+width+'px;background:'+color+';opacity:'+(now?".95":(past?".3":".55"))+'" data-act="delphase" data-id="'+ph.id+'" title="'+esc(ph.title)+' · '+niceDate(ph.start)+' → '+niceDate(ph.end)+(openIn?' · '+openIn+' open':'')+' — click to remove">'+esc(ph.title)+'</div>';
       });
       var byDay={}; (tasks||[]).forEach(function(k){ (byDay[k.day]=byDay[k.day]||[]).push(k); });
       Object.keys(byDay).forEach(function(day){ var left=diffDays(day,min)*PPD; var n=byDay[day].length;
         var titles=byDay[day].map(function(k){return (k.priority?"★ ":"")+k.title;}).join(" · ");
         track+='<div class="tl-dot" style="left:'+left+'px;background:'+color+'" data-act="tl-day" data-d="'+day+'" title="'+esc(niceDate(day)+" — "+titles)+'">'+(n>1?n:'')+'</div>';
       });
+      (dues||[]).forEach(function(k){ var left=diffDays(k.due,min)*PPD, late=k.due<today();
+        track+='<div class="tl-due'+(late?" late":"")+'" data-act="edit" data-id="'+k.id+'" style="left:'+left+'px" title="⚑ '+esc(k.title)+' · due '+niceDate(k.due)+(late?' · overdue':'')+(k.day?'':' · no day yet')+'">⚑</div>'; });
+      (cbs||[]).forEach(function(k){ var left=diffDays(k.nextAt,min)*PPD;
+        track+='<div class="tl-cb" data-act="edit" data-id="'+k.id+'" style="left:'+left+'px" title="⏸ '+esc(k.title)+' · check back '+niceDate(k.nextAt)+'">⏸</div>'; });
       (evs||[]).forEach(function(ev){ var left=diffDays(ev.date,min)*PPD; track+='<div class="tl-ev" data-act="calday" data-d="'+ev.date+'" style="left:'+left+'px;cursor:pointer" title="'+esc(ev.title+" · "+niceDate(ev.date))+'"></div>'; });
       return track;
     }
-    S.projects.forEach(function(p){
+    var rank=function(p){ return (projState(p)==="ended"?2:(projState(p)==="off"?1:0))*10-(p.pinned?1:0); };
+    S.projects.slice().sort(function(a,b){ return rank(a)-rank(b); }).forEach(function(p){
       if(!inScope(p.id)) return;
       var phs=scopedPhases.filter(function(x){return x.projectId===p.id;});
       var pt=datedTasks.filter(function(k){return k.projectId===p.id;});
       var pe=scopedEvents.filter(function(ev){return ev.projectId===p.id;});
-      if(!phs.length && !pt.length && !pe.length) return;
-      html+='<div class="tl-row"><div class="tl-name" title="'+esc(p.name)+'"><span class="pdot" style="background:'+p.color+'"></span><span style="overflow:hidden;text-overflow:ellipsis">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span></div>'+
-        '<div class="tl-track" style="flex:0 0 '+trackW+'px">'+trackFor(p.color,phs,pt,pe)+'</div></div>';
+      var pd=dueMarks.filter(function(k){return k.projectId===p.id;});
+      var pc=cbMarks.filter(function(k){return k.projectId===p.id;});
+      if(!phs.length && !pt.length && !pe.length && !pd.length && !pc.length && !p.window) return;
+      html+='<div class="tl-row'+(projActive(p)?"":" dim")+'"><div class="tl-name" title="'+esc(p.name)+(stateLabel(p)?' · '+stateLabel(p):'')+'"><span class="pdot" style="background:'+p.color+'"></span><span style="overflow:hidden;text-overflow:ellipsis">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+(stateLabel(p)?' <span class="sub" style="font-size:10px">'+stateLabel(p)+'</span>':'')+'</span></div>'+
+        '<div class="tl-track" style="flex:0 0 '+trackW+'px">'+trackFor(p.color,phs,pt,pe,pd,pc,p)+'</div></div>';
     });
     var noneTasks=datedTasks.filter(function(k){return !k.projectId;});
     var noneEvents=scopedEvents.filter(function(ev){return !ev.projectId;});
     if(noneTasks.length||noneEvents.length){
       html+='<div class="tl-row"><div class="tl-name" style="color:var(--ink-soft)">No project</div>'+
-        '<div class="tl-track" style="flex:0 0 '+trackW+'px">'+trackFor("var(--ink-faint)",[],noneTasks,noneEvents)+'</div></div>';
+        '<div class="tl-track" style="flex:0 0 '+trackW+'px">'+trackFor("var(--ink-faint)",[],noneTasks,noneEvents,dueMarks.filter(function(k){return !k.projectId;}),cbMarks.filter(function(k){return !k.projectId;}),null)+'</div></div>';
     }
     html+='</div></div>';
     return html;
@@ -3862,6 +3912,9 @@ function GENA_MAIN() {
   function bind(){
     var v=document.getElementById("view");
     bindCapture();
+    // 45: the timeline opens on today, not on the oldest date it happens to know about
+    if(view==="timeline"){ var tsc=v.querySelector(".tl-scroll"), ttd=v.querySelector(".tl-today");
+      if(tsc&&ttd){ var tl0=ttd.offsetLeft+130; tsc.scrollLeft=Math.max(0, tl0-Math.round(tsc.clientWidth*0.3)); } }
     if(view==="hub") bindHub();
     v.onkeydown=function(e){
       if(e.key==="Escape" && e.target.dataset && (e.target.dataset.subfor||e.target.dataset.fsubfor)){ pendingSubAdd=null; render(); return; }
