@@ -198,6 +198,14 @@
   .task-main{ flex:1; min-width:0; }
   .task-title{ font-size:15px; word-wrap:break-word; }
   .task.done .task-title{ text-decoration:line-through; color:var(--ink-faint); }
+  /* skipped: resolved, but not an achievement — muted and struck, without the done tick's colour */
+  .task.skipped{ opacity:.62; }
+  .task.skipped .task-title{ text-decoration:line-through; text-decoration-style:dotted; color:var(--ink-faint); }
+  .pill.skip{ background:var(--line); color:var(--ink-faint); }
+  .imp-item.shipped{ opacity:.6; }
+  .imp-item.shipped>div>div:first-child{ text-decoration:line-through; }
+  .imp-n{ display:inline-block; min-width:18px; margin-right:6px; padding:0 4px; border-radius:6px;
+    background:var(--line); color:var(--ink-faint); font-size:11px; font-weight:700; text-align:center; }
   .task-meta{ display:block; margin-top:3px; font-size:11.5px; line-height:1.7; color:var(--ink-soft); }
   .task-meta .pill{ background:transparent !important; color:var(--ink-soft) !important; padding:0; font-weight:600; font-size:11.5px; border-radius:0; display:inline; white-space:nowrap; }
   .task-meta .pill.proj .pdot{ display:inline-block; vertical-align:middle; margin-right:3px; }
@@ -269,6 +277,12 @@
   /* projects board */
   .board{ display:grid; grid-template-columns: repeat(auto-fill, minmax(270px,1fr)); gap:16px; }
   .proj-card{ background:var(--card); border:1.5px solid var(--line); border-radius:16px; overflow:hidden; }
+  details.proj-card>summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; }
+  details.proj-card>summary::-webkit-details-marker{ display:none; }
+  details.proj-card>summary .ptop-main{ flex:1 1 auto; min-width:0; }
+  details.proj-card>summary .fold-chev{ flex:0 0 auto; opacity:.55;
+    transition:transform var(--dur) var(--ease); }
+  details.proj-card[open]>summary .fold-chev{ transform:rotate(90deg); }
   .proj-top{ padding:14px 16px; color:#fff; }
   .proj-top h3{ margin:0; font-size:16px; font-weight:800; }
   .proj-top .pmeta{ font-size:12px; opacity:.9; margin-top:3px; }
@@ -438,6 +452,14 @@
     .modal .ins-tile{ padding:6px 7px; } .modal .ins-tile b{ font-size:13px; } .modal .ins-tile span{ font-size:9.5px; }
     .sg-box{ padding:8px 10px; }
   }
+  .rv-grp{ border-bottom:1px solid var(--line); }
+  .rv-grp:last-child{ border-bottom:0; }
+  .rv-grp>summary{ list-style:none; cursor:pointer; }
+  .rv-grp>summary::-webkit-details-marker{ display:none; }
+  .rv-grp>summary .fold-chev{ transition:transform var(--dur) var(--ease); display:inline-block; margin-right:2px; }
+  .rv-grp[open]>summary .fold-chev{ transform:rotate(90deg); }
+  .rv-groupbar{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:2px 0 8px; }
+  .rv-groupbar .sub{ font-size:11.5px; }
   .rv-fold>summary{ list-style:none; cursor:pointer; }
   .rv-fold>summary::-webkit-details-marker{ display:none; }
   .rv-fold>summary label{ cursor:pointer; margin-bottom:0; }
@@ -1180,7 +1202,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-10 03:27";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-11 12:11";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1199,7 +1221,7 @@ function GENA_MAIN() {
   var IDMAPS=["notes","focus","habitLog","jlinks","learnRead"]; // keyed maps merged per key
   // Settings/scalars merged per-field by their own modified-time (_sm) instead of taken wholesale from
   // whichever file saved last — otherwise a stale cloud push silently resets your name / active profile.
-  var SCALARS=["name","activeProfile","filterProjects","sbOpen","panelOpen","skin","theme","calView","calAnchor","tlView","collapsed","remind","proxy","notesRTE","lastExport","autoCarry","autoCarryRev","accent","density","font","subsHidden","expandOnAdd","eveningHour","reviewDone","nameNudgeGone","todayOrder"];
+  var SCALARS=["name","activeProfile","filterProjects","sbOpen","panelOpen","skin","theme","calView","calAnchor","tlView","collapsed","remind","proxy","notesRTE","lastExport","carryRev38","tplSweepRev","impCopyIds","rvGroup","autoCarry","autoCarryRev","accent","density","font","subsHidden","expandOnAdd","eveningHour","reviewDone","nameNudgeGone","todayOrder"];
   function isBlankVal(v){ return v===undefined||v===null||v===""; }
   function clone(x){ return JSON.parse(JSON.stringify(x)); }
   function itemSig(x){ if(!x||typeof x!=="object") return JSON.stringify(x); var o={}; for(var k in x){ if(k!=="_m") o[k]=x[k]; } return JSON.stringify(o); }
@@ -1340,6 +1362,20 @@ function GENA_MAIN() {
     // everything had already been auto-placed. Off is the setting where the day list and that card are
     // both useful, so re-default once. Any later toggle is the user's and is left alone.
     if(!d.autoCarryRev){ d.autoCarry=false; d.autoCarryRev=1; }
+    // 38: the user's 2026-09-11 log reverses that call — "automatically all unfinished tasks should be
+    // immediately in the current day unless I have specifically marked it as Done, moved tomorrow,
+    // skipped". Carry-over goes back on, once; the ⋯ toggle still wins afterwards.
+    if(!d.carryRev38){ d.autoCarry=true; d.carryRev38=1; }
+    // 38: one-time sweep of every past repeat instance that was left open. They were never decisions —
+    // they were duplicates of a daily habit (26 × Prayer, 24 × Check Emails, 16 × MacBook service).
+    if(!d.tplSweepRev){
+      var _t38=today(), _n38=0;
+      (d.tasks||[]).forEach(function(k){
+        if(k.tplId && k.day && k.day<_t38 && k.status!=="done" && k.status!=="skipped"){ k.status="skipped"; k.skippedOn=k.day; _n38++; }
+      });
+      d.tplSweepRev=1;
+      if(_n38) SWEPT_REPEATS=_n38;   // boot says so out loud — it is a lot of rows to change in silence
+    }
     d.focus=d.focus||{}; Object.keys(d.focus).forEach(function(k){ var v=d.focus[k]; if(typeof v==="string"){ d.focus[k]=v?[{id:uid(),text:v,done:false}]:[]; } (d.focus[k]||[]).forEach(function(f){ if(!Array.isArray(f.subs)) f.subs=[]; }); });
     if(!d.tlView)d.tlView="months"; if(typeof d.panelOpen!=="boolean")d.panelOpen=true;
     d.tasks.forEach(function(k){ if(!Array.isArray(k.subs)) k.subs=[]; });
@@ -1378,6 +1414,7 @@ function GENA_MAIN() {
   // what sets the flag — an `=null` here would wipe it after the fact (the RTE_ALLOWED hoisting trap,
   // which is exactly the bug class this feature exists to catch).
   var INTEGRITY_WARN;
+  var SWEPT_REPEATS;
   function storeCounts(d){
     return { tasks:(d.tasks||[]).length, projects:(d.projects||[]).length, people:(d.people||[]).length,
              events:(d.events||[]).length, notes:Object.keys(d.notes||{}).length,
@@ -1482,7 +1519,7 @@ function GENA_MAIN() {
       calSources:[], proxy:PROXY_DEFAULT,
       emails:[], jobs:[], improve:[],
       calView:"month", calAnchor:null, skin:"paper", lastExport:null, name:"",
-      people:[], collapsed:{}, tlView:"months", panelOpen:true, autoCarry:false, autoCarryRev:1, accent:null, density:"cozy", font:"rounded", sessions:[], subsHidden:{}, expandOnAdd:true, eveningHour:20, reviewDone:{}, _sm:{}
+      people:[], collapsed:{}, tlView:"months", panelOpen:true, autoCarry:true, autoCarryRev:1, carryRev38:1, tplSweepRev:1, accent:null, density:"cozy", font:"rounded", sessions:[], subsHidden:{}, expandOnAdd:true, eveningHour:20, reviewDone:{}, _sm:{}
     });
   }
 
@@ -1532,10 +1569,14 @@ function GENA_MAIN() {
   // of the way, still there (the Things / MS To Do "Completed" strip). Open by default so a tick
   // is visibly rewarded; fold state is per card and persists like every other fold. Subtasks are
   // deliberately untouched: a done subtask stays in its row, because a checklist's order IS the list.
-  function doneStrip(key,rows,n){
-    if(!n) return "";
+  function doneStrip(key,rows,n,ns){
+    ns=ns||0;
+    if(!n&&!ns) return "";
     var open=S.collapsed["done-"+key]?"":" open";
-    return '<details class="done-strip" data-fold="done-'+key+'"'+open+'><summary><span class="fold-chev">▸</span>✓ Done · '+n+'</summary>'+
+    // Skipped rows share the strip: a lapsed repeat is resolved, not open, but the day should still
+    // show it happened — done and skipped read differently at a glance (✓ vs ⤬).
+    var lbl = n ? '✓ Done · '+n+(ns?' · ⤬ '+ns+' skipped':'') : '⤬ '+ns+' skipped';
+    return '<details class="done-strip" data-fold="done-'+key+'"'+open+'><summary><span class="fold-chev">▸</span>'+lbl+'</summary>'+
       '<ul class="tasks" data-list="done:'+key+'">'+rows+'</ul></details>';
   }
   // A progress ring for the day — what the bar said, in the shape every fitness/planner app taught
@@ -1598,6 +1639,7 @@ function GENA_MAIN() {
           } else k.carriedFrom=k.carriedFrom||k.day;
         }
       });
+      sweepRepeats(t);
       generateRecurring(t);
       // remember the day we came from, so the day-start review knows what to ask about
       dayStartFrom=S.lastOpen||null;
@@ -1617,6 +1659,16 @@ function GENA_MAIN() {
     });
     save();
   }
+  // A repeat that was never ticked does not become debt — it lapses. Yesterday's "Prayer" is either
+  // done or skipped; leaving it open bred one duplicate row per day (26 open Prayers, at one point).
+  // Skipped is kept, not deleted: it still shows in that day's ✓/⤬ strip, so the record survives.
+  function sweepRepeats(day){
+    var n=0;
+    S.tasks.forEach(function(k){
+      if(k.tplId && k.day && k.day<day && isOpen(k)){ k.status="skipped"; k.skippedOn=k.day; n++; }
+    });
+    return n;
+  }
   function ruleHits(tp,day){
     if(tp.start && day<tp.start) return false;
     if(tp.until && day>tp.until) return false;   // optional end date, Outlook-style
@@ -1627,6 +1679,10 @@ function GENA_MAIN() {
   }
 
   /* ---------- helpers ---------- */
+  // "Open" means still awaiting a decision. Done and skipped are both resolved, so every list that
+  // used to ask `status!=="done"` asks this instead — a lapsed repeat must not come back as a loose end.
+  function isOpen(k){ return k.status!=="done" && k.status!=="skipped"; }
+  function isSkipped(k){ return k.status==="skipped"; }
   function proj(id){ return S.projects.find(function(p){return p.id===id;}); }
   function projColor(id){ var p=proj(id); return p?p.color:"var(--ink-faint)"; }
   function esc(s){ return (s||"").replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
@@ -1913,8 +1969,8 @@ function GENA_MAIN() {
     var sb=document.getElementById("sidebar"); if(!sb) return;
     var openCnt=function(pid){ return S.tasks.filter(function(k){return k.projectId===pid&&k.status==="todo";}).length; };
     var profCnt=function(prid){ return S.projects.filter(function(p){return p.profileId===prid;}).reduce(function(n,p){return n+openCnt(p.id);},0); };
-    var todayOpen=S.tasks.filter(function(k){return taskOnDay(k,today())&&k.status!=="done"&&inScope(k.projectId);}).length;
-    var backlogOpen=S.tasks.filter(function(k){return !k.day&&k.status!=="done"&&inScope(k.projectId);}).length;
+    var todayOpen=S.tasks.filter(function(k){return taskOnDay(k,today())&&isOpen(k)&&inScope(k.projectId);}).length;
+    var backlogOpen=S.tasks.filter(function(k){return !k.day&&isOpen(k)&&inScope(k.projectId);}).length;
     var VIEWCNT={today:todayOpen, backlog:backlogOpen};
     // The Views list duplicated the top nav chip-for-chip; the sidebar earns its width with what is
     // uniquely its own — profiles and project filters.
@@ -2074,6 +2130,7 @@ function GENA_MAIN() {
         '<button class="btn ghost danger" data-ie="del" style="margin-right:auto">Delete</button>'+
         '<button class="btn" data-ie="more">More…</button>'+
         '<button class="btn" data-ie="focus" title="Add to Today\u2019s Focus">◎ Focus</button>'+
+        '<button class="btn" data-ie="skip" title="'+(isSkipped(k)?"Put it back on the list":"Didn\u2019t do it and it isn\u2019t carrying — record it as skipped")+'">'+(isSkipped(k)?"↩ Un-skip":"⤬ Skip")+'</button>'+
         '<button class="btn ghost" data-ie="cancel">Cancel</button>'+
         '<button class="btn primary" data-ie="save">Save</button>'+
       '</div></li>';
@@ -2083,6 +2140,7 @@ function GENA_MAIN() {
     // pills as a list, so the row shows the few that matter and folds the rest into "+N" —
     // five saturated chips per row meant the titles lost every glance
     var pl=[];
+    if(isSkipped(k)) pl.push('<span class="pill skip">⤬ skipped</span>');
     if(k.priority) pl.push('<span class="pill imp">★ important</span>');
     if(p) pl.push('<span class="pill proj" style="--pc:'+esc(p.color)+'"><i class="pdot"></i>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>');
     if(k.tplId) pl.push('<span class="pill rec">↻ repeats</span>');
@@ -2101,7 +2159,7 @@ function GENA_MAIN() {
     } else pills=pl.join("");
     if(bulkMode){
       var bsel=!!bulkIds[k.id];
-      return '<li class="task '+(k.status==="done"?"done ":"")+(bsel?"bulk-on":"")+'" data-id="'+k.id+'">'+
+      return '<li class="task '+(k.status==="done"?"done ":(isSkipped(k)?"skipped ":""))+(bsel?"bulk-on":"")+'" data-id="'+k.id+'">'+
         '<button class="chk '+(bsel?"done":"")+'" data-act="bulk-toggle" aria-label="Select task" aria-pressed="'+bsel+'"></button>'+
         '<div class="task-main" data-act="bulk-toggle"><div class="task-title">'+esc(k.title)+'</div>'+
         (pills?'<div class="task-meta">'+pills+'</div>':'')+'</div></li>';
@@ -2115,7 +2173,7 @@ function GENA_MAIN() {
     if(ieOpensHere(k.id)) return inlineEditorLi(k);
     if(pendingSubAdd===k.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+k.id+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
     var subsHtml=subRows?'<ul class="subs">'+subRows+'</ul>':'';
-    return '<li class="task '+(k.status==="done"?"done":"")+(p?" pc":"")+'" data-id="'+k.id+'" draggable="true"'+(p?' style="--pc:'+esc(p.color)+'"':'')+'>'+
+    return '<li class="task '+(k.status==="done"?"done":(isSkipped(k)?"skipped":""))+(p?" pc":"")+'" data-id="'+k.id+'" draggable="true"'+(p?' style="--pc:'+esc(p.color)+'"':'')+'>'+
       '<button class="chk '+(k.status==="done"?"done":"")+'" data-act="toggle" aria-label="Toggle done" aria-pressed="'+(k.status==="done")+'"></button>'+
       '<div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title">'+subsCaret(k.id,(k.subs||[]).length)+esc(k.title)+'</div>'+
       (pills?'<div class="task-meta">'+pills+'</div>':'')+subsHtml+'</div>'+
@@ -2288,7 +2346,7 @@ function GENA_MAIN() {
     // Done TIMED tasks stay on the grid struck-through (the day's record); done UNTIMED ones leave the
     // Unscheduled tray — a to-triage list is no place for finished work.
     var all=S.tasks.filter(function(k){ return taskOnDay(k,d) && inScope(k.projectId); });
-    var timed=all.filter(isTimed), unsched=all.filter(function(k){ return !isTimed(k) && k.status!=="done"; });
+    var timed=all.filter(isTimed), unsched=all.filter(function(k){ return !isTimed(k) && isOpen(k); });
     var hr=hourRange(timed), lo=hr.lo, hi=hr.hi;
     var layer=dayBlocksLayer(timed, lo);
     var evs=S.events.filter(function(e){ return evOnDay(e,d); });
@@ -2301,7 +2359,7 @@ function GENA_MAIN() {
       (unsched.length?'<button class="chip" data-act="planday" style="margin-left:auto" title="Slot every unscheduled task into the day’s free gaps">✨ Plan my day</button>':'')+
       '</div>'+capacityHtml(d);
     var evBanner=evs.length?'<div class="day-events">'+evs.map(function(e){ return '<span class="pill block">📅 '+esc(e.title)+'</span>'; }).join("")+'</div>':'';
-    var unschedOpen=unsched.filter(function(k){ return k.status!=="done"; }).length;
+    var unschedOpen=unsched.filter(function(k){ return isOpen(k); }).length;
     var tray='<div class="day-unsched"><div class="day-unsched-h">Unscheduled ('+unschedOpen+')<span class="hint"> — drag onto an hour to time-block</span></div>'+
       (unsched.length?'<ul class="tasks day-tray" data-unsched="1">'+unsched.map(taskLi).join("")+'</ul>'
                      :'<div class="day-tray empty-tray" data-unsched="1">Nothing unscheduled — drop a task here to clear its time.</div>')+'</div>';
@@ -2315,8 +2373,10 @@ function GENA_MAIN() {
     var focusItems=(S.focus[vd]||[]).filter(function(f){
       if(f.taskId){ var lk=S.tasks.find(function(x){return x.id===f.taskId;}); return lk && inScope(lk.projectId); }
       return !f.projectId||inScope(f.projectId); });
-    var open=S.tasks.filter(function(k){return taskOnDay(k,vd) && k.status!=="done" && inScope(k.projectId);});
+    var open=S.tasks.filter(function(k){return taskOnDay(k,vd) && isOpen(k) && inScope(k.projectId);});
     var doneV=S.tasks.filter(function(k){return k.status==="done" && k.completedOn===vd && inScope(k.projectId);});
+    // a repeat that lapsed on this day — resolved, so not in `open`, but the day still shows it
+    var skipV=S.tasks.filter(function(k){return isSkipped(k) && taskOnDay(k,vd) && inScope(k.projectId);});
     var blocks=["morning","afternoon","evening"];
     var sugg=isToday?computeSuggestions():[];
     var doneCount=doneV.length, total=open.length+doneCount;
@@ -2372,14 +2432,15 @@ function GENA_MAIN() {
       var doneB=doneV.filter(function(k){return k.block===b;}).length;
       curList=b;
       var body='<ul class="tasks" data-list="'+b+'">'+(items.length||doneB?'':emptyLi("Nothing planned for the "+b+" yet"))+items.map(taskLi).join("")+inlineAddRow(b,"Add to "+b+"…")+'</ul>';
-      curList="done:block-"+b; body+=doneStrip("block-"+b, doneV.filter(function(k){return k.block===b;}).map(taskLi).join(""), doneB);
+      var skipB=skipV.filter(function(k){return k.block===b;});
+      curList="done:block-"+b; body+=doneStrip("block-"+b, doneV.filter(function(k){return k.block===b;}).map(taskLi).join("")+skipB.map(taskLi).join(""), doneB, skipB.length);
       curList=null;
       var action=foldProg(doneB,items.length+doneB)+'<button class="chip" style="padding:3px 9px" data-act="addblock" data-block="'+b+'">+ options</button>';
       return fold("block-"+b, BLOCK_ICONS[b]+" "+b.charAt(0).toUpperCase()+b.slice(1)+(b===nowBlock?' <span class="now-pill">now</span>':''), body, action);
     }).join("")+'</div>';
     var anytime=orderTasks(open.filter(function(k){return !k.block;}),true);
     var doneA=doneV.filter(function(k){return !k.block;}).length;
-    var someday=orderTasks(S.tasks.filter(function(k){return !k.day && k.status!=="done" && inScope(k.projectId);}),false);
+    var someday=orderTasks(S.tasks.filter(function(k){return !k.day && isOpen(k) && inScope(k.projectId);}),false);
     var somedayDone=S.tasks.filter(function(k){return !k.day && k.status==="done" && inScope(k.projectId);}).length;
     var hb='';
     S.habits.forEach(function(h){
@@ -2397,7 +2458,8 @@ function GENA_MAIN() {
     curList="focus"; var focusHtml=fOpen.map(focusRow).join(""); curList=null;
     curList="done:focus"; var focusDoneHtml=doneStrip("focus", fDone.map(focusRow).join(""), fDone.length); curList=null;
     curList="master"; var masterHtml=master.map(taskLi).join(""); curList=null;
-    curList="done:master"; var masterDoneHtml=doneStrip("master", doneV.map(taskLi).join(""), doneCount); curList=null;
+    var skipA=skipV.filter(function(k){return !k.block;});
+    curList="done:master"; var masterDoneHtml=doneStrip("master", doneV.map(taskLi).join("")+skipA.map(taskLi).join(""), doneCount, skipA.length); curList=null;
     var units={
       focus: fold("focus",(isToday?"Today\'s focus":"Focus — "+niceDate(vd)),'<ul class="tasks" data-list="focus">'+(focusItems.length?'':emptyLi("Pick the one to three things that matter most — tap ◎ on any task, or type one below"))+focusHtml+inlineAddRowFocus("What matters most "+(isToday?"today":"that day")+"…")+'</ul>'+focusDoneHtml,foldProg(focusDone,focusItems.length)),
       // card label is "To-do" (the master list); the fold key stays "tasks" so saved collapse state and
@@ -2464,7 +2526,7 @@ function GENA_MAIN() {
   function renderRightbar(){
     var rb=document.getElementById("rightbar"); if(!rb) return;
     var vd=(view==="today")?viewDay:today();
-    var backlog=orderTasks(S.tasks.filter(function(k){return !k.day && k.status!=="done" && inScope(k.projectId);}),false);
+    var backlog=orderTasks(S.tasks.filter(function(k){return !k.day && isOpen(k) && inScope(k.projectId);}),false);
     // A carried task that's already been placed into a block on the day you're looking at is done being
     // triaged — showing it here too just duplicates the day list. Unplaced ones stay, since this card is
     // where you actually put them somewhere.
@@ -2522,7 +2584,7 @@ function GENA_MAIN() {
     if(!pinned.length) return "";
     return pinned.map(function(p){
       var ts=S.tasks.filter(function(k){return k.projectId===p.id;});
-      var open=ts.filter(function(k){return k.status!=="done";});
+      var open=ts.filter(function(k){return isOpen(k);});
       var done=ts.length-open.length;
       var pct=ts.length?Math.round(100*done/ts.length):0;
       var next=open.slice().sort(byUrgency).slice(0,3);
@@ -2629,7 +2691,7 @@ function GENA_MAIN() {
     html+='<div class="stack">';
     for(var i=0;i<7;i++){
       var d=addDays(t,i);
-      var open=orderTasks(S.tasks.filter(function(k){return taskOnDay(k,d)&&k.status!=="done"&&inScope(k.projectId);}),false);
+      var open=orderTasks(S.tasks.filter(function(k){return taskOnDay(k,d)&&isOpen(k)&&inScope(k.projectId);}),false);
       var done=S.tasks.filter(function(k){return k.status==="done"&&k.completedOn===d&&inScope(k.projectId);}).length;
       var evs=S.events.filter(function(e){return evOnDay(e,d)&&sourceEnabled(e)&&!(e.projectId&&!inScope(e.projectId));});
       html+='<div class="card"><div class="wk-day-head"><h3>'+(i===0?"Today":(i===1?"Tomorrow":WDFULL[dow(d)]))+'</h3><span class="sub">'+MONTHS[+d.slice(5,7)-1].slice(0,3)+' '+(+d.slice(8))+'</span>'+foldProg(done,open.length+done)+
@@ -2659,7 +2721,7 @@ function GENA_MAIN() {
       '<div class="panel-move" style="margin-left:31px">'+chips+'</div></div>';
   }
   function viewBacklog(){
-    var undated=orderTasks(S.tasks.filter(function(k){return !k.day && k.status!=="done" && inScope(k.projectId);}),false);
+    var undated=orderTasks(S.tasks.filter(function(k){return !k.day && isOpen(k) && inScope(k.projectId);}),false);
     var carried=orderTasks(S.tasks.filter(function(k){return k.status==="todo" && (k.rollover||0)>=1 && !k.tplId && inScope(k.projectId);}),false);
     var html='<h2 class="view-h">Backlog</h2><p class="sub">Things to do <b>someday</b> — no set date. Add them here, then schedule each one for a day when you\'re ready.'+(scopeActive()?' <b>Filtered:</b> '+esc(scopeLabel())+' — <button class="chip" data-act="clearscope" style="padding:2px 9px">show all</button>':'')+'</p>';
     html+='<div class="card" style="margin-bottom:16px"><ul class="tasks" data-list="someday" style="padding:0"><li class="task inline-row"><span class="inline-plus">+</span><input class="inline-add" data-block="someday" placeholder="Add something to do someday — @project works too…" aria-label="Add backlog task"/></li></ul></div>';
@@ -2709,8 +2771,9 @@ function GENA_MAIN() {
       var done=ts.filter(function(k){return k.status==="done";}).length;
       var open=ts.length-done; var pct=ts.length?Math.round(done/ts.length*100):0;
       var quiet=pc.lastTouch?diffDays(today(),pc.lastTouch):null;
-      html+='<div class="proj-card"><div class="proj-top" style="'+cbg(p.color)+'">'+
-        '<h3>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</h3><div class="pmeta">'+open+' open · '+done+' done</div></div>'+
+      var pfk="proj-"+p.id;
+      html+='<details class="proj-card pfold" data-fold="'+pfk+'"'+(S.collapsed[pfk]?"":" open")+'><summary class="proj-top" style="'+cbg(p.color)+'">'+
+        '<span class="ptop-main"><h3>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</h3><div class="pmeta">'+open+' open · '+done+' done</div></span><span class="fold-chev">▸</span></summary>'+
         '<div class="proj-body"><div class="prog-row"><div class="prog"><span style="width:'+pct+'%;background:'+p.color+'"></span></div>'+
         '<span class="prog-pct">'+pct+'%</span>'+
         (open&&quiet!==null&&quiet>=7?'<span class="pill aged" title="No task added, scheduled or completed in '+quiet+' days">quiet '+quiet+'d</span>':'')+'</div>';
@@ -2728,7 +2791,7 @@ function GENA_MAIN() {
         '<button class="chip" data-act="pinproj" data-pid="'+p.id+'" aria-pressed="'+!!p.pinned+'">'+(p.pinned?"📌 Unpin from Today":"📌 Pin to Today")+'</button>'+
         '<button class="chip" data-act="milestone" data-pid="'+p.id+'">+ milestone</button>'+
         '<button class="chip" data-act="phase" data-pid="'+p.id+'">+ phase</button></div>';
-      html+='</div></div>';
+      html+='</div></details>';
     });
     html+='</div>';
     if(S.templates.length){
@@ -2797,7 +2860,7 @@ function GENA_MAIN() {
   }
   function saveTodayAsRoutine(){
     var t=today();
-    var todays=S.tasks.filter(function(k){ return taskOnDay(k,t) && k.status!=="done" && inScope(k.projectId); });
+    var todays=S.tasks.filter(function(k){ return taskOnDay(k,t) && isOpen(k) && inScope(k.projectId); });
     if(!todays.length){ toast("No open tasks today to save"); return; }
     var items=orderTasks(todays,false).map(function(k){ return {title:k.title,priority:!!k.priority,at:k.at||null,block:k.block||null,subs:(k.subs||[]).map(function(s){return s.text;})}; });
     var r={id:uid(),name:"Routine from "+niceDate(t),emoji:"📋",items:items};
@@ -2915,7 +2978,7 @@ function GENA_MAIN() {
   function weekTimeGridHtml(days){
     var t=today(), perDay=days.map(function(ds){
       var all=S.tasks.filter(function(k){ return taskOnDay(k,ds) && inScope(k.projectId); });
-      return {ds:ds, timed:all.filter(isTimed), loose:all.filter(function(k){ return !isTimed(k) && k.status!=="done"; }),
+      return {ds:ds, timed:all.filter(isTimed), loose:all.filter(function(k){ return !isTimed(k) && isOpen(k); }),
               evs:S.events.filter(function(e){ return evOnDay(e,ds)&&sourceEnabled(e)&&!(e.projectId&&!inScope(e.projectId)); })};
     });
     var hr=hourRange([].concat.apply([],perDay.map(function(x){return x.timed;}))), lo=hr.lo, hi=hr.hi;
@@ -3097,7 +3160,7 @@ function GENA_MAIN() {
      body:["Unfinished things stay active in memory — the Zeigarnik effect — which is why an un-captured task nags all day while a captured one goes quiet. Later research refined this: the mind settles not when the task is done, but when there is a specific plan for it.",
            "So capture is not about lists for their own sake. It is about closing loops so attention is free for the one thing in front of you. Backlog is where loops go to wait without costing anything.",
            "The morning and evening reviews are the same mechanism at day scale: every open loop gets a decision, even if the decision is “not this week”."],
-     tryFn:function(){ var n=S.tasks.filter(function(x){return !x.day&&x.status!=="done";}).length;
+     tryFn:function(){ var n=S.tasks.filter(function(x){return !x.day&&isOpen(x);}).length;
        return {text:"Backlog holds <b>"+n+"</b> open loop"+(n===1?"":"s")+". Add whatever is nagging you right now — then it can stop.",go:"backlog"}; }},
     {id:"focus",emoji:"🎯",title:"Three things",min:1,
      body:["Attention is the scarce resource, not time. A long list spreads it thin; a short one concentrates it. The most effective daily planners converge on the same rule: name the one to three things that would make today a good day, and protect those first.",
@@ -3354,13 +3417,17 @@ function GENA_MAIN() {
               var saved=ieCollect();
               if(sc!=="one"&&saved){ var tp2=S.templates.find(function(x){return x.id===saved.tplId;});
                 if(tp2){ tp2.title=saved.title; tp2.projectId=saved.projectId; tp2.block=saved.block; tp2.priority=saved.priority;
-                  S.tasks.forEach(function(x){ if(x.tplId===tp2.id&&x.id!==saved.id&&x.status!=="done"){ x.title=tp2.title; x.projectId=tp2.projectId; x.block=tp2.block; x.priority=tp2.priority; } }); } }
+                  S.tasks.forEach(function(x){ if(x.tplId===tp2.id&&x.id!==saved.id&&isOpen(x)){ x.title=tp2.title; x.projectId=tp2.projectId; x.block=tp2.block; x.priority=tp2.priority; } }); } }
               save(); ieClose();
               toast(sc==="one"?"Just this one updated":(sc==="future"?"This and future ones updated":"Whole series updated"));
             });
             return;
           }
           ieCollect(); save(); ieClose(); toast("Saved"); return; }
+        if(w==="skip"){ ieCollect();
+          var sk=S.tasks.find(function(x){return x.id===ieId;});
+          if(sk){ if(isSkipped(sk)){ sk.status="todo"; delete sk.skippedOn; } else { sk.status="skipped"; sk.skippedOn=sk.day||today(); } }
+          save(); ieClose(); toast(sk&&isSkipped(sk)?"Skipped — it won’t carry":"Back on the list"); return; }
         if(w==="cancel"){ ieClose(); return; }
         if(w==="focus"){ var t0=ieCollect(); save(); var vd0=viewDay; viewDay=today(); addTaskToFocus(ieId,true); viewDay=vd0; save(); ieClose(); toast("Added to Today’s Focus"); return; }
         if(w==="more"){ var t1=ieCollect(); save(); editingTaskId=null; openTaskModal({edit:t1}); return; }
@@ -3372,7 +3439,7 @@ function GENA_MAIN() {
     if(pendingSubAdd){ var psi=v.querySelector('.inline-add[data-subfor="'+pendingSubAdd+'"],.inline-add[data-fsubfor="'+pendingSubAdd+'"]');
       if(psi){ psi.focus(); psi.onblur=function(){ if(!psi.value.trim()&&pendingSubAdd){ pendingSubAdd=null; render(); } }; } }
     if(pendingFocus){ var psel=pendingFocus==="focus" ? '.inline-add[data-focus="1"]' : '.inline-add[data-block="'+pendingFocus+'"]'; var pf=v.querySelector(psel)||document.querySelector("#rightbar "+psel); pendingFocus=null; if(pf){ pf.focus(); } }
-    v.querySelectorAll("details.fold,details.done-strip").forEach(function(d){ d.addEventListener("toggle",function(){ S.collapsed[d.dataset.fold]=!d.open; save(); }); });
+    v.querySelectorAll("details.fold,details.done-strip,details.pfold").forEach(function(d){ d.addEventListener("toggle",function(){ S.collapsed[d.dataset.fold]=!d.open; save(); }); });
     var rbEl=document.getElementById("rightbar");
     if(rbEl){ rbEl.onkeydown=v.onkeydown;
       rbEl.querySelectorAll("details.fold").forEach(function(d){ d.addEventListener("toggle",function(){ S.collapsed[d.dataset.fold]=!d.open; save(); }); }); }
@@ -3753,6 +3820,8 @@ function GENA_MAIN() {
           eb.done=true; save(); render(); toast("Added to today — the email is marked handled"); } }
       else if(act==="job-open"){ openJobModal(S.jobs.find(function(x){return x.id===anyId;})); }
       else if(act==="imp-del"){ S.improve=S.improve.filter(function(x){return x.id!==anyId;}); save(); render(); }
+      else if(act==="imp-ship"){ var im=S.improve.find(function(x){return x.id===anyId;});
+        if(im){ if(im.status==="shipped"){ im.status="open"; delete im.shippedOn; } else { im.status="shipped"; im.shippedOn=today(); } save(); render(); } }
       else if(act==="tpl-pause"){ var tp1=S.templates.find(function(x){return x.id===a.dataset.tid;}); if(tp1){ tp1.paused=!tp1.paused; save(); render(); toast(tp1.paused?"Paused — no new copies":"Resumed"); } }
       else if(act==="tpl-del"){ var ti=S.templates.findIndex(function(x){return x.id===a.dataset.tid;}); if(ti>=0){ var tdel=S.templates[ti]; S.templates.splice(ti,1); save(); render(); toastUndo("Repeat removed",function(){ S.templates.splice(Math.min(ti,S.templates.length),0,tdel); save(); render(); }); } }
       else if(act==="routine-new"){ openRoutineModal(); }
@@ -3764,7 +3833,7 @@ function GENA_MAIN() {
     var rbEl2=document.getElementById("rightbar"); if(rbEl2) rbEl2.onclick=v.onclick;
   }
   function toggleTask(id){ var k=S.tasks.find(function(x){return x.id===id;}); if(!k)return;
-    var toDone=k.status!=="done";
+    var toDone=k.status!=="done";   // skipped ticks straight to done — the check always means "I did it"
     function commit(){ k.status=toDone?"done":"todo"; k.completedOn=toDone?(view==="today"?viewDay:today()):null; save(); render(); }
     if(!toDone || matchMedia("(prefers-reduced-motion: reduce)").matches){ commit(); return; }
     // Let the row finish its tick — check fills, title strikes, row settles — before it moves to Done.
@@ -3876,7 +3945,7 @@ function GENA_MAIN() {
   var BLOCK_WIN={morning:[6*60,12*60], afternoon:[12*60,17*60], evening:[17*60,DAY_END]};
   function toMins(at){ return +at.slice(0,2)*60 + +at.slice(3,5); }
   function dayLoad(d){
-    var open=S.tasks.filter(function(k){ return taskOnDay(k,d) && k.status!=="done" && inScope(k.projectId); });
+    var open=S.tasks.filter(function(k){ return taskOnDay(k,d) && isOpen(k) && inScope(k.projectId); });
     var planned=0, unsized=0;
     open.forEach(function(k){ if(k.at) planned+=(k.dur||60); else if(k.dur) planned+=k.dur; else unsized++; });
     var left=null;
@@ -3897,7 +3966,7 @@ function GENA_MAIN() {
      its block's window (a morning task stays in the morning), anywhere in the day if that fails.
      Today starts from the next quarter hour, not 6am. Undoable like every bulk action. */
   function planDay(d){
-    var open=S.tasks.filter(function(k){ return taskOnDay(k,d) && k.status!=="done" && inScope(k.projectId); });
+    var open=S.tasks.filter(function(k){ return taskOnDay(k,d) && isOpen(k) && inScope(k.projectId); });
     var todo=orderTasks(open.filter(function(k){ return !k.at; }),false);
     if(!todo.length){ toast("Nothing unscheduled — the day is already planned"); return; }
     var busy=open.filter(function(k){ return k.at; }).map(function(k){ var st=toMins(k.at); return [st, st+(k.dur||60)]; });
@@ -4128,7 +4197,7 @@ function GENA_MAIN() {
           '<div id="m-ropts" style="margin-top:10px"></div>'+(etp?'<div class="sub" style="font-size:11px;margin-top:6px">This task repeats — changes here update the whole series. Pick “Once” to stop it repeating.</div>':(ed?'<div class="sub" style="font-size:11px;margin-top:6px">Pick a repeat to turn this into a recurring task going forward.</div>':""))+'</div>'+
       '</div></div>'+
       '<div class="modal-actions">'+
-      (ed?'<button class="btn ghost danger" id="m-del" style="margin-right:auto">Delete</button><button class="btn" id="m-tofocus" title="Add to Today\'s Focus">◎ Focus</button><button class="btn" id="m-focus" title="Start a 25-minute focus timer on this task">⏱</button><button class="btn" id="m-dup">Duplicate</button>':'')+
+      (ed?'<button class="btn ghost danger" id="m-del" style="margin-right:auto">Delete</button><button class="btn" id="m-tofocus" title="Add to Today\'s Focus">◎ Focus</button><button class="btn" id="m-focus" title="Start a 25-minute focus timer on this task">⏱</button><button class="btn" id="m-skip" title="Didn\'t do it, and it isn\'t carrying">'+(ed.status==="skipped"?"↩ Un-skip":"⤬ Skip")+'</button><button class="btn" id="m-dup">Duplicate</button>':'')+
       '<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">'+(ed?"Save":"Add task")+'</button></div>',"wide");
     var mb=document.getElementById("m-block");
     mb.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; var val=b.dataset.b;
@@ -4202,6 +4271,10 @@ function GENA_MAIN() {
         if(etp){ close(); openRecurDeleteModal(ed); return; }
         var di=S.tasks.findIndex(function(x){return x.id===ed.id;}); var dt=di>=0?S.tasks[di]:null; if(di>=0) S.tasks.splice(di,1); save(); close(); render(); if(dt) toastUndo("Task deleted",function(){ S.tasks.splice(Math.min(di,S.tasks.length),0,dt); save(); render(); }); };
       document.getElementById("m-dup").onclick=function(){ var c={}; for(var kk in ed) c[kk]=ed[kk]; c.id=uid(); c.status="todo"; c.completedOn=null; c.created=today(); delete c.tplId; c.subs=(ed.subs||[]).map(function(s){return {id:uid(),text:s.text,done:false};}); S.tasks.push(c); save(); close(); render(); toast("Task duplicated"); };
+      document.getElementById("m-skip").onclick=function(){
+        if(ed.status==="skipped"){ ed.status="todo"; delete ed.skippedOn; save(); close(); render(); toast("Back on the list"); }
+        else { ed.status="skipped"; ed.skippedOn=ed.day||today(); save(); close(); render(); toast("Skipped — it won’t carry"); }
+      };
       document.getElementById("m-focus").onclick=function(){ close(); startFocusTimer(ed.title,25); };
       document.getElementById("m-tofocus").onclick=function(){ var vd0=viewDay; viewDay=today(); addTaskToFocus(ed.id,true); viewDay=vd0; save(); close(); if(view==="today") render(); toast("Added to Today’s Focus"); };
     }
@@ -4883,6 +4956,7 @@ function GENA_MAIN() {
       '<button class="btn" id="x-share">🔗 Share a read-only snapshot</button>'+
       '<button class="btn" id="x-capture">⚡ Quick capture (bookmarklet / share)</button>'+
       '<button class="btn" id="x-lock">🔒 Passcode &amp; encryption: '+(ENC?"on":(lockCfg()?"screen lock only":"off"))+'</button>'+
+      '<button class="btn" id="x-folds" title="Collapse every card in view — Today, the panel, Hub, projects and people — or open them all back up.">⇕ Collapse all cards</button>'+
       '<button class="btn" id="x-archive">🗄 Archive done tasks older than 60 days'+(archN?' ('+archN+')':'')+'</button>'+
       '<button class="btn" id="x-install">📱 Add to phone home screen</button>'+
       '<button class="btn" id="x-host">🌐 Put it online (GitHub Pages)</button>'+
@@ -4927,6 +5001,7 @@ function GENA_MAIN() {
       this.textContent="⏳ Carry unfinished onto today: "+(S.autoCarry?"on":"off");
       toast(S.autoCarry?"Unfinished tasks will move onto today":"Unfinished tasks stay put — pull them in from Carried over");
     };
+    document.getElementById("x-folds").onclick=function(){ var c=anyFoldOpen(); close(); setAllFolds(c); };
     document.getElementById("x-archive").onclick=function(){
       if(!archN){ toast("Nothing old enough to archive yet"); return; }
       confirmArchiveOldDone();
@@ -5016,8 +5091,9 @@ function GENA_MAIN() {
     html+='<div class="board">';
     people.forEach(function(p){
       var isDue=p.next&&p.next<=t;
-      html+='<div class="proj-card person-card" style="--pc:'+esc(p.color||"var(--p5)")+'"><div class="proj-top person-top">'+
-        '<h3>'+(p.emoji?'<span class="person-emoji">'+esc(p.emoji)+'</span>':'<span class="person-emoji pdot-big"></span>')+esc(p.name)+'</h3><div class="pmeta">'+esc(p.relationship||"—")+(p.company?" · "+esc(p.company):"")+'</div></div>'+
+      var pekey="person-"+p.id;
+      html+='<details class="proj-card person-card pfold" style="--pc:'+esc(p.color||"var(--p5)")+'" data-fold="'+pekey+'"'+(S.collapsed[pekey]?"":" open")+'><summary class="proj-top person-top" style="--pc:'+esc(p.color||"var(--p5)")+'">'+
+        '<span class="ptop-main"><h3>'+(p.emoji?'<span class="person-emoji">'+esc(p.emoji)+'</span>':'<span class="person-emoji pdot-big"></span>')+esc(p.name)+'</h3><div class="pmeta">'+esc(p.relationship||"—")+(p.company?" · "+esc(p.company):"")+'</div></span><span class="fold-chev">▸</span></summary>'+
         '<div class="proj-body">';
       if(p.next) html+='<div style="margin-bottom:8px"><span class="pill '+(isDue?"aged":"block")+'">'+(isDue?"⏰ Follow up due":"Next: "+niceDate(p.next))+'</span></div>';
       if(p.last) html+='<div class="sub" style="font-size:12px">Last touch: '+niceDate(p.last)+(p.cadence?" · every "+p.cadence+"d":"")+'</div>';
@@ -5030,7 +5106,7 @@ function GENA_MAIN() {
       html+='<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="chip" data-act="editperson" data-id="'+p.id+'">edit</button>'+
         '<button class="chip" data-act="logtouch" data-id="'+p.id+'">✓ Logged a touch</button>'+
         '<button class="chip" data-act="person-task" data-id="'+p.id+'">+ task</button></div>';
-      html+='</div></div>';
+      html+='</div></details>';
     });
     if(!people.length) html+='<div class="card empty" style="padding:34px">No people yet. Add someone you want to stay in touch with — a recruiter, a mentor, a friend.</div>';
     html+='</div>';
@@ -5118,8 +5194,16 @@ function GENA_MAIN() {
       '<p class="sub" style="margin:0 0 8px;font-size:12px">What works, what annoys you. Copy the log into a chat with Claude when you want upgrades.</p>'+
       '<div class="capture" style="margin:0 0 12px"><select class="q" id="imp-type" style="flex:0 0 120px" aria-label="Type">'+Object.keys(IMP_META).map(function(k){return '<option value="'+k+'">'+IMP_META[k][0]+'</option>';}).join("")+'</select>'+
       '<input class="q" id="imp-in" placeholder="What happened, or what would be better?" aria-label="Note"/><button class="add" id="imp-add">Log</button></div>'+
-      '<div>'+(S.improve.length?S.improve.map(impRow).join(""):'<div class="empty">Nothing logged yet</div>')+'</div>',
-      '<button class="chip" id="imp-copy">Copy log for Claude</button>');
+      (function(){
+        var openL=S.improve.filter(function(e){return e.status!=="shipped";});
+        var shipped=S.improve.filter(function(e){return e.status==="shipped";});
+        var nums={}; (S.impCopyIds||[]).forEach(function(id,i){ nums[id]=i+1; });
+        return '<div>'+(openL.length?openL.map(function(e){return impRow(e,nums[e.id]);}).join(""):'<div class="empty">Nothing open — everything logged has shipped ✨</div>')+'</div>'+
+          (shipped.length?'<details class="done-strip" data-fold="imp-shipped"'+(S.collapsed["imp-shipped"]===false?" open":"")+'><summary><span class="fold-chev">▸</span>✅ Shipped · '+shipped.length+'</summary>'+
+            '<div>'+shipped.map(function(e){return impRow(e);}).join("")+'</div></details>':'')+
+          (openL.length?'<div class="capture" style="margin:10px 0 0"><input class="q" id="imp-ship-in" placeholder="Shipped numbers from Claude — e.g. 1,4,7" aria-label="Mark numbers as shipped"/><button class="add" id="imp-ship-go">Mark shipped</button></div>':'');
+      })(),
+      '<button class="chip" id="imp-copy">Copy open items for Claude</button>');
 
     html+='</div>';
     return html;
@@ -5138,10 +5222,15 @@ function GENA_MAIN() {
     var meta = (datePill||clPill) ? '<div class="task-meta" style="margin-top:5px">'+datePill+clPill+'</div>' : '';
     return '<div class="job-card" data-act="job-open" data-id="'+j.id+'" draggable="true"><b>'+esc(j.company||"—")+'</b>'+(j.role?'<div class="jr">'+esc(j.role)+'</div>':"")+(j.next?'<div class="jn">→ '+esc(j.next)+'</div>':"")+meta+'</div>';
   }
-  function impRow(e){
-    var m=IMP_META[e.type]||IMP_META.idea;
-    return '<div class="imp-item" data-id="'+e.id+'"><span class="imp-badge" style="background:'+m[1]+';color:'+m[2]+'">'+m[0]+'</span>'+
-      '<div style="flex:1"><div>'+esc(e.text)+'</div><div class="sub" style="font-size:11px;margin-top:2px">'+niceDate(e.date)+'</div></div>'+
+  // n is the number this item carried in the last "Copy log for Claude" — the same number Claude
+  // reports back as shipped, so the round-trip needs no ids on screen.
+  function impRow(e,n){
+    var m=IMP_META[e.type]||IMP_META.idea, done=e.status==="shipped";
+    return '<div class="imp-item'+(done?" shipped":"")+'" data-id="'+e.id+'">'+
+      '<button class="chk '+(done?"done":"")+'" data-act="imp-ship" aria-label="Mark as shipped" aria-pressed="'+done+'" title="'+(done?"Move back to open":"Mark as shipped")+'"></button>'+
+      '<span class="imp-badge" style="background:'+m[1]+';color:'+m[2]+'">'+m[0]+'</span>'+
+      '<div style="flex:1"><div>'+(n?'<span class="imp-n">'+n+'</span>':'')+esc(e.text)+'</div>'+
+      '<div class="sub" style="font-size:11px;margin-top:2px">'+niceDate(e.date)+(done&&e.shippedOn?' · shipped '+niceDate(e.shippedOn):'')+'</div></div>'+
       '<button class="task-x" data-act="imp-del" style="opacity:1" aria-label="delete">✕</button></div>';
   }
   function bindHub(){
@@ -5168,6 +5257,8 @@ function GENA_MAIN() {
     if(g("imp-add")) g("imp-add").onclick=function(){ addImprove(g("imp-type").value,g("imp-in").value); };
     if(g("imp-in")) g("imp-in").addEventListener("keydown",function(e){ if(e.key==="Enter") addImprove(g("imp-type").value,g("imp-in").value); });
     if(g("imp-copy")) g("imp-copy").onclick=function(e){ e.preventDefault(); copyImprove(); };
+    if(g("imp-ship-go")) g("imp-ship-go").onclick=function(){ markImproveShipped(g("imp-ship-in").value); };
+    if(g("imp-ship-in")) g("imp-ship-in").addEventListener("keydown",function(e){ if(e.key==="Enter") markImproveShipped(this.value); });
   }
   /* Best-effort parse of whatever a mail app hands over on drop: an .eml file (RFC 822 headers), a
      text/plain body that begins with headers, an HTML fragment, a mailto:/message: URL, or plain
@@ -5205,7 +5296,32 @@ function GENA_MAIN() {
   }
   function addEmails(text){ text=(text||"").trim(); if(!text)return; text.split(/\n/).forEach(function(line){ line=line.trim(); if(!line)return; var parts=line.split(/\s[—–-]\s/); S.emails.unshift({id:uid(),subject:parts[0].trim(),sender:(parts[1]||"").trim(),done:false,created:today()}); }); save(); render(); toast("Flagged"); }
   function addImprove(type,text){ text=(text||"").trim(); if(!text)return; S.improve.unshift({id:uid(),type:type||"idea",text:text,date:today()}); save(); render(); }
-  function copyImprove(){ if(!S.improve.length){toast("Nothing logged yet");return;} var lines=S.improve.map(function(e){return "- ["+e.type+"] "+e.text+" ("+e.date+")";}); copyText("Here is my Gena improvement log from real day-to-day use. Please suggest and implement upgrades based on these notes:\n\n"+lines.join("\n"),function(){toast("Log copied for Claude");}); }
+  // Only the open items travel, numbered — so a session never has to diff the whole log against the
+  // roadmap again, and the numbers come back as "SHIPPED: 1,4" for one-tap bookkeeping.
+  function copyImprove(){
+    var openL=S.improve.filter(function(e){return e.status!=="shipped";});
+    if(!openL.length){ toast("Nothing open — all logged items are marked shipped"); return; }
+    S.impCopyIds=openL.map(function(e){return e.id;});
+    var lines=openL.map(function(e,i){return (i+1)+". ["+e.type+"] "+e.text+" ("+e.date+")";});
+    var shippedN=S.improve.length-openL.length;
+    copyText("Here is my Gena improvement log — only the items still open, numbered."+
+      (shippedN?" ("+shippedN+" earlier items are already marked shipped and left out.)":"")+
+      " Please suggest and implement upgrades based on these notes.\n\n"+lines.join("\n")+
+      "\n\nWhen you finish, end your reply with one line listing the numbers you actually shipped, like:\nSHIPPED: 1,4,7\nI paste that back into the Hub to close them out.",
+      function(){ save(); toast(openL.length+" open item"+(openL.length===1?"":"s")+" copied"); });
+  }
+  function markImproveShipped(text){
+    var nums=(text||"").replace(/shipped:/i,"").split(/[^0-9]+/).filter(Boolean).map(Number);
+    if(!nums.length){ toast("Give me the numbers — e.g. 1,4,7"); return; }
+    var ids=S.impCopyIds||[], n=0;
+    nums.forEach(function(num){
+      var id=ids[num-1]; if(!id) return;
+      var it=S.improve.find(function(e){return e.id===id;});
+      if(it&&it.status!=="shipped"){ it.status="shipped"; it.shippedOn=today(); n++; }
+    });
+    if(!n){ toast("Those numbers don’t match the last copy — copy the log again first"); return; }
+    save(); render(); toast(n+" item"+(n===1?"":"s")+" marked shipped");
+  }
 
   function parseChecklist(text, prev){
     prev=prev||[];
@@ -5240,7 +5356,7 @@ function GENA_MAIN() {
   // A compact snapshot of open tasks (with ids) so Claude can update/finish/reschedule them.
   function currentTasksSnapshot(){
     var t=today();
-    var open=S.tasks.filter(function(k){return k.status!=="done";});
+    var open=S.tasks.filter(function(k){return isOpen(k);});
     // sort: dated first (by day), then someday
     open.sort(function(a,b){ var ad=a.day||"9999", bd=b.day||"9999"; return ad<bd?-1:ad>bd?1:0; });
     open=open.slice(0,90);
@@ -5373,7 +5489,7 @@ function GENA_MAIN() {
     (d.notes||[]).forEach(function(nt){ if(!nt)return; S.notes[t]=(S.notes[t]?S.notes[t]+"<br>":"")+plainToHtml(String(nt)); n++; });
     // ---- edits to EXISTING tasks (Phase 5: let Claude update my plan) ----
     (d.updates||[]).forEach(function(u){ if(!u||!u.id)return; var k=S.tasks.find(function(x){return x.id===u.id;}); if(!k)return;
-      if(u.done===true && k.status!=="done"){ k.status="done"; k.completedOn=t; }
+      if(u.done===true && isOpen(k)){ k.status="done"; k.completedOn=t; }
       if(u.done===false && k.status==="done"){ k.status="todo"; k.completedOn=null; }
       if("day" in u){ if(u.day===null||String(u.day).toLowerCase()==="someday") k.day=null; else if(validDate(u.day)){ k.day=u.day; k.rollover=0; } }
       if(["morning","afternoon","evening"].indexOf(u.block)>=0) k.block=u.block;
@@ -5438,6 +5554,8 @@ function GENA_MAIN() {
       ["🧭","Show / hide the sidebar",function(){ if(window.innerWidth>1000){ S.sbOpen=!S.sbOpen; save(); applySidebarState(); } else document.body.classList.toggle("sb-open"); }],
       ["◐","Toggle light / dark",function(){ document.getElementById("theme-btn").onclick(); }],
       ["🔍","Search everything",function(){ openSearchModal(); }],
+      ["⇕","Collapse all cards",function(){ setAllFolds(true); }],
+      ["⇕","Expand all cards",function(){ setAllFolds(false); }],
       ["🌅","Morning review — loose ends",function(){ openReviewModal("morning",S.lastOpen); }],
       ["🌙","Evening review — how today went",function(){ openReviewModal("evening"); }],
       ["🧹","Weekly review",function(){ openReviewModal("week"); }],
@@ -5568,15 +5686,55 @@ function GENA_MAIN() {
   // Buttons carry the real weekday and date, so "end of week" can't be misread.
   function reviewPicks(){
     var eow=nextDow(0), nw=nextDow(1);          // Sunday closes the week; Monday opens the next one
+    // The three that answer almost every row come first — they are the three questions a review asks:
+    // did you do it, are you letting it go, or is it tomorrow's problem. Everything else folds.
     return [["done","✓ Did it",null],
-            ["today","📅 Today",today()],
+            ["skip","⤬ Skipped",null],
             ["tomorrow","→ Tomorrow",addDays(today(),1)],
+            ["today","📅 Today",today()],
             ["eow","🌤 "+DOWNAMES[dow(eow)]+" "+(+eow.slice(8)),eow],
             ["nextweek","⏭ "+DOWNAMES[dow(nw)]+" "+(+nw.slice(8)),nw],
             ["someday","💭 Someday",null],
             ["drop","✕ Drop",null]];
   }
   var REVIEW_SCOPES=[["morning","🌅","Loose ends"],["evening","🌙","Today"],["week","🧹","This week"]];
+  function rvGroupMode(){ return S.rvGroup||"project"; }
+  // Three ways to look at the same loose ends: by project (what it belongs to), by where it was
+  // (Focus, To-do, a block — the "Anytime vs To-do" question), or flat when there are only a few.
+  function reviewGroups(list,fromDay){
+    var mode=rvGroupMode();
+    if(mode==="none") return [{id:"all",name:"Everything",color:"var(--ink-faint)",items:list}];
+    if(mode==="where"){
+      var ORDER=["Focus","To-do","morning","afternoon","evening","Backlog"], by={};
+      list.forEach(function(k){ var w=whereWasIt(k,fromDay); (by[w.label]=by[w.label]||[]).push(k); });
+      return Object.keys(by).sort(function(a,b){
+        var ia=ORDER.indexOf(a), ib=ORDER.indexOf(b);
+        return (ia<0?99:ia)-(ib<0?99:ib);
+      }).map(function(lbl){ return {id:"where-"+lbl,name:lbl.charAt(0).toUpperCase()+lbl.slice(1),color:"var(--ink-faint)",items:by[lbl]}; });
+    }
+    return groupByProject(list);
+  }
+  // One gesture for "show me less". Walks every fold rendered right now (Today's cards, the panel,
+  // Hub, project and people cards) and, when collapsing, pre-collapses the project/person cards of
+  // views that aren't on screen too — so switching tabs doesn't undo the request.
+  function setAllFolds(collapse){
+    var keys={};
+    document.querySelectorAll("details[data-fold]").forEach(function(d){ keys[d.dataset.fold]=1; });
+    if(collapse){
+      // Cards in views that aren't rendered right now still count as "all" — otherwise switching
+      // tabs quietly undoes the request.
+      ["focus","tasks","block-morning","block-afternoon","block-evening","habits","notes","sessions",
+       "spu-course-plan","templates","routines","panel-sugg","panel-backlog","panel-carried","panel-done",
+       "panel-log","hub-emails","hub-improve","hub-insights","hub-jobs"].forEach(function(k){ keys[k]=1; });
+      S.projects.forEach(function(p){ keys["proj-"+p.id]=1; });
+      S.people.forEach(function(p){ keys["person-"+p.id]=1; });
+    }
+    var n=0;
+    Object.keys(keys).forEach(function(k){ S.collapsed[k]=!!collapse; n++; });
+    save(); render();
+    toast(collapse?"Collapsed "+n+" cards":"Expanded everything");
+  }
+  function anyFoldOpen(){ return [].some.call(document.querySelectorAll("details[data-fold]"),function(d){return d.open;}); }
   function openReviewModal(scope, fromDay, auto){
     scope=scope||"week";
     var isEve=scope==="evening", isDay=(scope==="morning"||isEve), t=today();
@@ -5585,8 +5743,12 @@ function GENA_MAIN() {
       // evening:  what is still open on today itself
       // week:     anything that has been carried at all
       if(isEve) return S.tasks.filter(function(k){ return k.status==="todo" && taskOnDay(k,t) && inScope(k.projectId); });
+      // With carry-over on, yesterday's leftovers are already sitting on today — so a loose end is
+      // anything still open that has been carried at all, wherever it now sits, plus anything that
+      // never moved (carry-over off, or a day Gena wasn't opened).
       return scope==="morning"
-        ? S.tasks.filter(function(k){ return k.status==="todo" && k.day && lastDay(k.day,k.end)<t && inScope(k.projectId) && !k.tplId; })
+        ? S.tasks.filter(function(k){ return isOpen(k) && k.day && !k.tplId && inScope(k.projectId) &&
+            (lastDay(k.day,k.end)<t || (k.rollover||0)>=1 || !!k.carriedFrom); })
         : S.tasks.filter(function(k){ return k.status==="todo" && (k.rollover||0)>=1 && !k.tplId && inScope(k.projectId); });
     }
     if(auto && !looseEnds().length) return false;   // nothing to review — don't interrupt the day
@@ -5623,7 +5785,7 @@ function GENA_MAIN() {
     }
     function body(){
       var loose=looseEnds(), picks=reviewPicks().filter(function(m){ return !(isEve&&m[0]==="today"); });
-      var someday=S.tasks.filter(function(k){ return !k.day && k.status!=="done" && inScope(k.projectId); }).slice(0,6);
+      var someday=S.tasks.filter(function(k){ return !k.day && isOpen(k) && inScope(k.projectId); }).slice(0,6);
       var hr=new Date().getHours();
       var greet=hr<12?"Good morning":(hr<17?"Good afternoon":"Good evening");
       var h = isEve
@@ -5656,6 +5818,12 @@ function GENA_MAIN() {
         }
       }
       h+='<div class="fld"><label>'+(isDay?"Loose ends":"Carried over")+' — decide, don’t drag</label>';
+      if(loose.length>3){
+        h+='<div class="rv-groupbar"><span class="sub">Group by</span>'+
+          [["project","Project"],["where","Where it was"],["none","Flat list"]].map(function(g){
+            return '<button class="chip" data-rvgroup="'+g[0]+'" aria-pressed="'+(rvGroupMode()===g[0])+'">'+g[1]+'</button>'; }).join("")+
+          '<button class="chip" data-rvfoldall="1" style="margin-left:auto">⇕ Collapse / expand all</button></div>';
+      }
       loose.sort(byUrgency);
       if(loose.length){
         h+='<div class="modal-actions" style="justify-content:flex-start;margin:2px 0 6px">'+
@@ -5663,8 +5831,12 @@ function GENA_MAIN() {
             var lbl=m[0]==="done" ? "All done" : "All → "+m[1].replace(/^\S+\s/,"");
             return '<button class="chip" data-all="'+m[0]+'"'+(m[2]?' title="Move everything to '+esc(niceDate(m[2]))+'"':'')+'>'+lbl+'</button>'; }).join("")+
           '</div><div class="ds-list">';
-        groupByProject(loose).forEach(function(g){
-          h+='<div class="grp-head"><span class="pdot" style="'+cbg(g.color)+'"></span>'+esc(g.name)+'<span class="cnt">'+g.items.length+'</span></div>';
+        reviewGroups(loose,fromDay).forEach(function(g){
+          // Each group folds, so a twelve-project morning can be taken one project at a time.
+          var gk="rv:"+g.id;
+          h+='<details class="rv-grp" data-rvfold="'+esc(gk)+'"'+(S.collapsed[gk]?"":" open")+'>'+
+            '<summary><span class="grp-head"><span class="fold-chev">▸</span><span class="pdot" style="'+cbg(g.color)+'"></span>'+
+            esc(g.name)+'<span class="cnt">'+g.items.length+'</span></span></summary>';
           g.items.forEach(function(k){
             var w=whereWasIt(k,fromDay);
             h+='<div class="ds-row" data-id="'+k.id+'"><div class="ds-main"><div class="ds-title">'+esc(k.title)+'</div>'+
@@ -5688,6 +5860,7 @@ function GENA_MAIN() {
                 '<button class="chip" data-rv="star" data-id="'+k.id+'" aria-pressed="'+!!k.priority+'" title="Important">'+(k.priority?"★":"☆")+'</button>'+
                 '</span></details></div></div>';
           });
+          h+='</details>';
         });
         h+='</div>';
       } else h+='<div class="empty">'+(isEve?"Today is clear — nicely done 🎉":(scope==="morning"?"Nothing left hanging 🎉":"Nothing carried 🎉"))+'</div>';
@@ -5695,7 +5868,7 @@ function GENA_MAIN() {
 
       if(isEve){
         var tm=addDays(t,1);
-        var tomorrow=S.tasks.filter(function(k){ return k.status!=="done" && taskOnDay(k,tm) && inScope(k.projectId); });
+        var tomorrow=S.tasks.filter(function(k){ return isOpen(k) && taskOnDay(k,tm) && inScope(k.projectId); });
         var ftm=S.focus[tm]=S.focus[tm]||[];
         h+='<div class="fld"><label>Set up tomorrow — pick what matters most</label>';
         if(tomorrow.length){
@@ -5728,6 +5901,7 @@ function GENA_MAIN() {
       else if(m==="star"){ k.priority=!k.priority; }
       else if(m==="someday"){ k.day=null; k.end=null; k.block=null; k.rollover=0; delete k.carriedFrom; }
       else if(m==="done"){ k.status="done"; k.completedOn=k.completedOn||k.day||t; }
+      else if(m==="skip"){ k.status="skipped"; k.skippedOn=k.day||t; }
       else if(m==="drop"){
         var i=S.tasks.indexOf(k); if(i<0) return;
         S.tasks.splice(i,1);
@@ -5739,8 +5913,21 @@ function GENA_MAIN() {
     function wire(){
       var root=document.querySelector(".modal");
       root.onchange=onChange;
+      // fold state for the groups persists in the same map every other fold uses, so a rebuild
+      // (which replaces the modal's innerHTML) brings the same groups back open or shut
+      root.addEventListener("toggle",function(e){
+        var d=e.target.closest?e.target.closest("details[data-rvfold]"):null;
+        if(d){ S.collapsed[d.dataset.rvfold]=!d.open; save(); }
+      },true);
       root.onclick=function(e){
         if(e.target.closest("[data-x]")){ markReviewed(); close(); render(); return; }
+        var gm=e.target.closest("[data-rvgroup]");
+        if(gm){ S.rvGroup=gm.dataset.rvgroup; save(); rebuild(); return; }
+        if(e.target.closest("[data-rvfoldall]")){
+          var ds=[].slice.call(root.querySelectorAll("details[data-rvfold]"));
+          var anyOpen=ds.some(function(d){return d.open;});
+          ds.forEach(function(d){ S.collapsed[d.dataset.rvfold]=anyOpen; });
+          save(); rebuild(); return; }
         var sc=e.target.closest("[data-scope]");
         if(sc){ markReviewed(); close(); openReviewModal(sc.dataset.scope, fromDay); return; }
         var all=e.target.closest("[data-all]");
@@ -5748,7 +5935,7 @@ function GENA_MAIN() {
           var hit=looseEnds();
           // one tap can move thirty tasks — keep the same escape hatch every single delete has
           var before=hit.map(function(k){ return {k:k, day:k.day, end:k.end, block:k.block, rollover:k.rollover,
-            status:k.status, completedOn:k.completedOn, carriedFrom:k.carriedFrom}; });
+            status:k.status, completedOn:k.completedOn, carriedFrom:k.carriedFrom, skippedOn:k.skippedOn}; });
           hit.forEach(function(k){ apply(k,all.dataset.all); }); save(); rebuild();
           toastUndo(hit.length+" task"+(hit.length===1?"":"s")+" — "+all.textContent.trim(), function(){
             before.forEach(function(b){ var k=b.k;
@@ -5756,6 +5943,7 @@ function GENA_MAIN() {
               k.day=b.day; k.end=b.end; k.block=b.block; k.rollover=b.rollover; k.status=b.status;
               if(b.completedOn===undefined) delete k.completedOn; else k.completedOn=b.completedOn;
               if(b.carriedFrom===undefined) delete k.carriedFrom; else k.carriedFrom=b.carriedFrom;
+              if(b.skippedOn===undefined) delete k.skippedOn; else k.skippedOn=b.skippedOn;
             });
             save(); rebuild(); render();
           });
@@ -6456,6 +6644,9 @@ function GENA_MAIN() {
   if(bootDedupeCount>0){ save(); setTimeout(function(){ toast("Cleaned up "+bootDedupeCount+" duplicate item"+(bootDedupeCount===1?"":"s")+" (⌘Z to undo)"); },600); } // persist + push the de-duplicated data
   if(S.welcomed===false){ S.welcomed=true; save(); openWelcomeModal(); }
   else if(dayStartFrom){ setTimeout(function(){ openDayStartReview(dayStartFrom); }, 400); }
+  if(SWEPT_REPEATS) setTimeout(function(){
+    toast("Tidied "+SWEPT_REPEATS+" lapsed repeat"+(SWEPT_REPEATS===1?"":"s")+" — recorded as skipped on their own day, not carried");
+  }, 1200);
   if(INTEGRITY_WARN) setTimeout(function(){
     confirmModal("⚠️ Data check — something shrank while loading",
       "Loading your data removed more than it should have ("+INTEGRITY_WARN.lost+"). The untouched copy from before this load is saved. Restore it, or keep going with what loaded?",
