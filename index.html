@@ -1223,7 +1223,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-11 16:24";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-11 16:31";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1731,6 +1731,25 @@ function GENA_MAIN() {
   function stillWaiting(k){ k.rounds=(k.rounds||0)+1; k.nextAt=k.cycle?advanceCycle(k.cycle,today()):addDays(today(),14); }
   function wakeTask(k){ k.status="todo"; k.rounds=(k.rounds||0)+1; k.day=today(); k.woke=today(); delete k.nextAt; }
   function letGoTask(k){ k.status="skipped"; k.skippedOn=today(); k.letGo=1; delete k.nextAt; }
+  /* ---------- 40c: cycles on ordinary tasks ----------
+     One row that comes back. Its `day` is always the next landing, so it sits in the day list like any
+     task and carry-over nags it forward if missed. Ticking it does not finish it: it logs a completion
+     (an echo row for the Completed log), restarts the clock from today or from its date, and moves on.
+     Rescheduling it forward without doing it is a snooze — counted, and called out at five. */
+  function isCycle(k){ return !!(k.cycle&&k.cycle.every) && !isWaiting(k); }
+  function cycleAdvance(k, didIt){
+    var from=(k.cycle.from==="date"&&k.day)?k.day:today();
+    var next=advanceCycle(k.cycle, from);
+    if(next<=today()) next=advanceCycle(k.cycle, today());   // a stale fixed-date cycle catches up to now
+    if(didIt){
+      k.lastDone=today(); k.cycleN=(k.cycleN||0)+1; k.snoozes=0;
+      // a completion echo so the Completed log and streak-ish stats stay honest
+      S.tasks.push({id:uid(),title:k.title,projectId:k.projectId||null,personIds:(k.personIds||[]).slice(),status:"done",
+        day:today(),completedOn:today(),block:k.block||null,priority:!!k.priority,rollover:0,subs:[],created:today(),cycleEcho:k.id});
+    } else { k.cycleSkips=(k.cycleSkips||0)+1; }
+    k.day=next; k.end=null; k.rollover=0; delete k.carriedFrom;
+    (k.subs||[]).forEach(function(sb){ sb.done=false; });   // a checklist resets with the cycle
+  }
   function waitLabel(k){
     var who=k.waitPersonId?(S.people.find(function(p){return p.id===k.waitPersonId;})||{}).name:null;
     return who||k.waitOn||"";
@@ -1847,6 +1866,7 @@ function GENA_MAIN() {
   // panel's move controls so they can't drift apart.
   function rescheduleTask(k,to){
     if(!k||!to) return;
+    if(isCycle(k) && k.day && to>k.day) k.snoozes=(k.snoozes||0)+1;   // pushed, not done
     var from=k.day||to;
     var len=(k.end&&k.end>from)?diffDays(k.end,from):0;
     k.day=to; k.end=len?addDays(to,len):null;
@@ -2194,6 +2214,8 @@ function GENA_MAIN() {
     // five saturated chips per row meant the titles lost every glance
     var pl=[];
     if(isSkipped(k)) pl.push('<span class="pill skip">⤬ skipped</span>');
+    if(isCycle(k)){ pl.push('<span class="pill rec" title="Comes back — ticking it logs a completion and moves it on">↻ '+esc(cycleDesc(k.cycle))+'</span>');
+      if((k.snoozes||0)>=1) pl.push('<span class="pill aged'+(k.snoozes>=5?" hot":"")+'" title="Rescheduled without doing it">pushed '+k.snoozes+'×</span>'); }
     if(k.priority) pl.push('<span class="pill imp">★ important</span>');
     if(p) pl.push('<span class="pill proj" style="--pc:'+esc(p.color)+'"><i class="pdot"></i>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>');
     if(k.tplId) pl.push('<span class="pill rec">↻ repeats</span>');
@@ -2241,12 +2263,21 @@ function GENA_MAIN() {
   // The Type row both editors share. A task, a Waiting item and (40c) a cycle are one object with
   // different fields set, so changing type is a chip, not a migration.
   function typeFieldsHtml(px,k){
-    var isW=isWaiting(k), c=k.cycle||{};
+    var isW=isWaiting(k), isC=isCycle(k), c=k.cycle||{};
     var who=S.people.length?'<select id="'+px+'-waitwho" aria-label="Waiting on whom"><option value="">— someone / something —</option>'+
       S.people.map(function(pp){return '<option value="'+pp.id+'"'+(pp.id===k.waitPersonId?" selected":"")+'>'+esc(pp.name)+'</option>';}).join("")+'</select>':'';
     return '<div class="ie-lbl">Type</div><div class="chips" id="'+px+'-type">'+
-      '<button type="button" class="chip" data-t="task" aria-pressed="'+(!isW)+'">Task</button>'+
-      '<button type="button" class="chip" data-t="waiting" aria-pressed="'+isW+'">⏸ Waiting</button></div>'+
+      '<button type="button" class="chip" data-t="task" aria-pressed="'+(!isW&&!isC)+'">Task</button>'+
+      '<button type="button" class="chip" data-t="waiting" aria-pressed="'+isW+'">⏸ Waiting</button>'+
+      '<button type="button" class="chip" data-t="cycle" aria-pressed="'+isC+'">↻ Comes back</button></div>'+
+      '<div id="'+px+'-cycbox" class="waitbox"'+(isC?'':' hidden')+'>'+
+        '<div class="ie-lbl">Comes back every</div><div class="cyc-row"><input type="number" min="1" max="99" id="'+px+'-ccev" value="'+(isC?c.every:5)+'" aria-label="Every how many"/>'+
+        '<select id="'+px+'-cceu" aria-label="Unit">'+CYCLE_UNITS.map(function(u){return '<option value="'+u[0]+'"'+((isC?c.unit:"day")===u[0]?" selected":"")+'>'+u[1]+'</option>';}).join("")+'</select></div>'+
+        '<div class="chips" id="'+px+'-ccfrom"><button type="button" class="chip" data-from="done" aria-pressed="'+((c.from||"done")!=="date")+'">from when I do it</button>'+
+        '<button type="button" class="chip" data-from="date" aria-pressed="'+(c.from==="date")+'">on a fixed rhythm</button></div>'+
+        '<div class="sub" style="font-size:11px;margin-top:4px">Ticking it logs a completion and moves it to the next date — it never piles up.'+
+        ((k.cycleN||0)?' Done '+k.cycleN+'×'+(k.lastDone?', last '+esc(niceDate(k.lastDone)):'')+'.':'')+((k.snoozes||0)?' Pushed '+k.snoozes+'× since.':'')+'</div>'+
+      '</div>'+
       '<div id="'+px+'-waitbox" class="waitbox"'+(isW?'':' hidden')+'>'+
         '<div class="ie-lbl">Waiting on</div>'+who+
         '<input id="'+px+'-waiton" value="'+esc(k.waitOn||"")+'" placeholder="e.g. their reply, the letter, the recruiter" aria-label="Waiting on what"/>'+
@@ -2264,20 +2295,34 @@ function GENA_MAIN() {
     var g=function(id){ return document.getElementById(px+"-"+id); };
     var ev=+((g("cev")||{}).value)||0, eu=(g("ceu")||{}).value||"week";
     var cyc=ev?{every:ev,unit:eu,from:"done"}:null;
+    var wasC=isCycle(k);
+    if(want==="cycle"){
+      var cev2=+((g("ccev")||{}).value)||5, ceu2=(g("cceu")||{}).value||"day";
+      var fromB=((g("ccfrom")||{querySelector:function(){return null;}}).querySelector('[aria-pressed="true"]')||{}).dataset; fromB=fromB?fromB.from:"done";
+      if(was){ k.status="todo"; delete k.nextAt; }
+      k.cycle={every:cev2,unit:ceu2,from:fromB};
+      if(!k.day) k.day=today();
+      return was||!wasC;
+    }
     if(want==="waiting"){
       var cb=(g("checkback")||{}).value||null;
       parkTask(k,{waitOn:(g("waiton")||{}).value||null, personId:(g("waitwho")||{}).value||null, cycle:cyc, nextAt:cb||undefined});
       if(!k.nextAt) k.nextAt=cyc?advanceCycle(cyc,today()):addDays(today(),14);
       return !was;
     }
-    if(was){ k.status="todo"; delete k.nextAt; k.cycle=null; }
-    return was;
+    if(was){ k.status="todo"; delete k.nextAt; }
+    if(was||wasC) k.cycle=null;
+    return was||wasC;
   }
   function wireTypeRow(px){
     var box=document.getElementById(px+"-type"); if(!box) return;
     box.onclick=function(e){ var b=e.target.closest("[data-t]"); if(!b) return; e.preventDefault(); e.stopPropagation();
       [].forEach.call(box.children,function(c){ c.setAttribute("aria-pressed",c===b); });
-      var wb=document.getElementById(px+"-waitbox"); if(wb) wb.hidden=(b.dataset.t!=="waiting"); };
+      var wb=document.getElementById(px+"-waitbox"); if(wb) wb.hidden=(b.dataset.t!=="waiting");
+      var cb=document.getElementById(px+"-cycbox"); if(cb) cb.hidden=(b.dataset.t!=="cycle"); };
+    var fr=document.getElementById(px+"-ccfrom");
+    if(fr) fr.onclick=function(e){ var b=e.target.closest("[data-from]"); if(!b) return; e.preventDefault(); e.stopPropagation();
+      [].forEach.call(fr.children,function(c){ c.setAttribute("aria-pressed",c===b); }); };
   }
   var AT_BTN='<button type="button" class="at-btn" title="Pick a project, person, day or time" aria-label="Pick a project, person, day or time">@</button>';
   function inlineAddRow(key,label){
@@ -2850,6 +2895,10 @@ function GENA_MAIN() {
   }
   function computeSuggestions(){
     var t=today(), out=[], d=S.dismissed;
+    // 0. a cycle you keep pushing: the honest question, once
+    S.tasks.filter(function(k){return isCycle(k)&&isOpen(k)&&(k.snoozes||0)>=5;}).slice(0,1).forEach(function(k){
+      var id="cyc-"+k.id+"-"+k.snoozes; if(d.indexOf(id)<0) out.push({id:id,text:'You’ve pushed <b>“'+esc(k.title)+'”</b> '+k.snoozes+' times without doing it. Give it a real day, or stop it coming back?',action:"Stop it coming back",act:"cycle-stop",tid:k.id});
+    });
     // 1. aged tasks
     S.tasks.filter(function(k){return k.status==="todo"&&taskOnDay(k,t)&&(k.rollover||0)>=3;}).slice(0,1).forEach(function(k){
       var id="aged-"+k.id; if(d.indexOf(id)<0) out.push({id:id,text:'<b>“'+esc(k.title)+'”</b> has carried '+k.rollover+' days. Break it into a smaller next step, or let it go?'});
@@ -3625,7 +3674,7 @@ function GENA_MAIN() {
       });
       wireTypeRow("ie");
       ieRow.addEventListener("click",function(e){
-        if(e.target.closest("#ie-type")) return;          // the type chips wire themselves
+        if(e.target.closest("#ie-type,#ie-ccfrom")) return;   // the type row wires itself
         var b=e.target.closest("[data-ie],[data-pid],[data-b],[data-i]"); if(!b) return;
         var w=b.dataset.ie;
         if(w==="subtoggle"){ ieSubs[+b.dataset.i].done=!ieSubs[+b.dataset.i].done; ieRenderSubs(); return; }
@@ -4036,6 +4085,7 @@ function GENA_MAIN() {
         else if(s&&s.act==="export"){ exportBackup(); S.dismissed.push(s.id); save(); render(); }
         else if(s&&s.act==="review"){ S.dismissed.push(s.id); save(); openReviewModal(); }
         else if(s&&s.act==="archive"){ S.dismissed.push(s.id); save(); confirmArchiveOldDone(); }
+        else if(s&&s.act==="cycle-stop"){ var ck=S.tasks.find(function(x){return x.id===s.tid;}); if(ck){ ck.cycle=null; ck.snoozes=0; } S.dismissed.push(s.id); save(); render(); toast("It won’t come back on its own — it’s a plain task now"); }
         else if(s&&s.data){ addTask(s.data.title,s.data.projectId,null); S.dismissed.push(s.id); save(); render(); toast("Added"); } }
       else if(act==="sugg-x"){ S.dismissed.push(a.dataset.sid); save(); render(); }
       else if(act==="pinproj"){ var pp0=proj(a.dataset.pid); if(pp0){ pp0.pinned=!pp0.pinned; save(); render();
@@ -4088,6 +4138,15 @@ function GENA_MAIN() {
     var rbEl2=document.getElementById("rightbar"); if(rbEl2) rbEl2.onclick=v.onclick;
   }
   function toggleTask(id){ var k=S.tasks.find(function(x){return x.id===id;}); if(!k)return;
+    if(isCycle(k)&&k.status!=="done"){
+      var before={day:k.day,end:k.end,lastDone:k.lastDone,cycleN:k.cycleN,snoozes:k.snoozes,rollover:k.rollover,subs:JSON.stringify(k.subs||[])};
+      var echoBefore=S.tasks.length;
+      cycleAdvance(k,true); save(); render();
+      toastUndo("Done — comes back "+niceDate(k.day),function(){
+        k.day=before.day; k.end=before.end; k.lastDone=before.lastDone; k.cycleN=before.cycleN; k.snoozes=before.snoozes; k.rollover=before.rollover; k.subs=JSON.parse(before.subs);
+        S.tasks=S.tasks.filter(function(x,i){ return !(x.cycleEcho===k.id && i>=echoBefore); }); save(); render(); });
+      return;
+    }
     var toDone=k.status!=="done";   // skipped ticks straight to done — the check always means "I did it"
     function commit(){ k.status=toDone?"done":"todo"; k.completedOn=toDone?(view==="today"?viewDay:today()):null; save(); render(); }
     if(!toDone || matchMedia("(prefers-reduced-motion: reduce)").matches){ commit(); return; }
@@ -4709,8 +4768,8 @@ function GENA_MAIN() {
     if(dupOf) return "merge";
     if(tp.until && tp.until<today()) return "stop";
     var st=tplStats(tp);
-    // generated a lot, finished almost none: it was never a habit, it was a reminder with a deadline
-    if(st.n>=5 && st.done<=1) return "convert";
+    // generated a lot, finished almost none: it was never a habit, it was a nag — one row that comes back
+    if(st.n>=5 && st.done<=1) return "cycle";
     // daily, and you actually do it — that is a habit that belongs in the day, not a task that repeats
     if(tp.freq==="daily" && st.n>=10 && st.done/st.n>=0.3) return "habit";
     return "keep";
@@ -4738,6 +4797,7 @@ function GENA_MAIN() {
 
     var OPTS=[["keep","Keep repeating"],["merge","Merge into the copy above"],
               ["habit","Make it a habit shown in my day (keeps the streak)"],
+              ["cycle","Make it one task that comes back every 5 days"],
               ["convert","Make it one task with a due date"],["wait","Park it as Waiting — check back every 3 weeks"],
               ["stop","Stop repeating (keep the history)"],["wipe","Delete it and all its rows"]];
     function body(){
@@ -4798,6 +4858,17 @@ function GENA_MAIN() {
         S.tasks.push({id:uid(),title:tp.title,projectId:tp.projectId||null,status:"todo",day:null,
           block:tp.block||null,at:null,priority:true,rollover:0,due:dueVal[tp.id]||addDays(today(),7),
           subs:[],created:today()});
+        madeTasks++;
+        S.templates=S.templates.filter(function(x){return x.id!==tp.id;}); removedT++;
+      });
+      // 2c. a nag becomes one task that comes back
+      S.templates.slice().forEach(function(tp){
+        if(choice[tp.id]!=="cycle") return;
+        var before=S.tasks.length;
+        S.tasks=S.tasks.filter(function(k){ return !(k.tplId===tp.id && isOpen(k)); });
+        removedRows+=before-S.tasks.length;
+        S.tasks.push({id:uid(),title:tp.title,projectId:tp.projectId||null,status:"todo",day:today(),block:tp.block||null,at:null,
+          priority:!!tp.priority,rollover:0,subs:[],created:today(),cycle:{every:5,unit:"day",from:"done"}});
         madeTasks++;
         S.templates=S.templates.filter(function(x){return x.id!==tp.id;}); removedT++;
       });
@@ -6382,8 +6453,8 @@ function GENA_MAIN() {
       else if(m==="nextweek") rescheduleTask(k,nextDow(1));
       else if(m==="star"){ k.priority=!k.priority; }
       else if(m==="someday"){ k.day=null; k.end=null; k.block=null; k.rollover=0; delete k.carriedFrom; }
-      else if(m==="done"){ k.status="done"; k.completedOn=k.completedOn||k.day||t; }
-      else if(m==="skip"){ k.status="skipped"; k.skippedOn=k.day||t; }
+      else if(m==="done"){ if(isCycle(k)) cycleAdvance(k,true); else { k.status="done"; k.completedOn=k.completedOn||k.day||t; } }
+      else if(m==="skip"){ if(isCycle(k)) cycleAdvance(k,false); else { k.status="skipped"; k.skippedOn=k.day||t; } }
       else if(m==="wait"){ parkTask(k,{}); }
       else if(m==="drop"){
         var i=S.tasks.indexOf(k); if(i<0) return;
