@@ -202,6 +202,13 @@
   .task.skipped{ opacity:.62; }
   .task.skipped .task-title{ text-decoration:line-through; text-decoration-style:dotted; color:var(--ink-faint); }
   .pill.skip{ background:var(--line); color:var(--ink-faint); }
+  .wk-strip{ margin:0 0 12px; }
+  .wk-land{ display:flex; flex-direction:column; gap:4px; margin:2px 0 8px; padding:8px 10px; border-radius:10px; background:var(--sheet); border:1px dashed var(--line-soft); }
+  .land-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:13px; }
+  .land-ico{ width:18px; text-align:center; color:var(--ink-faint); flex:0 0 18px; }
+  .land-t{ font-weight:600; cursor:pointer; }
+  .land-acts{ display:flex; gap:4px; margin-left:auto; }
+  .land-acts .chip{ padding:2px 8px; font-size:11.5px; }
   .proj-card.dim{ opacity:.62; filter:saturate(.35); }
   .proj-card.dim[open]{ opacity:.8; }
   .state-pill{ display:inline-block; font-size:10.5px; font-weight:700; letter-spacing:.02em; padding:1px 7px; border-radius:999px; background:rgba(0,0,0,.18); vertical-align:middle; margin-left:6px; }
@@ -1239,7 +1246,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-11 16:46";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-11 16:52";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -2870,12 +2877,51 @@ function GENA_MAIN() {
      "Coming due" is the standing bridge: anything with a deadline inside the horizon that isn't
      already planned for today or earlier, with one tap to put it on a day. */
   var DUE_HORIZON=14;
+  // What is *landing* on a day that isn't already a planned row: deadlines with no day (or a day after
+  // the deadline), check-backs, follow-ups, phase edges. `agenda()` answers "what's on this day";
+  // this answers "what's arriving that you still have to place". Today's Coming due card is the
+  // 14-day slice filtered to deadlines; the week rail (43) is the 7-day slice, all kinds.
+  function landingOn(d){
+    var t=today(), ag=agenda(d);
+    var dueLoose=S.tasks.filter(function(k){ return isOpen(k) && k.due===d && inScope(k.projectId) && !(k.day && k.day<=k.due); });
+    return {day:d, due:dueLoose, checkbacks:ag.checkbacks, followups:ag.followups, phaseEnds:ag.phaseEnds, phaseStarts:ag.phaseStarts,
+            count:dueLoose.length+ag.checkbacks.length+ag.followups.length+ag.phaseEnds.length+ag.phaseStarts.length};
+  }
   function comingDueTasks(){
     var t=today();
     return S.tasks.filter(function(k){
       return isOpen(k) && k.due && inScope(k.projectId) &&
         diffDays(k.due,t)<=DUE_HORIZON && !(k.day && k.day<=t);
     }).sort(function(a,b){ return a.due.localeCompare(b.due) || (a.day||"9999").localeCompare(b.day||"9999"); });
+  }
+  // ---- 43: the week's landing rail ----
+  function landingRailHtml(d){
+    var L=landingOn(d), t=today(); if(!L.count) return "";
+    var rows=[];
+    L.due.forEach(function(k){ var p=k.projectId?proj(k.projectId):null, lead=addDays(d,-1);
+      rows.push('<div class="land-row" data-id="'+k.id+'"><span class="land-ico">⚑</span><span class="land-t" data-act="edit" title="Tap to edit">'+esc(k.title)+'</span>'+
+        (p?'<span class="pill proj" style="--pc:'+esc(p.color)+'"><i class="pdot"></i>'+esc(p.name)+'</span>':'')+
+        (k.day?'<span class="pill aged">planned '+esc(niceDate(k.day))+' — after the deadline</span>':'<span class="pill aged">no day yet</span>')+
+        '<span class="land-acts"><button class="chip" data-act="dueday" data-d="'+(lead>=t?lead:t)+'">→ '+(lead>=t?niceDate(lead):"today")+'</button>'+
+        '<button class="chip" data-act="dueday" data-d="'+(d>=t?d:t)+'">→ due day</button></span></div>'); });
+    L.checkbacks.forEach(function(k){ rows.push('<div class="land-row" data-id="'+k.id+'"><span class="land-ico">⏸</span><span class="land-t" data-act="edit">'+esc(k.title)+'</span><span class="pill block">check-back'+(waitLabel(k)?' · '+esc(waitLabel(k)):'')+'</span></div>'); });
+    L.followups.forEach(function(p){ rows.push('<div class="land-row" data-pid="'+p.id+'"><span class="land-ico">👤</span><span class="land-t" data-act="editperson" data-id="'+p.id+'">Follow up with '+esc(p.name)+'</span>'+(p.cadence?'<span class="pill rec">↻ every '+p.cadence+'d</span>':'')+'</div>'); });
+    L.phaseStarts.forEach(function(ph){ var pp=proj(ph.projectId); rows.push('<div class="land-row"><span class="land-ico">◧</span><span class="land-t">'+esc(ph.title)+' starts</span>'+(pp?'<span class="pill proj" style="--pc:'+esc(pp.color)+'"><i class="pdot"></i>'+esc(pp.name)+'</span>':'')+'</div>'); });
+    L.phaseEnds.forEach(function(ph){ var pp=proj(ph.projectId);
+      var left=S.tasks.filter(function(k){ return isOpen(k) && k.projectId===ph.projectId && ((k.due&&k.due<=ph.end)||(k.day&&k.day>=ph.start&&k.day<=ph.end)); }).length;
+      rows.push('<div class="land-row"><span class="land-ico">◧</span><span class="land-t">'+esc(ph.title)+' ends</span>'+(pp?'<span class="pill proj" style="--pc:'+esc(pp.color)+'"><i class="pdot"></i>'+esc(pp.name)+'</span>':'')+(left?'<span class="pill '+(left>3?"aged":"block")+'">'+left+' open in it</span>':'<span class="pill good">clear</span>')+'</div>'); });
+    return '<div class="wk-land">'+rows.join("")+'</div>';
+  }
+  function weekAheadStripHtml(){
+    var t=today(), n={due:0,cb:0,fu:0,ph:0,tasks:0,mins:0,noday:0}, days=[];
+    for(var i=0;i<7;i++){ var d=addDays(t,i), L=landingOn(d), ld=dayLoad(d);
+      n.due+=L.due.length; n.cb+=L.checkbacks.length; n.fu+=L.followups.length; n.ph+=L.phaseEnds.length+L.phaseStarts.length;
+      n.tasks+=ld.open; n.mins+=ld.planned; n.noday+=L.due.length; days.push({d:d,load:ld,land:L}); }
+    var tiles=[["📋 "+n.tasks,"planned across the week"],["⚑ "+n.due,"deadline"+(n.due===1?"":"s")+" still to place"],
+               ["⏸ "+n.cb,"check-back"+(n.cb===1?"":"s")],["👤 "+n.fu,"follow-up"+(n.fu===1?"":"s")],["◧ "+n.ph,"phase edge"+(n.ph===1?"":"s")]];
+    if(n.mins) tiles.push(["⏱ "+fmtMins(n.mins),"timed so far"]);
+    return '<div class="ins-tiles wk-strip">'+tiles.map(function(x){ return '<div class="ins-tile"><b>'+x[0]+'</b><span>'+x[1]+'</span></div>'; }).join("")+'</div>'+
+      (n.noday?'<p class="sub" style="margin:6px 0 10px">'+n.noday+' deadline'+(n.noday===1?" has":"s have")+' no day yet — each one below has a one-tap place.</p>':'');
   }
   function comingDueRow(k){
     var p=k.projectId?proj(k.projectId):null;
@@ -3127,14 +3173,18 @@ function GENA_MAIN() {
   function viewWeek(){
     var t=today();
     var html='<h2 class="view-h">This week</h2><p class="sub">The next seven days — drag tasks between days, or add straight into one.'+(scopeActive()?' <b>Filtered:</b> '+esc(scopeLabel())+' — <button class="chip" data-act="clearscope" style="padding:2px 9px">show all</button>':'')+'</p>';
+    html+=weekAheadStripHtml();
     html+='<div class="stack">';
     for(var i=0;i<7;i++){
       var d=addDays(t,i);
       var open=orderTasks(S.tasks.filter(function(k){return taskOnDay(k,d)&&isOpen(k)&&inScope(k.projectId);}),false);
+      var load=dayLoad(d);
       var done=S.tasks.filter(function(k){return k.status==="done"&&k.completedOn===d&&inScope(k.projectId);}).length;
       var evs=S.events.filter(function(e){return evOnDay(e,d)&&sourceEnabled(e)&&!(e.projectId&&!inScope(e.projectId));});
       html+='<div class="card"><div class="wk-day-head"><h3>'+(i===0?"Today":(i===1?"Tomorrow":WDFULL[dow(d)]))+'</h3><span class="sub">'+MONTHS[+d.slice(5,7)-1].slice(0,3)+' '+(+d.slice(8))+'</span>'+foldProg(done,open.length+done)+
+        (load.planned?'<span class="pill block" title="Timed work planned">⏱ '+fmtMins(load.planned)+'</span>':'')+
         '<button class="chip" style="margin-left:auto;padding:3px 9px" data-act="panel-goday" data-d="'+d+'">open day →</button></div>';
+      html+=landingRailHtml(d);
       if(evs.length) html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 2px">'+evs.map(function(e){var c=e.color||(e.projectId?projColor(e.projectId):null);return '<span class="cal-ev '+(c?"":"evt")+'" style="'+(c?"background:"+c:"")+'">'+esc(e.title)+'</span>';}).join("")+'</div>';
       html+='<ul class="tasks" data-list="day:'+d+'">'+open.map(taskLi).join("")+inlineAddRow("day:"+d,"Add to "+(i===0?"today":niceDate(d))+"…")+'</ul></div>';
     }
@@ -4134,7 +4184,7 @@ function GENA_MAIN() {
       if(act==="toggle"){ toggleTask(id||anyId); }
       else if(act==="edit"){ var tk=S.tasks.find(function(x){return x.id===(id||anyId);});
         if(!tk){}
-        else if(a.closest("#rightbar")||a.closest(".proj-card")||a.closest(".modal")) openTaskModal({edit:tk});
+        else if(a.closest("#rightbar")||a.closest(".proj-card")||a.closest(".modal")||a.closest(".wk-land")||a.closest(".card.brief")||a.closest('[data-fold="comingdue"]')) openTaskModal({edit:tk});
         else { ieList=ieListOf(a); editingTaskId=tk.id; render(); var ti=document.getElementById("ie-title"); if(ti){ ti.focus(); ti.setSelectionRange(ti.value.length,ti.value.length); } } }
       else if(act==="wiki"){ var wk=a.dataset.kind, wid=a.dataset.id;
         if(wk==="project"){ S.filterProjects=[wid]; view="projects"; save(); syncNav(); render(); }
@@ -6674,7 +6724,8 @@ function GENA_MAIN() {
             '<div class="panel-move">'+picks.filter(function(m){ return !!m[2]; }).map(function(m){
               return '<button data-rv="'+m[0]+'" data-id="'+k.id+'" title="Move to '+esc(niceDate(m[2]))+'">'+m[1]+'</button>'; }).join("")+'</div></div>';
         }).join(""):'<div class="empty">The shelf is clear</div>')+'</details>';
-      h+='<div class="modal-actions"><button class="btn primary" data-x>'+(isEve?"Close the day":(scope==="morning"?"Start the day":"Done — feels lighter"))+'</button></div>';
+      h+='<div class="modal-actions">'+(scope==="week"?'<button class="btn" data-goweek title="The next seven days with everything landing on each">📅 Plan the week ahead →</button>':'')+
+        '<button class="btn primary" data-x>'+(isEve?"Close the day":(scope==="morning"?"Start the day":"Done — feels lighter"))+'</button></div>';
       return h;
     }
     function apply(k,m){
@@ -6706,6 +6757,7 @@ function GENA_MAIN() {
       },true);
       root.onclick=function(e){
         if(e.target.closest("[data-x]")){ markReviewed(); close(); render(); return; }
+        if(e.target.closest("[data-goweek]")){ markReviewed(); close(); goView("week"); return; }
         var gm=e.target.closest("[data-rvgroup]");
         if(gm){ S.rvGroup=gm.dataset.rvgroup; save(); rebuild(); return; }
         if(e.target.closest("[data-rvfoldall]")){
