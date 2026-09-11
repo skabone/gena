@@ -202,6 +202,18 @@
   .task.skipped{ opacity:.62; }
   .task.skipped .task-title{ text-decoration:line-through; text-decoration-style:dotted; color:var(--ink-faint); }
   .pill.skip{ background:var(--line); color:var(--ink-faint); }
+  .grp-block{ margin-top:10px; }
+  .grp-chips{ gap:4px; margin-right:6px; }
+  .fu-row .chk{ border-radius:50%; }
+  @media (max-width:760px){
+    .wait-acts{ flex-basis:100%; justify-content:flex-end; }
+    .task.waiting .chip, .fu-row .chip{ font-size:11.5px; padding:4px 8px; }
+    .tidy-row{ flex-direction:column; }
+    .tidy-pick{ width:100%; flex-wrap:wrap; }
+    .tidy-pick select{ flex:1 1 auto; }
+    .grp-chips{ flex-basis:100%; order:5; margin:6px 0 0; }
+    .waitbox .cyc-row input{ flex:0 0 72px; }
+  }
   .habit-row .chk{ border-radius:50%; }
   .habit-row .chk.done{ background:var(--good); border-color:var(--good); }
   .check-row{ display:flex; gap:8px; align-items:flex-start; cursor:pointer; text-transform:none; letter-spacing:0; font-weight:600; }
@@ -1223,7 +1235,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-11 16:31";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-11 16:37";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1242,7 +1254,7 @@ function GENA_MAIN() {
   var IDMAPS=["notes","focus","habitLog","jlinks","learnRead"]; // keyed maps merged per key
   // Settings/scalars merged per-field by their own modified-time (_sm) instead of taken wholesale from
   // whichever file saved last — otherwise a stale cloud push silently resets your name / active profile.
-  var SCALARS=["name","activeProfile","filterProjects","sbOpen","panelOpen","skin","theme","calView","calAnchor","tlView","collapsed","remind","proxy","notesRTE","lastExport","carryRev38","tplSweepRev","impCopyIds","rvGroup","autoCarry","autoCarryRev","accent","density","font","subsHidden","expandOnAdd","eveningHour","reviewDone","nameNudgeGone","todayOrder"];
+  var SCALARS=["name","activeProfile","filterProjects","sbOpen","panelOpen","skin","theme","calView","calAnchor","tlView","collapsed","remind","proxy","notesRTE","lastExport","carryRev38","tplSweepRev","impCopyIds","rvGroup","layoutRev41","todayLayout","todayGroup","autoCarry","autoCarryRev","accent","density","font","subsHidden","expandOnAdd","eveningHour","reviewDone","nameNudgeGone","todayOrder"];
   function isBlankVal(v){ return v===undefined||v===null||v===""; }
   function clone(x){ return JSON.parse(JSON.stringify(x)); }
   function itemSig(x){ if(!x||typeof x!=="object") return JSON.stringify(x); var o={}; for(var k in x){ if(k!=="_m") o[k]=x[k]; } return JSON.stringify(o); }
@@ -1387,6 +1399,10 @@ function GENA_MAIN() {
     // immediately in the current day unless I have specifically marked it as Done, moved tomorrow,
     // skipped". Carry-over goes back on, once; the ⋯ toggle still wins afterwards.
     if(!d.carryRev38){ d.autoCarry=true; d.carryRev38=1; }
+    // 41: one Today card, grouped as you like. Existing stores go flat (the user doesn't plan by time of
+    // day); the three time-of-day cards stay available as a setting.
+    if(!d.layoutRev41){ d.todayLayout="one"; d.todayGroup="flat"; d.layoutRev41=1; }
+    if(!d.todayLayout) d.todayLayout="one"; if(!d.todayGroup) d.todayGroup="flat";
     // 38: one-time sweep of every past repeat instance that was left open. They were never decisions —
     // they were duplicates of a daily habit (26 × Prayer, 24 × Check Emails, 16 × MacBook service).
     if(!d.tplSweepRev){
@@ -1540,7 +1556,7 @@ function GENA_MAIN() {
       calSources:[], proxy:PROXY_DEFAULT,
       emails:[], jobs:[], improve:[],
       calView:"month", calAnchor:null, skin:"paper", lastExport:null, name:"",
-      people:[], collapsed:{}, tlView:"months", panelOpen:true, autoCarry:true, autoCarryRev:1, carryRev38:1, tplSweepRev:1, accent:null, density:"cozy", font:"rounded", sessions:[], subsHidden:{}, expandOnAdd:true, eveningHour:20, reviewDone:{}, _sm:{}
+      people:[], collapsed:{}, tlView:"months", panelOpen:true, autoCarry:true, autoCarryRev:1, carryRev38:1, tplSweepRev:1, layoutRev41:1, todayLayout:"one", todayGroup:"block", accent:null, density:"cozy", font:"rounded", sessions:[], subsHidden:{}, expandOnAdd:true, eveningHour:20, reviewDone:{}, _sm:{}
     });
   }
 
@@ -2606,15 +2622,44 @@ function GENA_MAIN() {
     var fOpen=focusItems.filter(function(f){ return !focusItemDone(f); }), fDone=focusItems.filter(focusItemDone);
     curList="focus"; var focusHtml=fOpen.map(focusRow).join(""); curList=null;
     curList="done:focus"; var focusDoneHtml=doneStrip("focus", fDone.map(focusRow).join(""), fDone.length); curList=null;
-    curList="master"; var masterHtml=habitsOpen.map(function(h){return habitRowHtml(h,vd);}).join("")+master.map(taskLi).join(""); curList=null;
+    var ag=agenda(vd);
+    var fuRows=ag.followups.map(function(p){return followupRowHtml(p,vd);}).join("");
+    var oneCard=(S.todayLayout!=="cards"), grp=S.todayGroup||"flat";
+    var headRows=habitsOpen.map(function(h){return habitRowHtml(h,vd);}).join("")+fuRows;
+    var masterHtml;
+    if(oneCard && grp==="block"){
+      // one card, four lists — each keeps its own data-list so a drop still sets the block
+      var loose=orderTasks(open.filter(function(k){return !k.block;}),true);
+      curList="loose";
+      masterHtml='<ul class="tasks" data-list="loose">'+headRows+loose.map(taskLi).join("")+inlineAddRow("loose","Add a task — try @project @morning, or “tomorrow”…")+'</ul>';
+      blocks.forEach(function(b){
+        var items=orderTasks(open.filter(function(k){return k.block===b;}),true);
+        curList=b;
+        masterHtml+='<div class="grp-head grp-block">'+BLOCK_ICONS[b]+' '+b.charAt(0).toUpperCase()+b.slice(1)+(b===nowBlock?' <span class="now-pill">now</span>':'')+'<span class="cnt">'+items.length+'</span></div>'+
+          '<ul class="tasks" data-list="'+b+'">'+items.map(taskLi).join("")+inlineAddRow(b,"Add to "+b+"…")+'</ul>';
+      });
+      curList=null;
+    } else if(oneCard && grp==="project"){
+      curList="master";
+      masterHtml='<ul class="tasks" data-list="master">'+headRows+inlineAddRow("master","Add a task — try @project @morning, or “tomorrow”…")+'</ul>';
+      groupByProject(master).forEach(function(g){
+        masterHtml+='<div class="grp-head"><span class="pdot" style="'+cbg(g.color)+'"></span>'+esc(g.name)+'<span class="cnt">'+g.items.length+'</span></div>'+
+          '<ul class="tasks" data-list="master">'+g.items.map(taskLi).join("")+'</ul>';
+      });
+      curList=null;
+    } else {
+      curList="master"; masterHtml='<ul class="tasks" data-list="master">'+(total?'':emptyLi(isToday?"A clear day. Add a task, or pull one in from the Backlog in the panel":"Nothing here yet"))+headRows+master.map(taskLi).join("")+inlineAddRow("master","Add a task — try @project @morning, or “tomorrow”…")+'</ul>'; curList=null;
+    }
+    var groupChips=oneCard?'<span class="chips grp-chips" data-act-group>'+[["flat","Flat"],["block","Time"],["project","Project"]].map(function(g){
+      return '<button class="chip" data-act="todaygroup" data-g="'+g[0]+'" aria-pressed="'+(grp===g[0])+'" style="padding:3px 9px">'+g[1]+'</button>'; }).join("")+'</span>':'';
     var skipA=skipV.filter(function(k){return !k.block;});
     curList="done:master"; var masterDoneHtml=doneStrip("master", habitsDone.map(function(h){return habitRowHtml(h,vd);}).join("")+doneV.map(taskLi).join("")+skipA.map(taskLi).join(""), doneV.length+habitsDone.length, skipA.length); curList=null;
     var units={
       focus: fold("focus",(isToday?"Today\'s focus":"Focus — "+niceDate(vd)),'<ul class="tasks" data-list="focus">'+(focusItems.length?'':emptyLi("Pick the one to three things that matter most — tap ◎ on any task, or type one below"))+focusHtml+inlineAddRowFocus("What matters most "+(isToday?"today":"that day")+"…")+'</ul>'+focusDoneHtml,foldProg(focusDone,focusItems.length)),
       // card label is "To-do" (the master list); the fold key stays "tasks" so saved collapse state and
       // S.todayOrder keep working. "task" remains the generic word for any item you enter.
-      tasks: fold("tasks","To-do",'<ul class="tasks" data-list="master">'+(total?'':emptyLi(isToday?"A clear day. Add a task, or pull one in from the Backlog in the panel":"Nothing here yet"))+masterHtml+inlineAddRow("master","Add a task — try @project @morning, or “tomorrow”…")+'</ul>'+masterDoneHtml,foldProg(doneCount,total)),
-      blocks: blocksHtml,
+      tasks: fold("tasks","To-do",masterHtml+masterDoneHtml,groupChips+foldProg(doneCount,total)),
+      blocks: oneCard?undefined:blocksHtml,
       habitsnotes: '<div class="grid2">'+fold("habits","Habits &amp; wellness",hb,foldProg(habitDone,habitTotal))+fold("notes","Notes",richTextHtml("daily",S.notes[vd]||"","Jot anything — ideas, blockers, wins… try [[a project name]]",110))+'</div>'+
         fold("sessions","Focus sessions"+(focusMinutes(vd)?" · "+focusMinutes(vd)+"m":""), focusLogHtml(vd))
     };
@@ -2626,7 +2671,7 @@ function GENA_MAIN() {
         '<ul class="tasks">'+cd.map(comingDueRow).join("")+'</ul>');
     }
     if(isToday){ var wc=waitingCardHtml(); if(wc) units.waiting=wc; }
-    var DEF_UNITS=["focus","comingdue","waiting","tasks","blocks","habitsnotes"];
+    var DEF_UNITS=oneCard?["focus","comingdue","waiting","tasks","habitsnotes"]:["focus","comingdue","waiting","tasks","blocks","habitsnotes"];
     var uorder=(S.todayOrder&&S.todayOrder.length)?S.todayOrder.slice():DEF_UNITS.slice();
     DEF_UNITS.forEach(function(k){ if(uorder.indexOf(k)<0) uorder.push(k); });
     uorder=uorder.filter(function(k){ return units[k]!==undefined; });
@@ -2775,6 +2820,37 @@ function GENA_MAIN() {
     if(next) return {ph:next,state:"next"};
     var last=ph[ph.length-1];
     return last?{ph:last,state:"past"}:null;
+  }
+  /* ---------- 41: agenda(day) ----------
+     The one membership predicate for "what wants attention on this day". Today reads it for one day,
+     the week for seven, the review for what slipped, a brief for a project's slice. Every kind of item
+     the 40-series added lands here, so no surface can show a thing another surface doesn't know about. */
+  function agenda(day){
+    var t=today(), isT=(day===t);
+    var tasks=S.tasks.filter(function(k){ return isOpen(k) && taskOnDay(k,day) && inScope(k.projectId); });
+    var habits=S.habits.filter(function(h){ return h.inDay; });
+    // a follow-up that is overdue keeps landing on today until it is logged or pushed
+    var followups=S.people.filter(function(p){ return p.next && (isT ? p.next<=day : p.next===day); });
+    var checkbacks=S.tasks.filter(function(k){ return isWaiting(k) && k.nextAt && (isT ? k.nextAt<=day : k.nextAt===day) && inScope(k.projectId); });
+    var due=S.tasks.filter(function(k){ return isOpen(k) && k.due===day && inScope(k.projectId); });
+    var phaseEnds=S.phases.filter(function(ph){ return ph.end===day && inScope(ph.projectId); });
+    var phaseStarts=S.phases.filter(function(ph){ return ph.start===day && inScope(ph.projectId); });
+    var events=S.events.filter(function(ev){ return evOnDay(ev,day) && inScope(ev.projectId); });
+    return {day:day, tasks:tasks, habits:habits, followups:followups, checkbacks:checkbacks, due:due,
+            phaseEnds:phaseEnds, phaseStarts:phaseStarts, events:events,
+            count: tasks.length+habits.length+followups.length+checkbacks.length};
+  }
+  // ---- people follow-ups as rows in the day ----
+  function followupRowHtml(p,day){
+    var t=today(), late=p.next&&p.next<t?diffDays(t,p.next):0;
+    return '<li class="task fu-row" data-pid="'+p.id+'">'+
+      '<button class="chk" data-act="fu-done" aria-label="Logged a touch with '+esc(p.name)+'" aria-pressed="false"></button>'+
+      '<div class="task-main" data-act="editperson" data-id="'+p.id+'" title="Open '+esc(p.name)+'"><div class="task-title">Follow up with '+esc(p.name)+'</div>'+
+      '<div class="task-meta"><span class="pill imp">👤 '+esc(p.relationship||"person")+'</span>'+
+        (late?'<span class="pill aged'+(late>=7?" hot":"")+'">'+late+'d overdue</span>':'')+
+        (p.cadence?'<span class="pill rec">↻ every '+p.cadence+'d</span>':'')+
+        (p.last?'<span class="pill block">last '+esc(niceDate(p.last))+'</span>':'')+'</div></div>'+
+      '<button class="chip" data-act="fu-snooze" title="Push it a week">+7d</button></li>';
   }
   /* ---------- 40b: habits in the day ----------
      A habit with `inDay` renders as a row in the day list. It is a VIRTUAL row — never a stored task —
@@ -3840,7 +3916,7 @@ function GENA_MAIN() {
         return; }
       if(dragUnitKey){ var u=e.target.closest(".today-unit[data-unit]");
         if(u && u.dataset.unit!==dragUnitKey){ e.preventDefault();
-          var DEF=["focus","tasks","blocks","habitsnotes"];
+          var DEF=["focus","comingdue","waiting","tasks","blocks","habitsnotes"];
           var ord=(S.todayOrder&&S.todayOrder.length)?S.todayOrder.slice():DEF.slice();
           DEF.forEach(function(k){ if(ord.indexOf(k)<0) ord.push(k); });
           ord=ord.filter(function(k){ return DEF.indexOf(k)>=0; });
@@ -4007,6 +4083,12 @@ function GENA_MAIN() {
           if(fk){ ieList="focus"; editingTaskId=fk.id; save(); render();
             var fti=document.getElementById("ie-title"); if(fti){ fti.focus(); fti.setSelectionRange(fti.value.length,fti.value.length); } } } }
       else if(act==="focus-tasktoggle"){ toggleTask(a.dataset.tid); }
+      else if(act==="todaygroup"){ S.todayGroup=a.dataset.g; save(); render(); }
+      else if(act==="fu-done"){ var fp=S.people.find(function(x){return x.id===(a.closest("[data-pid]")||{}).dataset.pid;});
+        if(fp){ var fb={last:fp.last,next:fp.next}; fp.last=today(); fp.next=fp.cadence?addDays(today(),fp.cadence):null; save(); render();
+          toastUndo("Logged a touch with "+fp.name+(fp.next?" — next "+niceDate(fp.next):""),function(){ fp.last=fb.last; fp.next=fb.next; save(); render(); }); } }
+      else if(act==="fu-snooze"){ var sp=S.people.find(function(x){return x.id===(a.closest("[data-pid]")||{}).dataset.pid;});
+        if(sp){ sp.next=addDays(today(),7); save(); render(); toast("Follow-up moved to "+niceDate(sp.next)); } }
       else if(act==="habit-tick"){ var hrow=a.closest("[data-hid]"); if(hrow) habitTick(hrow.dataset.hid, viewDay); }
       else if(act==="habit-focus"){ var hf=a.closest("[data-hid]"); if(hf){
           S.focus[viewDay]=S.focus[viewDay]||[];
@@ -5467,6 +5549,7 @@ function GENA_MAIN() {
       '<p class="label" style="margin:10px 0 0">Behaviour</p>'+
       '<button class="btn" id="x-autocarry" title="On: unfinished tasks move onto today by themselves. Off: they stay on their original day and wait in the Carried-over card until you place them.">⏳ Carry unfinished onto today: '+(S.autoCarry===false?"off":"on")+'</button>'+
       '<button class="btn" id="x-evening" title="A nudge in the evening to close the day out — tick off what you did and decide where the rest goes.">🌙 Evening review nudge: '+(S.eveningHour===false?"off":(((S.eveningHour+11)%12+1)+(S.eveningHour<12?"am":"pm")))+'</button>'+
+      '<button class="btn" id="x-layout" title="On: Morning / Afternoon / Evening are their own cards on Today. Off: one To-do card, grouped flat, by time of day, or by project — your pick on the card.">🗂 Time-of-day cards: '+(S.todayLayout==="cards"?"on":"off")+'</button>'+
       '<button class="btn" id="x-expandadd" title="On: adding a task opens its editor so you can fill in details straight away. Off: it just adds the line and keeps the cursor ready for the next one.">📝 Open the editor when I add a task: '+(S.expandOnAdd===false?"off":"on")+'</button>'+
       '<p class="label" style="margin:10px 0 0">Share &amp; capture</p>'+
       '<button class="btn" id="x-feed">📡 Reminder calendar feed (subscribe)</button>'+
@@ -5509,6 +5592,10 @@ function GENA_MAIN() {
                     : OPTS[i+1];
       save();
       this.textContent="🌙 Evening review nudge: "+(S.eveningHour===false?"off":(((S.eveningHour+11)%12+1)+(S.eveningHour<12?"am":"pm")));
+    };
+    document.getElementById("x-layout").onclick=function(){
+      S.todayLayout=(S.todayLayout==="cards")?"one":"cards"; save(); render();
+      this.textContent="🗂 Time-of-day cards: "+(S.todayLayout==="cards"?"on":"off");
     };
     document.getElementById("x-expandadd").onclick=function(){
       S.expandOnAdd=(S.expandOnAdd===false); save();
@@ -6413,6 +6500,11 @@ function GENA_MAIN() {
               '<span class="wait-acts"><button class="chip" data-rvh="did" data-hid="'+hb.id+'">✓ Did it</button><button class="chip" data-rvh="skip" data-hid="'+hb.id+'">⤬ Skipped</button></span></li>'; }).join("")+'</ul></div>';
         }
       }
+      // 41: follow-ups that landed — log the touch, or push a week
+      var fuDue=isDay?agenda(t).followups:[];
+      if(fuDue.length){
+        h+='<div class="fld"><label>👤 People to follow up</label><ul class="tasks">'+fuDue.map(function(p){ return followupRowHtml(p,t); }).join("")+'</ul></div>';
+      }
       // 40a: check-backs that have landed are decisions too — the same three answers as the card
       var landedW=S.tasks.filter(function(k){ return isWaiting(k) && k.nextAt && k.nextAt<=t && inScope(k.projectId); });
       if(landedW.length){
@@ -6520,6 +6612,10 @@ function GENA_MAIN() {
         if(tf){ var tmd=addDays(t,1), fa=S.focus[tmd]=S.focus[tmd]||[];
           var fi=fa.findIndex(function(f){return f.taskId===tf.dataset.tmfocus;});
           if(fi>=0) fa.splice(fi,1); else fa.push({id:uid(),taskId:tf.dataset.tmfocus});
+          save(); rebuild(); return; }
+        var fua=e.target.closest('[data-act="fu-done"],[data-act="fu-snooze"]');
+        if(fua){ var fpp=S.people.find(function(x){return x.id===(fua.closest("[data-pid]")||{}).dataset.pid;}); if(!fpp) return;
+          if(fua.dataset.act==="fu-done"){ fpp.last=t; fpp.next=fpp.cadence?addDays(t,fpp.cadence):null; } else fpp.next=addDays(t,7);
           save(); rebuild(); return; }
         var rh=e.target.closest("[data-rvh]");
         if(rh){ var yH2=isEve?t:(fromDay||addDays(t,-1));
