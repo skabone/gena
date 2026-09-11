@@ -1246,7 +1246,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-11 16:52";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-11 16:58";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1747,7 +1747,28 @@ function GENA_MAIN() {
       S.lastOpen=t; save();
     } else { sweepRepeats(t); generateRecurring(t); }
   }
+  /* ---------- 44: people rhythms ----------
+     A person already owns a rhythm — `cadence` days and `next`. What was missing: the meeting should
+     produce work on its own. `prepDays` makes a prep task appear N days before `next` (once per date,
+     `prepFor` remembers which), linked to the person, due on the meeting; logging the touch offers a
+     capture box so what came out of the conversation becomes tasks linked to them. */
+  function retirePrep(p){   // the meeting happened — its prep task is done by definition
+    S.tasks.forEach(function(k){ if(k.prepPerson===p.id && k.prepFor===p.next && isOpen(k)){ k.status="done"; k.completedOn=today(); } });
+  }
+  function ensurePrepTasks(day){
+    S.people.forEach(function(p){
+      if(!p.next || !(p.prepDays>0)) return;
+      if(p.prepFor===p.next) return;
+      var start=addDays(p.next,-p.prepDays);
+      if(start>day) return;
+      if(S.tasks.some(function(k){ return k.prepPerson===p.id && k.prepFor===p.next; })) { p.prepFor=p.next; return; }
+      S.tasks.push({id:uid(),title:"Prep for "+p.name,projectId:null,personIds:[p.id],status:"todo",day:(start<day?day:start),due:p.next,
+        block:null,priority:true,rollover:0,subs:[],created:day,prepPerson:p.id,prepFor:p.next});
+      p.prepFor=p.next;
+    });
+  }
   function generateRecurring(day){
+    ensurePrepTasks(day);
     S.templates.forEach(function(tp){
       if(tp.paused) return;
       if((tp.skip||[]).indexOf(day)>=0) return;
@@ -2023,7 +2044,7 @@ function GENA_MAIN() {
   function segHtml(){
     var g=groupOf(view); if(!g) return "";
     var items = g==="plan"
-      ? [["day","Day",view==="day"],["wk","Week",planSeg()==="wk"],["month","Month",planSeg()==="month"],["agenda","Agenda",view==="week"]]
+      ? [["day","Day",view==="day"],["wk","Week",planSeg()==="wk"],["month","Month",planSeg()==="month"],["agenda","Week ahead",view==="week"]]
       : g==="journal" ? [["journal","Journal",view==="journal"],["learn","Learn",view==="learn"]]
       : [["backlog","Backlog",view==="backlog"],["projects","Projects",view==="projects"],["people","People",view==="people"],["timeline","Timeline",view==="timeline"]];
     return '<div class="seg" role="tablist" aria-label="'+(g==="plan"?"Plan":(g==="journal"?"Journal":"Lists"))+'">'+items.map(function(it){
@@ -2970,6 +2991,24 @@ function GENA_MAIN() {
             count: tasks.length+habits.length+followups.length+checkbacks.length};
   }
   // ---- people follow-ups as rows in the day ----
+  function openTouchCaptureModal(p){
+    modal('<h3>👤 '+esc(p.name)+' — what came out of it?</h3>'+
+      '<p class="sub">One task per line. @project, @tomorrow, a time — the usual shorthand works. Each one is linked to '+esc(p.name)+'.</p>'+
+      '<div class="fld"><textarea id="tc-in" rows="5" placeholder="e.g. Send Chris the IRT write-up @Growth\nBook the next session @tomorrow"></textarea></div>'+
+      '<div class="modal-actions"><button class="btn ghost" data-x>Nothing to add</button><button class="btn primary" id="tc-go">Add tasks</button></div>');
+    document.querySelector("[data-x]").onclick=close;
+    var ta=document.getElementById("tc-in"); if(ta) ta.focus();
+    document.getElementById("tc-go").onclick=function(){
+      var lines=(ta.value||"").split(/\n/).map(function(l){return l.trim();}).filter(Boolean), n=0;
+      lines.forEach(function(line){
+        var pt=nlParse(line); var title=(pt.title||line).trim(); if(!title) return;
+        S.tasks.push({id:uid(),title:title,projectId:pt.projectId||null,personIds:[p.id].concat((pt.personIds||[]).filter(function(x){return x!==p.id;})),
+          status:"todo",day:pt.day==="someday"?null:(pt.day||today()),block:pt.block||null,at:pt.at||null,priority:false,rollover:0,subs:[],created:today(),fromTouch:p.id});
+        n++;
+      });
+      save(); close(); render(); toast(n?n+" task"+(n===1?"":"s")+" added, linked to "+p.name:"Nothing added");
+    };
+  }
   function followupRowHtml(p,day){
     var t=today(), late=p.next&&p.next<t?diffDays(t,p.next):0;
     return '<li class="task fu-row" data-pid="'+p.id+'">'+
@@ -4234,8 +4273,9 @@ function GENA_MAIN() {
       else if(act==="focus-tasktoggle"){ toggleTask(a.dataset.tid); }
       else if(act==="todaygroup"){ S.todayGroup=a.dataset.g; save(); render(); }
       else if(act==="fu-done"){ var fp=S.people.find(function(x){return x.id===(a.closest("[data-pid]")||{}).dataset.pid;});
-        if(fp){ var fb={last:fp.last,next:fp.next}; fp.last=today(); fp.next=fp.cadence?addDays(today(),fp.cadence):null; save(); render();
-          toastUndo("Logged a touch with "+fp.name+(fp.next?" — next "+niceDate(fp.next):""),function(){ fp.last=fb.last; fp.next=fb.next; save(); render(); }); } }
+        if(fp){ var fb={last:fp.last,next:fp.next}; retirePrep(fp); fp.last=today(); fp.next=fp.cadence?addDays(today(),fp.cadence):null; save(); render();
+          toastUndo("Logged a touch with "+fp.name+(fp.next?" — next "+niceDate(fp.next):""),function(){ fp.last=fb.last; fp.next=fb.next; save(); render(); });
+          openTouchCaptureModal(fp); } }
       else if(act==="fu-snooze"){ var sp=S.people.find(function(x){return x.id===(a.closest("[data-pid]")||{}).dataset.pid;});
         if(sp){ sp.next=addDays(today(),7); save(); render(); toast("Follow-up moved to "+niceDate(sp.next)); } }
       else if(act==="habit-tick"){ var hrow=a.closest("[data-hid]"); if(hrow) habitTick(hrow.dataset.hid, viewDay); }
@@ -4302,7 +4342,7 @@ function GENA_MAIN() {
           toastUndo(removed.length+" deleted",function(){ S.tasks=S.tasks.concat(removed); save(); render(); }); }); }
       else if(act==="newperson"){ openPersonModal(); }
       else if(act==="editperson"){ openPersonModal(S.people.find(function(x){return x.id===anyId;})); }
-      else if(act==="logtouch"){ var pp=S.people.find(function(x){return x.id===anyId;}); if(pp){ pp.last=today(); if(pp.cadence) pp.next=addDays(today(),pp.cadence); save(); render(); toast("Logged a touch"); } }
+      else if(act==="logtouch"){ var pp=S.people.find(function(x){return x.id===anyId;}); if(pp){ retirePrep(pp); pp.last=today(); if(pp.cadence) pp.next=addDays(today(),pp.cadence); save(); render(); toast("Logged a touch"); openTouchCaptureModal(pp); } }
       else if(act==="person-task"){ var ptp=S.people.find(function(x){return x.id===anyId;}); if(ptp) openTaskModal({personIds:[ptp.id],day:today()}); }
       else if(act==="goMonth"){ S.calAnchor=a.dataset.m+"-01"; S.calView="month"; save(); render(); }
       else if(act==="del"){ var delId=id||anyId; var di=S.tasks.findIndex(function(x){return x.id===delId;}); if(di>=0){ var dt=S.tasks[di];
@@ -4380,7 +4420,9 @@ function GENA_MAIN() {
       return;
     }
     var toDone=k.status!=="done";   // skipped ticks straight to done — the check always means "I did it"
-    function commit(){ k.status=toDone?"done":"todo"; k.completedOn=toDone?(view==="today"?viewDay:today()):null; save(); render(); }
+    function commit(){ k.status=toDone?"done":"todo"; k.completedOn=toDone?(view==="today"?viewDay:today()):null;
+      if(toDone) (k.personIds||[]).forEach(function(pid){ var pp=S.people.find(function(x){return x.id===pid;}); if(pp && (!pp.last || pp.last<today())) pp.last=today(); });
+      save(); render(); }
     if(!toDone || matchMedia("(prefers-reduced-motion: reduce)").matches){ commit(); return; }
     // Let the row finish its tick — check fills, title strikes, row settles — before it moves to Done.
     var rows=[].slice.call(document.querySelectorAll('.task[data-id="'+id+'"]'));
@@ -5891,7 +5933,18 @@ function GENA_MAIN() {
         '<span class="ptop-main"><h3>'+(p.emoji?'<span class="person-emoji">'+esc(p.emoji)+'</span>':'<span class="person-emoji pdot-big"></span>')+esc(p.name)+'</h3><div class="pmeta">'+esc(p.relationship||"—")+(p.company?" · "+esc(p.company):"")+'</div></span><span class="fold-chev">▸</span></summary>'+
         '<div class="proj-body">';
       if(p.next) html+='<div style="margin-bottom:8px"><span class="pill '+(isDue?"aged":"block")+'">'+(isDue?"⏰ Follow up due":"Next: "+niceDate(p.next))+'</span></div>';
-      if(p.last) html+='<div class="sub" style="font-size:12px">Last touch: '+niceDate(p.last)+(p.cadence?" · every "+p.cadence+"d":"")+'</div>';
+      if(p.last||p.cadence||p.prepDays) html+='<div class="sub" style="font-size:12px">'+(p.last?'Last touch: '+niceDate(p.last):'No touch logged yet')+(p.cadence?" · every "+p.cadence+"d":"")+(p.prepDays?" · prep "+p.prepDays+"d before":"")+'</div>';
+      (function(){
+        var prep=S.tasks.find(function(k){ return k.prepPerson===p.id && k.prepFor===p.next && isOpen(k); });
+        var wCount=S.tasks.filter(function(k){ return isWaiting(k) && k.waitPersonId===p.id; });
+        var rounds=wCount.reduce(function(a,k){ return a+(k.rounds||0); },0);
+        var bits=[];
+        if(prep) bits.push('<span class="pill imp">📝 prep on '+esc(niceDate(prep.day))+'</span>');
+        if(wCount.length) bits.push('<span class="pill block">⏸ '+wCount.length+' waiting · '+rounds+' check-in'+(rounds===1?'':'s')+'</span>');
+        var linkedDone=S.tasks.filter(function(k){ return k.status==="done" && (k.personIds||[]).indexOf(p.id)>=0; }).length;
+        if(linkedDone) bits.push('<span class="pill good">✓ '+linkedDone+' done together</span>');
+        if(bits.length) html+='<div class="task-meta" style="margin:6px 0 2px">'+bits.join("")+'</div>';
+      })();
       if(p.notes) html+='<div style="font-size:13px;margin-top:8px;white-space:pre-wrap">'+esc(p.notes)+'</div>';
       var wOn=S.tasks.filter(function(k){ return isWaiting(k) && k.waitPersonId===p.id; });
       if(wOn.length) html+='<div class="label" style="margin:12px 0 4px">⏸ Waiting on them</div><ul class="tasks">'+wOn.map(function(k){return waitingRow(k, !!(k.nextAt&&k.nextAt<=today()));}).join("")+'</ul>';
@@ -5917,7 +5970,9 @@ function GENA_MAIN() {
       '<div class="row">'+
       '<div class="fld"><label>Relationship</label><input id="pe-rel" value="'+esc(p.relationship)+'" placeholder="Recruiter, mentor, friend…"/></div></div>'+
       '<div class="row"><div class="fld"><label>Company / context</label><input id="pe-co" value="'+esc(p.company)+'"/></div>'+
-      '<div class="fld"><label>Follow up every N days</label><input id="pe-cad" type="number" min="0" value="'+(p.cadence||"")+'" placeholder="e.g. 14"/></div></div>'+
+      '<div class="fld"><label>Follow up every N days</label><div class="cyc-row"><input id="pe-cad" type="number" min="0" value="'+(p.cadence||"")+'" placeholder="e.g. 14"/>'+
+        '<select id="pe-cad-preset" aria-label="Rhythm preset"><option value="">rhythm…</option><option value="7">weekly</option><option value="14">every 2 weeks</option><option value="21">every 3 weeks</option><option value="30">monthly</option><option value="90">quarterly</option></select></div></div></div>'+
+      '<div class="row"><div class="fld"><label>Prep task <span style="text-transform:none;letter-spacing:0;font-weight:600">(days before the next follow-up — 0 = none)</span></label><input id="pe-prep" type="number" min="0" max="30" value="'+(p.prepDays||"")+'" placeholder="e.g. 3"/></div></div>'+
       '<div class="row"><div class="fld"><label>Last contact</label><input id="pe-last" type="date" value="'+(p.last||"")+'"/></div>'+
       '<div class="fld"><label>Next follow-up</label><input id="pe-next" type="date" value="'+(p.next||"")+'"/></div></div>'+
       '<div class="fld"><label>Notes</label>'+richTextHtml(null,p.notes||"","How you know them, what to remember, what to ask next…",64,"pe-notes","rte-compact")+'</div>'+
@@ -5925,11 +5980,14 @@ function GENA_MAIN() {
       '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="pe-del" style="margin-right:auto">Delete</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>');
     var color=p.color; var sw=document.getElementById("pe-sw");
     var hexIn=document.getElementById("pe-sw-hex");
+    var cadPre=document.getElementById("pe-cad-preset"); if(cadPre) cadPre.onchange=function(){ if(cadPre.value) document.getElementById("pe-cad").value=cadPre.value; };
     sw.onclick=function(e){ var b=e.target.closest(".sw"); if(!b)return; color=b.dataset.c; [].forEach.call(sw.querySelectorAll(".sw"),function(c){c.setAttribute("aria-pressed",c===b);}); };
     if(hexIn) hexIn.oninput=function(){ color=hexIn.value; [].forEach.call(sw.querySelectorAll(".sw"),function(c){c.setAttribute("aria-pressed",false);}); };
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("m-save").onclick=function(){ var name=document.getElementById("pe-name").value.trim(); if(!name){toast("Name?");return;}
-      var data={name:name,emoji:(document.getElementById("pe-emoji")||{value:""}).value.trim(),relationship:document.getElementById("pe-rel").value.trim(),company:document.getElementById("pe-co").value.trim(),cadence:+document.getElementById("pe-cad").value||0,last:document.getElementById("pe-last").value,next:document.getElementById("pe-next").value,notes:rteValue("pe-notes"),color:color};
+      var data={name:name,emoji:(document.getElementById("pe-emoji")||{value:""}).value.trim(),relationship:document.getElementById("pe-rel").value.trim(),company:document.getElementById("pe-co").value.trim(),cadence:+document.getElementById("pe-cad").value||0,last:document.getElementById("pe-last").value,next:document.getElementById("pe-next").value,notes:rteValue("pe-notes"),color:color,
+        prepDays:+((document.getElementById("pe-prep")||{}).value)||0};
+      if(editing && data.next!==p.next) data.prepFor=null;   // a new date gets a new prep task
       if(editing){ for(var k in data) p[k]=data[k]; } else { data.id=uid(); S.people.push(data); }
       save(); close(); render(); };
     if(editing) document.getElementById("pe-del").onclick=function(){ confirmModal("Delete this person?","Their card and notes are removed.","Delete",function(){ S.people=S.people.filter(function(x){return x.id!==p.id;}); save(); render(); }); };
