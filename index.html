@@ -202,6 +202,10 @@
   .task.skipped{ opacity:.62; }
   .task.skipped .task-title{ text-decoration:line-through; text-decoration-style:dotted; color:var(--ink-faint); }
   .pill.skip{ background:var(--line); color:var(--ink-faint); }
+  .habit-row .chk{ border-radius:50%; }
+  .habit-row .chk.done{ background:var(--good); border-color:var(--good); }
+  .check-row{ display:flex; gap:8px; align-items:flex-start; cursor:pointer; text-transform:none; letter-spacing:0; font-weight:600; }
+  .check-row input{ margin-top:3px; }
   .task.waiting{ opacity:.9; }
   .task.waiting .wait-ico{ width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center; color:var(--ink-faint); flex:0 0 22px; font-size:13px; }
   .task.waiting.landed{ background:var(--warn-bg); border-radius:10px; }
@@ -1219,7 +1223,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-11 16:18";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-11 16:24";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -2283,6 +2287,14 @@ function GENA_MAIN() {
     return '<li class="task inline-row"><span class="inline-plus">+</span><input class="inline-add" data-focus="1" placeholder="'+label+'" aria-label="'+label+'"/>'+AT_BTN+'</li>';
   }
   function focusRow(f){
+    if(f.habitId){
+      var fh=S.habits.find(function(x){return x.id===f.habitId;}); if(!fh) return "";
+      var hlog=habitLog(viewDay,fh.id), hgoal=fh.goal||1, hdone=hlog>=hgoal;
+      return '<li class="task habit-row'+(hdone?" done":"")+'" data-id="'+f.id+'" data-hid="'+fh.id+'" data-focus="1">'+
+        '<button class="chk '+(hdone?"done":"")+'" data-act="habit-tick" aria-label="'+esc(fh.name)+'" aria-pressed="'+hdone+'"></button>'+
+        '<div class="task-main" data-act="edithabit" data-hid="'+fh.id+'"><div class="task-title">'+esc(fh.name)+'</div><div class="task-meta"><span class="pill rec">🌱 habit</span>'+(hgoal>1?'<span class="pill block">'+Math.min(hlog,hgoal)+' / '+hgoal+'</span>':'')+'</div></div>'+
+        '<button class="task-x" data-act="focus-del" aria-label="Remove from focus" title="Remove from focus (keeps the habit)">✕</button></li>';
+    }
     if(f.taskId){
       var k=S.tasks.find(function(x){return x.id===f.taskId;});
       if(!k) return "";
@@ -2469,7 +2481,9 @@ function GENA_MAIN() {
     var skipV=S.tasks.filter(function(k){return isSkipped(k) && taskOnDay(k,vd) && inScope(k.projectId);});
     var blocks=["morning","afternoon","evening"];
     var sugg=isToday?computeSuggestions():[];
-    var doneCount=doneV.length, total=open.length+doneCount;
+    var dayHabits=S.habits.filter(function(h){return h.inDay;});
+    var habitsOpen=dayHabits.filter(function(h){return !habitDoneOn(h,vd);}), habitsDone=dayHabits.filter(function(h){return habitDoneOn(h,vd);});
+    var doneCount=doneV.length+habitsDone.length, total=open.length+doneV.length+dayHabits.length;
 
     var hr=new Date().getHours();
     var greet=(hr<12?"Good morning":(hr<17?"Good afternoon":"Good evening"))+(S.name?", "+esc(S.name):"");
@@ -2512,7 +2526,7 @@ function GENA_MAIN() {
     }
     if(isToday) extras+=captureCardHtml(true);
     // a focus item is done when its task is (task-backed) or when it is ticked itself (legacy free-text)
-    function focusItemDone(f){ if(!f.taskId) return !!f.done; var lk=S.tasks.find(function(x){return x.id===f.taskId;}); return !!(lk&&lk.status==="done"); }
+    function focusItemDone(f){ if(f.habitId){ var fh=S.habits.find(function(x){return x.id===f.habitId;}); return !!(fh&&habitDoneOn(fh,vd)); } if(!f.taskId) return !!f.done; var lk=S.tasks.find(function(x){return x.id===f.taskId;}); return !!(lk&&lk.status==="done"); }
     var focusDone=focusItems.filter(focusItemDone).length;
     var master=orderTasks(open,false);
     var BLOCK_ICONS={morning:"☀️",afternoon:"🌤",evening:"🌙"};
@@ -2547,9 +2561,9 @@ function GENA_MAIN() {
     var fOpen=focusItems.filter(function(f){ return !focusItemDone(f); }), fDone=focusItems.filter(focusItemDone);
     curList="focus"; var focusHtml=fOpen.map(focusRow).join(""); curList=null;
     curList="done:focus"; var focusDoneHtml=doneStrip("focus", fDone.map(focusRow).join(""), fDone.length); curList=null;
-    curList="master"; var masterHtml=master.map(taskLi).join(""); curList=null;
+    curList="master"; var masterHtml=habitsOpen.map(function(h){return habitRowHtml(h,vd);}).join("")+master.map(taskLi).join(""); curList=null;
     var skipA=skipV.filter(function(k){return !k.block;});
-    curList="done:master"; var masterDoneHtml=doneStrip("master", doneV.map(taskLi).join("")+skipA.map(taskLi).join(""), doneCount, skipA.length); curList=null;
+    curList="done:master"; var masterDoneHtml=doneStrip("master", habitsDone.map(function(h){return habitRowHtml(h,vd);}).join("")+doneV.map(taskLi).join("")+skipA.map(taskLi).join(""), doneV.length+habitsDone.length, skipA.length); curList=null;
     var units={
       focus: fold("focus",(isToday?"Today\'s focus":"Focus — "+niceDate(vd)),'<ul class="tasks" data-list="focus">'+(focusItems.length?'':emptyLi("Pick the one to three things that matter most — tap ◎ on any task, or type one below"))+focusHtml+inlineAddRowFocus("What matters most "+(isToday?"today":"that day")+"…")+'</ul>'+focusDoneHtml,foldProg(focusDone,focusItems.length)),
       // card label is "To-do" (the master list); the fold key stays "tasks" so saved collapse state and
@@ -2716,6 +2730,33 @@ function GENA_MAIN() {
     if(next) return {ph:next,state:"next"};
     var last=ph[ph.length-1];
     return last?{ph:last,state:"past"}:null;
+  }
+  /* ---------- 40b: habits in the day ----------
+     A habit with `inDay` renders as a row in the day list. It is a VIRTUAL row — never a stored task —
+     so it cannot pile up, carry, or duplicate; the tick writes `habitLog[day][id]` and the streak is the
+     record. Prayer and Check Emails were daily repeats because habits didn't appear where the user
+     lives; this makes that unnecessary. */
+  function habitLog(day,hid){ return ((S.habitLog[day]||{})[hid])||0; }
+  function habitDoneOn(h,day){ return habitLog(day,h.id)>=(h.goal||1); }
+  function setHabitLog(day,hid,val){ S.habitLog[day]=S.habitLog[day]||{}; S.habitLog[day][hid]=Math.max(0,val); }
+  function habitTick(hid,day){
+    var h=S.habits.find(function(x){return x.id===hid;}); if(!h) return;
+    var cur=habitLog(day,hid), goal=h.goal||1;
+    setHabitLog(day,hid, cur>=goal?0:cur+1);     // at goal, a tap un-ticks; below it, one more
+    save(); render();
+  }
+  function inFocusHabit(hid){ return (S.focus[viewDay]||[]).some(function(f){return f.habitId===hid;}); }
+  function habitRowHtml(h,day){
+    var log=habitLog(day,h.id), goal=h.goal||1, done=log>=goal, st=habitStreak(h.id);
+    return '<li class="task habit-row'+(done?" done":"")+'" data-hid="'+h.id+'">'+
+      '<button class="chk '+(done?"done":"")+'" data-act="habit-tick" aria-label="'+esc(h.name)+'" aria-pressed="'+done+'"></button>'+
+      '<div class="task-main" data-act="edithabit" data-hid="'+h.id+'" title="Tap to edit the habit"><div class="task-title">'+esc(h.name)+'</div>'+
+      '<div class="task-meta"><span class="pill rec">🌱 habit</span>'+
+        (goal>1?'<span class="pill block">'+Math.min(log,goal)+' / '+goal+'</span>':'')+
+        (st>1?'<span class="pill imp">🔥 '+st+'</span>':'')+'</div></div>'+
+      '<span class="row-br"></span>'+
+      '<button class="task-focus'+(inFocusHabit(h.id)?" on":"")+'" data-act="habit-focus" aria-label="Add to Today’s Focus" title="Add to Today’s Focus">◎</button>'+
+      '</li>';
   }
   // ---- 40a: the Waiting card ----
   // Landed check-backs open on top with their three answers; the rest sit folded with a count.
@@ -3917,6 +3958,12 @@ function GENA_MAIN() {
           if(fk){ ieList="focus"; editingTaskId=fk.id; save(); render();
             var fti=document.getElementById("ie-title"); if(fti){ fti.focus(); fti.setSelectionRange(fti.value.length,fti.value.length); } } } }
       else if(act==="focus-tasktoggle"){ toggleTask(a.dataset.tid); }
+      else if(act==="habit-tick"){ var hrow=a.closest("[data-hid]"); if(hrow) habitTick(hrow.dataset.hid, viewDay); }
+      else if(act==="habit-focus"){ var hf=a.closest("[data-hid]"); if(hf){
+          S.focus[viewDay]=S.focus[viewDay]||[];
+          var hfi=S.focus[viewDay].findIndex(function(f){return f.habitId===hf.dataset.hid;});
+          if(hfi>=0){ S.focus[viewDay].splice(hfi,1); toast("Removed from Focus"); } else { S.focus[viewDay].unshift({id:uid(),habitId:hf.dataset.hid}); toast("Promoted to Today’s Focus"); }
+          save(); render(); } }
       else if(act==="focus-editlinked"){ var lt=S.tasks.find(function(x){return x.id===a.dataset.tid;});
         if(!lt){}
         else if(a.closest("#rightbar")||a.closest(".proj-card")||a.closest(".modal")) openTaskModal({edit:lt});
@@ -4664,6 +4711,8 @@ function GENA_MAIN() {
     var st=tplStats(tp);
     // generated a lot, finished almost none: it was never a habit, it was a reminder with a deadline
     if(st.n>=5 && st.done<=1) return "convert";
+    // daily, and you actually do it — that is a habit that belongs in the day, not a task that repeats
+    if(tp.freq==="daily" && st.n>=10 && st.done/st.n>=0.3) return "habit";
     return "keep";
   }
   function openTidyRepeatsModal(){
@@ -4688,6 +4737,7 @@ function GENA_MAIN() {
     S.templates.forEach(function(tp){ dueVal[tp.id]=addDays(today(),7); });
 
     var OPTS=[["keep","Keep repeating"],["merge","Merge into the copy above"],
+              ["habit","Make it a habit shown in my day (keeps the streak)"],
               ["convert","Make it one task with a due date"],["wait","Park it as Waiting — check back every 3 weeks"],
               ["stop","Stop repeating (keep the history)"],["wipe","Delete it and all its rows"]];
     function body(){
@@ -4730,8 +4780,8 @@ function GENA_MAIN() {
       return h;
     }
     function apply(){
-      var snap=JSON.stringify({tasks:S.tasks,templates:S.templates});
-      var removedT=0, madeTasks=0, removedRows=0;
+      var snap=JSON.stringify({tasks:S.tasks,templates:S.templates,habits:S.habits,habitLog:S.habitLog});
+      var removedT=0, madeTasks=0, removedRows=0, madeHabits=0;
       // 1. merge duplicates onto their survivor, then drop the extra rule
       S.templates.slice().forEach(function(tp){
         if(choice[tp.id]!=="merge") return;
@@ -4750,6 +4800,18 @@ function GENA_MAIN() {
           subs:[],created:today()});
         madeTasks++;
         S.templates=S.templates.filter(function(x){return x.id!==tp.id;}); removedT++;
+      });
+      // 2a. a daily repeat you actually do becomes a habit in the day; its completions become the streak
+      S.templates.slice().forEach(function(tp){
+        if(choice[tp.id]!=="habit") return;
+        var hid=uid(), goal=1;
+        var existing=S.habits.find(function(x){ return norm(x.name)===norm(tp.title); });
+        if(existing){ hid=existing.id; existing.inDay=true; } else S.habits.push({id:hid,name:tp.title,goal:goal,inDay:true});
+        S.tasks.forEach(function(k){ if(k.tplId===tp.id && k.status==="done" && k.completedOn) setHabitLog(k.completedOn,hid,Math.max(habitLog(k.completedOn,hid),goal)); });
+        var before=S.tasks.length;
+        S.tasks=S.tasks.filter(function(k){ return !(k.tplId===tp.id && !(k.status==="done")); });   // open + skipped rows go; completions stay as history
+        removedRows+=before-S.tasks.length;
+        S.templates=S.templates.filter(function(x){return x.id!==tp.id;}); removedT++; madeHabits++;
       });
       // 2b. a correspondence loop (a dispute, an application) becomes one Waiting item on a rhythm
       S.templates.slice().forEach(function(tp){
@@ -4797,8 +4859,8 @@ function GENA_MAIN() {
       S.tasks=keepRows;
       save(); close(); render();
       toastUndo(removedT+" rule"+(removedT===1?"":"s")+" tidied · "+removedRows+" row"+(removedRows===1?"":"s")+
-        " cleared"+(madeTasks?" · "+madeTasks+" due-dated task"+(madeTasks===1?"":"s")+" created":""),
-        function(){ var b=JSON.parse(snap); S.tasks=b.tasks; S.templates=b.templates; save(); render(); });
+        " cleared"+(madeTasks?" · "+madeTasks+" task"+(madeTasks===1?"":"s")+" created":"")+(madeHabits?" · "+madeHabits+" habit"+(madeHabits===1?"":"s")+" in your day":""),
+        function(){ var b=JSON.parse(snap); S.tasks=b.tasks; S.templates=b.templates; S.habits=b.habits; S.habitLog=b.habitLog; save(); render(); });
     }
     function wire(){
       var root=document.querySelector(".modal");
@@ -4822,11 +4884,13 @@ function GENA_MAIN() {
     modal('<h3>'+(editing?"Edit habit":"New habit")+'</h3>'+
       '<div class="fld"><label>Name</label><input id="h-n" value="'+esc(base.name)+'" placeholder="e.g. Read"/></div>'+
       '<div class="fld"><label>Daily goal (how many)</label><input id="h-g" type="number" min="1" max="12" value="'+base.goal+'"/></div>'+
+      '<div class="fld"><label class="check-row"><input type="checkbox" id="h-inday"'+(base.inDay?" checked":"")+'/> Show it as a row in my day <span class="sub" style="display:block;font-weight:400;text-transform:none;letter-spacing:0">Ticks here or in the Habits card — same tick. Never piles up, never carries.</span></label></div>'+
       '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="h-del" style="margin-right:auto">Delete</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">'+(editing?"Save":"Add")+'</button></div>');
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("m-save").onclick=function(){ var n=document.getElementById("h-n").value.trim(); if(!n){toast("Name?");return;}
       var g=Math.max(1,Math.min(12,+document.getElementById("h-g").value||1));
-      if(editing){ h.name=n; h.goal=g; } else { S.habits.push({id:uid(),name:n,goal:g}); }
+      var inDay=!!(document.getElementById("h-inday")||{}).checked;
+      if(editing){ h.name=n; h.goal=g; h.inDay=inDay; } else { S.habits.push({id:uid(),name:n,goal:g,inDay:inDay}); }
       save(); close(); render(); };
     if(editing) document.getElementById("h-del").onclick=function(){ confirmModal("Delete habit?","Its past check-ins stay in your data but stop showing.","Delete",function(){ S.habits=S.habits.filter(function(x){return x.id!==h.id;}); save(); render(); }); };
   }
@@ -6135,8 +6199,9 @@ function GENA_MAIN() {
     toast(collapse?"Collapsed "+n+" cards":"Expanded everything");
   }
   function anyFoldOpen(){ return [].some.call(document.querySelectorAll("details[data-fold]"),function(d){return d.open;}); }
+  var rvHabitSkip={};   // habits marked "skipped" in this review — session-only, a skip is just a non-tick
   function openReviewModal(scope, fromDay, auto){
-    scope=scope||"week";
+    scope=scope||"week"; rvHabitSkip={};
     var isEve=scope==="evening", isDay=(scope==="morning"||isEve), t=today();
     function looseEnds(){
       // morning: what was left behind (a span isn't a loose end while it's still running)
@@ -6266,6 +6331,17 @@ function GENA_MAIN() {
       } else h+='<div class="empty">'+(isEve?"Today is clear — nicely done 🎉":(scope==="morning"?"Nothing left hanging 🎉":"Nothing carried 🎉"))+'</div>';
       h+='</div>';
 
+      // 40b: yesterday's day-habits that weren't ticked — "did it" writes the tick after the fact
+      if(isDay){
+        // morning asks about yesterday; the evening close-out asks about today
+        var yH=isEve?t:(fromDay||addDays(t,-1));
+        var missedH=S.habits.filter(function(h){ return h.inDay && !habitDoneOn(h,yH) && !(rvHabitSkip[h.id]); });
+        if(missedH.length){
+          h+='<div class="fld"><label>🌱 Habits '+(isEve?"today":(yH===addDays(t,-1)?"yesterday":"on "+esc(niceDate(yH))))+' — did they happen?</label><ul class="tasks">'+
+            missedH.map(function(hb){ return '<li class="task habit-row" data-hid="'+hb.id+'"><span class="wait-ico">🌱</span><div class="task-main"><div class="task-title">'+esc(hb.name)+'</div></div>'+
+              '<span class="wait-acts"><button class="chip" data-rvh="did" data-hid="'+hb.id+'">✓ Did it</button><button class="chip" data-rvh="skip" data-hid="'+hb.id+'">⤬ Skipped</button></span></li>'; }).join("")+'</ul></div>';
+        }
+      }
       // 40a: check-backs that have landed are decisions too — the same three answers as the card
       var landedW=S.tasks.filter(function(k){ return isWaiting(k) && k.nextAt && k.nextAt<=t && inScope(k.projectId); });
       if(landedW.length){
@@ -6374,6 +6450,11 @@ function GENA_MAIN() {
           var fi=fa.findIndex(function(f){return f.taskId===tf.dataset.tmfocus;});
           if(fi>=0) fa.splice(fi,1); else fa.push({id:uid(),taskId:tf.dataset.tmfocus});
           save(); rebuild(); return; }
+        var rh=e.target.closest("[data-rvh]");
+        if(rh){ var yH2=isEve?t:(fromDay||addDays(t,-1));
+          if(rh.dataset.rvh==="did"){ var hh=S.habits.find(function(x){return x.id===rh.dataset.hid;}); if(hh) setHabitLog(yH2,hh.id,hh.goal||1); save(); }
+          else rvHabitSkip[rh.dataset.hid]=1;
+          rebuild(); return; }
         var wa=e.target.closest('[data-act="wait-still"],[data-act="wait-live"],[data-act="wait-letgo"]');
         if(wa){ var wrow=wa.closest("[data-id]"), wk=wrow&&S.tasks.find(function(x){return x.id===wrow.dataset.id;}); if(!wk) return;
           if(wa.dataset.act==="wait-still") stillWaiting(wk); else if(wa.dataset.act==="wait-live") wakeTask(wk); else letGoTask(wk);
