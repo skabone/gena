@@ -202,6 +202,10 @@
   .task.skipped{ opacity:.62; }
   .task.skipped .task-title{ text-decoration:line-through; text-decoration-style:dotted; color:var(--ink-faint); }
   .pill.skip{ background:var(--line); color:var(--ink-faint); }
+  .proj-card.dim{ opacity:.62; filter:saturate(.35); }
+  .proj-card.dim[open]{ opacity:.8; }
+  .state-pill{ display:inline-block; font-size:10.5px; font-weight:700; letter-spacing:.02em; padding:1px 7px; border-radius:999px; background:rgba(0,0,0,.18); vertical-align:middle; margin-left:6px; }
+  .shelf-board{ margin-top:8px; }
   .grp-block{ margin-top:10px; }
   .grp-chips{ gap:4px; margin-right:6px; }
   .fu-row .chk{ border-radius:50%; }
@@ -1235,7 +1239,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-11 16:37";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-11 16:46";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1254,7 +1258,7 @@ function GENA_MAIN() {
   var IDMAPS=["notes","focus","habitLog","jlinks","learnRead"]; // keyed maps merged per key
   // Settings/scalars merged per-field by their own modified-time (_sm) instead of taken wholesale from
   // whichever file saved last — otherwise a stale cloud push silently resets your name / active profile.
-  var SCALARS=["name","activeProfile","filterProjects","sbOpen","panelOpen","skin","theme","calView","calAnchor","tlView","collapsed","remind","proxy","notesRTE","lastExport","carryRev38","tplSweepRev","impCopyIds","rvGroup","layoutRev41","todayLayout","todayGroup","autoCarry","autoCarryRev","accent","density","font","subsHidden","expandOnAdd","eveningHour","reviewDone","nameNudgeGone","todayOrder"];
+  var SCALARS=["name","activeProfile","filterProjects","sbOpen","panelOpen","skin","theme","calView","calAnchor","tlView","collapsed","remind","proxy","notesRTE","lastExport","carryRev38","tplSweepRev","impCopyIds","rvGroup","layoutRev41","todayLayout","todayGroup","areasRev42","autoCarry","autoCarryRev","accent","density","font","subsHidden","expandOnAdd","eveningHour","reviewDone","nameNudgeGone","todayOrder"];
   function isBlankVal(v){ return v===undefined||v===null||v===""; }
   function clone(x){ return JSON.parse(JSON.stringify(x)); }
   function itemSig(x){ if(!x||typeof x!=="object") return JSON.stringify(x); var o={}; for(var k in x){ if(k!=="_m") o[k]=x[k]; } return JSON.stringify(o); }
@@ -1445,13 +1449,66 @@ function GENA_MAIN() {
     var _base=d.savedAt||Date.now();
     IDLISTS.forEach(function(key){ (d[key]||[]).forEach(function(x){ if(x&&x.id&&!x._m) x._m=_base; }); }); // backfill legacy items
     dedupeSeededEntities(d);                              // collapse device-duplicated starter profiles/projects/habits
-    return mergeSpuCoursePlan(d); }
+    var out42=mergeSpuCoursePlan(d); migrateAreas42(out42); return out42; }
+  function migrateAreas42(d){
+  // 42: the user's profiles become the seven areas, once, on the store that carries the old set.
+  // A fresh install just gets the flag. Everything touched gets a fresh _m (and deleted profiles a
+  // tombstone) so the merge on another device takes this version rather than resurrecting the old.
+  if(!d.areasRev42){
+    var isUsers=(d.profiles||[]).some(function(pr){ return /^(professor|mintay)$/i.test(pr.name||""); });
+    if(isUsers){
+      try{ localStorage.setItem(KEY+"-pre42", JSON.stringify(d)); }catch(e){}
+      var now42=Date.now(), nm=function(x){ return String(x||"").toLowerCase().replace(/[^a-z0-9$ ]/g," ").replace(/\s+/g," ").trim(); };
+      var AREAS=[["area-career","Career","💼","var(--p1)"],["area-growth","Growth","🌱","var(--p2)"],["area-finance","Finance","💵","var(--p3)"],
+                 ["area-home","Home","🏠","var(--p0)"],["area-health","Health","💪","var(--p4)"],["area-family","Family","👨‍👩‍👧","var(--p5)"],["area-friends","Friends","🎉","var(--p6)"]];
+      d._del=d._del||{};
+      (d.profiles||[]).forEach(function(pr){ d._del[pr.id]=now42; });
+      d.profiles=AREAS.map(function(a){ return {id:a[0],name:a[1],emoji:a[2],color:a[3],_m:now42}; });
+      var pick=function(name){
+        var n=nm(name);
+        if(/job search|interview/.test(n)) return "area-career";
+        if(/network|mentor|irt|spu|social psych|^work$/.test(n)) return "area-growth";
+        if(/finance|ecsi|irs/.test(n)) return "area-finance";
+        if(/^personal$|^home$/.test(n)) return "area-home";
+        if(/health/.test(n)) return "area-health";
+        if(/family/.test(n)) return "area-family";
+        if(/grasswalker|softball|fantasy|friend/.test(n)) return "area-friends";
+        return null;
+      };
+      (d.projects||[]).forEach(function(p){
+        var n=nm(p.name);
+        p.profileId=pick(p.name); p._m=now42;
+        if(n==="personal"){ p.name="Home"; p.emoji=p.emoji||"🏠"; }
+        if(/spu|social psych/.test(n)) p.state="ended";
+        if(/grasswalker|softball/.test(n)) p.window={from:5,to:8};
+        if(/fantasy/.test(n)) p.window={from:9,to:4};
+      });
+      var ensureProj=function(name,emoji,re){
+        var ex=(d.projects||[]).find(function(p){ return re.test(nm(p.name)); });
+        if(ex) return ex;
+        var np={id:uid(),name:name,emoji:emoji,color:"var(--p3)",notes:"",profileId:"area-finance",fav:false,_m:now42};
+        d.projects.push(np); return np;
+      };
+      var ecsi=ensureProj("ECSI","📮",/^ecsi$/), irs=ensureProj("IRS23","🏛",/^irs ?23$/);
+      (d.tasks||[]).forEach(function(k){ var n=nm(k.title);
+        if(/^ecsi\b/.test(n)&&k.projectId!==ecsi.id){ k.projectId=ecsi.id; k._m=now42; }
+        if(/^irs ?23\b/.test(n)&&k.projectId!==irs.id){ k.projectId=irs.id; k._m=now42; } });
+      (d.templates||[]).forEach(function(tp){ var n=nm(tp.title);
+        if(/^ecsi\b/.test(n)){ tp.projectId=ecsi.id; tp._m=now42; }
+        if(/^irs ?23\b/.test(n)){ tp.projectId=irs.id; tp._m=now42; } });
+      d.activeProfile="all"; d.filterProjects=[];
+      AREAS_MIGRATED=d.projects.length;
+    }
+    d.areasRev42=1;
+  }
+  }
   // Set when boot-time normalize() shrinks the store suspiciously; the boot code shows the offer.
   // Declared WITHOUT an initializer on purpose: `var S=load()` runs before this line, and load() is
   // what sets the flag — an `=null` here would wipe it after the fact (the RTE_ALLOWED hoisting trap,
   // which is exactly the bug class this feature exists to catch).
   var INTEGRITY_WARN;
   var SWEPT_REPEATS;
+  var AREAS_MIGRATED;
   function storeCounts(d){
     return { tasks:(d.tasks||[]).length, projects:(d.projects||[]).length, people:(d.people||[]).length,
              events:(d.events||[]).length, notes:Object.keys(d.notes||{}).length,
@@ -1556,7 +1613,7 @@ function GENA_MAIN() {
       calSources:[], proxy:PROXY_DEFAULT,
       emails:[], jobs:[], improve:[],
       calView:"month", calAnchor:null, skin:"paper", lastExport:null, name:"",
-      people:[], collapsed:{}, tlView:"months", panelOpen:true, autoCarry:true, autoCarryRev:1, carryRev38:1, tplSweepRev:1, layoutRev41:1, todayLayout:"one", todayGroup:"block", accent:null, density:"cozy", font:"rounded", sessions:[], subsHidden:{}, expandOnAdd:true, eveningHour:20, reviewDone:{}, _sm:{}
+      people:[], collapsed:{}, tlView:"months", panelOpen:true, autoCarry:true, autoCarryRev:1, carryRev38:1, tplSweepRev:1, layoutRev41:1, areasRev42:1, todayLayout:"one", todayGroup:"block", accent:null, density:"cozy", font:"rounded", sessions:[], subsHidden:{}, expandOnAdd:true, eveningHour:20, reviewDone:{}, _sm:{}
     });
   }
 
@@ -1601,7 +1658,7 @@ function GENA_MAIN() {
     if(sea===loc) return '<b>'+loc+'</b>';
     return '<b>'+loc+'</b> your time <span style="opacity:.45">·</span> <span class="sea">'+sea+' Seattle</span>'; }
   function updateClock(){ var el=document.getElementById("clock"); if(el) el.innerHTML=clockHtml(); var g=document.getElementById("g-clock"); if(g) g.innerHTML=clockHtml(); }
-  function fold(key,label,body,action){ var open=S.collapsed[key]?"":" open"; return '<details class="card fold" data-fold="'+key+'"'+open+'><summary><span class="fold-label">'+label+'</span>'+(action||"")+'<span class="fold-chev">▸</span></summary><div class="fold-body">'+body+'</div></details>'; }
+  function fold(key,label,body,action){ var open=(S.collapsed[key]===undefined && key.indexOf("shelf-")===0)?"":(S.collapsed[key]?"":" open"); return '<details class="card fold" data-fold="'+key+'"'+open+'><summary><span class="fold-label">'+label+'</span>'+(action||"")+'<span class="fold-chev">▸</span></summary><div class="fold-body">'+body+'</div></details>'; }
   // Checked-off items sink into a fold at the foot of the card they lived in — crossed out, out
   // of the way, still there (the Things / MS To Do "Completed" strip). Open by default so a tick
   // is visibly rewarded; fold state is per card and persists like every other fold. Subtasks are
@@ -1718,6 +1775,31 @@ function GENA_MAIN() {
   /* ---------- helpers ---------- */
   // "Open" means still awaiting a decision. Done and skipped are both resolved, so every list that
   // used to ask `status!=="done"` asks this instead — a lapsed repeat must not come back as a loose end.
+  /* ---------- 42: areas & seasons ----------
+     Profiles are now "areas" — the seven parts of a life, for organising and colouring, not modes you
+     switch. Projects carry a state: active, off-season (with an optional month window that wakes and
+     sleeps them on its own), or ended (over, greyed, kept). A project's state changes where the PROJECT
+     appears — the board, the pickers, the briefs — never whether a dated task appears in your day. */
+  var MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function inWindow(w, m){ if(!w||!w.from||!w.to) return true; m=m||(new Date().getMonth()+1);
+    return w.from<=w.to ? (m>=w.from&&m<=w.to) : (m>=w.from||m<=w.to); }   // Sep→Apr wraps the year
+  function projState(p){
+    if(!p) return "active";
+    if(p.state==="ended") return "ended";
+    if(p.window&&p.window.from&&p.window.to) return inWindow(p.window)?"active":"off";
+    return p.state==="off"?"off":"active";
+  }
+  function projActive(p){ return projState(p)==="active"; }
+  function activeProjects(){ return S.projects.filter(projActive); }
+  function stateLabel(p){ var st=projState(p); return st==="ended"?"ended":(st==="off"?"off-season":""); }
+  function windowDesc(w){ return (w&&w.from&&w.to)?MONTHS[w.from-1]+"–"+MONTHS[w.to-1]:""; }
+  // days until an off-season window opens again (null when no window / already open)
+  function daysToWake(p){
+    if(!p.window||!p.window.from||projState(p)!=="off") return null;
+    var d=new Date(); d.setDate(1); var n=0;
+    while(n<13){ if(d.getMonth()+1===p.window.from) break; d.setMonth(d.getMonth()+1); n++; }
+    return Math.max(0, diffDays(d.toISOString().slice(0,10), today()));
+  }
   function isOpen(k){ return k.status!=="done" && k.status!=="skipped" && k.status!=="waiting"; }
   function isSkipped(k){ return k.status==="skipped"; }
   function isWaiting(k){ return k.status==="waiting"; }
@@ -2064,7 +2146,7 @@ function GENA_MAIN() {
     // uniquely its own — profiles and project filters.
     var h='<div class="sb-brand">🌼 Gena<button class="sb-act" data-sb="collapse" title="Hide the sidebar">⟨ hide</button></div>';
     var favCnt=S.projects.filter(function(p){return p.fav;}).length;
-    h+='<div class="sb-card"><div class="sb-h">Profiles<button class="sb-act" data-sb="newprofile">+ new</button></div>';
+    h+='<div class="sb-card"><div class="sb-h">Areas<button class="sb-act" data-sb="newprofile">+ new</button></div>';
     h+='<button class="sb-row" data-sb="profile" data-id="all" aria-pressed="'+(S.activeProfile==="all")+'">🌐<span class="sb-name">All</span></button>';
     h+='<button class="sb-row" data-sb="profile" data-id="fav" aria-pressed="'+(S.activeProfile==="fav")+'">⭐<span class="sb-name">Favorites</span>'+(favCnt?'<span class="cnt">'+favCnt+'</span>':"")+'</button>';
     S.profiles.forEach(function(pr){
@@ -2074,15 +2156,16 @@ function GENA_MAIN() {
     var ids=null;
     if(S.activeProfile==="fav") ids=S.projects.filter(function(p){return p.fav;}).map(function(p){return p.id;});
     else if(S.activeProfile!=="all") ids=S.projects.filter(function(p){return p.profileId===S.activeProfile;}).map(function(p){return p.id;});
-    var plist=S.projects.filter(function(p){ return !ids||ids.indexOf(p.id)>=0; });
+    var plistAll=S.projects.filter(function(p){ return !ids||ids.indexOf(p.id)>=0; });
+    var plist=plistAll.filter(projActive), shelved=plistAll.filter(function(p){return !projActive(p);});
     h+='<div class="sb-card"><div class="sb-h">Projects'+(S.filterProjects.length?'<button class="sb-act" data-sb="clearfilter">✕ clear filter</button>':'')+'</div>';
     if(plist.length){
       plist.forEach(function(p){
         var on=S.filterProjects.indexOf(p.id)>=0;
         h+='<div class="sb-row'+(on?' on':'')+'" role="button" tabindex="0" data-sb="projfilter" data-id="'+p.id+'"><span class="pdot" style="'+cbg(p.color)+'"></span><span class="sb-name">'+esc(p.name)+'</span><span class="cnt">'+openCnt(p.id)+'</span><button class="sb-star'+(p.fav?" on":"")+'" data-sb="fav" data-id="'+p.id+'" title="Favorite" aria-label="Toggle favorite" aria-pressed="'+!!p.fav+'">'+(p.fav?"★":"☆")+'</button></div>';
       });
-      h+='<div class="sb-mini">Click a project to filter — pick several. ★ pins it to Favorites.</div>';
-    } else h+='<div class="sb-mini">No projects in this profile yet — edit a project (or the profile) to add some.</div>';
+      h+='<div class="sb-mini">Click a project to filter — pick several. ★ pins it to Favorites.'+(shelved.length?' · '+shelved.length+' off-season / ended in Projects.':'')+'</div>';
+    } else h+='<div class="sb-mini">No active projects in this area yet — edit a project (or the area) to add some.</div>';
     h+='</div>';
     sb.innerHTML=h+'<div class="pane-grip" data-pane="sb" title="Drag to resize"></div>';
   }
@@ -2916,7 +2999,7 @@ function GENA_MAIN() {
     return fold("waiting","⏸ Waiting on"+(landed.length?' · <span class="cnt-hot">'+landed.length+' to check</span>':' · '+all.length), body);
   }
   function projectBriefsHtml(){
-    var pinned=S.projects.filter(function(p){return p.pinned&&inScope(p.id);});
+    var pinned=S.projects.filter(function(p){return p.pinned&&inScope(p.id)&&projActive(p);});
     if(!pinned.length) return "";
     return pinned.map(function(p){
       var ts=S.tasks.filter(function(k){return k.projectId===p.id;});
@@ -2971,6 +3054,10 @@ function GENA_MAIN() {
   }
   function computeSuggestions(){
     var t=today(), out=[], d=S.dismissed;
+    // 00. a season about to open
+    S.projects.filter(function(p){ var dw=daysToWake(p); return dw!==null && dw<=21; }).slice(0,1).forEach(function(p){
+      var id="wake-"+p.id+"-"+(p.window.from); if(d.indexOf(id)<0) out.push({id:id,text:'<b>'+esc(p.name)+'</b> wakes up '+MONTHS[p.window.from-1]+' 1 — '+daysToWake(p)+' days out. Want its first task on the board?',action:"Open project",act:"goproj",pid:p.id});
+    });
     // 0. a cycle you keep pushing: the honest question, once
     S.tasks.filter(function(k){return isCycle(k)&&isOpen(k)&&(k.snoozes||0)>=5;}).slice(0,1).forEach(function(k){
       var id="cyc-"+k.id+"-"+k.snoozes; if(d.indexOf(id)<0) out.push({id:id,text:'You’ve pushed <b>“'+esc(k.title)+'”</b> '+k.snoozes+' times without doing it. Give it a real day, or stop it coming back?',action:"Stop it coming back",act:"cycle-stop",tid:k.id});
@@ -3114,19 +3201,23 @@ function GENA_MAIN() {
     html+='<div class="board">';
     // most recently touched first, so the live projects are the ones you land on
     var projCards=S.projects.filter(function(p){return inScope(p.id);}).map(function(p){
+      // active first; shelved ones render after the board, folded
+
       var ts=S.tasks.filter(function(k){return k.projectId===p.id;});
       var lastTouch=""; ts.forEach(function(k){ [k.completedOn,k.created,k.day].forEach(function(d){ if(d&&d<=today()&&d>lastTouch) lastTouch=d; }); });
       return {p:p,ts:ts,lastTouch:lastTouch};
     }).sort(function(a,b){ return (b.lastTouch||"").localeCompare(a.lastTouch||""); });
-    projCards.forEach(function(pc){
+    var shelvedCards=projCards.filter(function(pc){ return !projActive(pc.p); });
+    projCards=projCards.filter(function(pc){ return projActive(pc.p); });
+    var renderCard=function(pc){
       var p=pc.p, ts=pc.ts;
       var done=ts.filter(function(k){return k.status==="done";}).length;
       var waitingN=ts.filter(isWaiting).length;
       var open=ts.filter(isOpen).length; var pct=ts.length?Math.round(done/ts.length*100):0;
       var quiet=pc.lastTouch?diffDays(today(),pc.lastTouch):null;
       var pfk="proj-"+p.id;
-      html+='<details class="proj-card pfold" data-fold="'+pfk+'"'+(S.collapsed[pfk]?"":" open")+'><summary class="proj-top" style="'+cbg(p.color)+'">'+
-        '<span class="ptop-main"><h3>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</h3><div class="pmeta">'+open+' open · '+done+' done'+(waitingN?' · ⏸ '+waitingN+' waiting':'')+'</div></span><span class="fold-chev">▸</span></summary>'+
+      html+='<details class="proj-card pfold'+(projActive(p)?"":" dim")+'" data-fold="'+pfk+'"'+(S.collapsed[pfk]?"":" open")+'><summary class="proj-top" style="'+cbg(p.color)+'">'+
+        '<span class="ptop-main"><h3>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+(stateLabel(p)?' <span class="state-pill">'+stateLabel(p)+(p.window?' · '+windowDesc(p.window):'')+'</span>':'')+'</h3><div class="pmeta">'+open+' open · '+done+' done'+(waitingN?' · ⏸ '+waitingN+' waiting':'')+'</div></span><span class="fold-chev">▸</span></summary>'+
         '<div class="proj-body"><div class="prog-row"><div class="prog"><span style="width:'+pct+'%;background:'+p.color+'"></span></div>'+
         '<span class="prog-pct">'+pct+'%</span>'+
         (open&&quiet!==null&&quiet>=7?'<span class="pill aged" title="No task added, scheduled or completed in '+quiet+' days">quiet '+quiet+'d</span>':'')+'</div>';
@@ -3146,8 +3237,16 @@ function GENA_MAIN() {
         '<button class="chip" data-act="milestone" data-pid="'+p.id+'">+ milestone</button>'+
         '<button class="chip" data-act="phase" data-pid="'+p.id+'">+ phase</button></div>';
       html+='</div></details>';
-    });
+    };
+    projCards.forEach(renderCard);
     html+='</div>';
+    if(shelvedCards.length){
+      var offC=shelvedCards.filter(function(pc){return projState(pc.p)==="off";}), endC=shelvedCards.filter(function(pc){return projState(pc.p)==="ended";});
+      var shelf=function(key,label,cards){ if(!cards.length) return "";
+        var inner=html; html=""; html+='<div class="board shelf-board">'; cards.forEach(renderCard); html+='</div>'; var body=html; html=inner;
+        return '<div style="margin-top:16px">'+fold(key,label+' · '+cards.length,body)+'</div>'; };
+      html+=shelf("shelf-off","🛌 Off-season",offC)+shelf("shelf-ended","🏁 Ended",endC);
+    }
     if(S.templates.length){
       var tl='<ul class="tasks">'+S.templates.map(function(tp){ var p=proj(tp.projectId);
         return '<li class="task" data-id="'+tp.id+'"><div class="task-main" style="cursor:default"><div class="task-title">'+esc(tp.title)+'</div><div class="task-meta"><span class="pill rec">'+recDesc(tp)+'</span>'+(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+(tp.paused?'<span class="pill block">paused</span>':"")+'</div></div>'+
@@ -4167,6 +4266,7 @@ function GENA_MAIN() {
         else if(s&&s.act==="export"){ exportBackup(); S.dismissed.push(s.id); save(); render(); }
         else if(s&&s.act==="review"){ S.dismissed.push(s.id); save(); openReviewModal(); }
         else if(s&&s.act==="archive"){ S.dismissed.push(s.id); save(); confirmArchiveOldDone(); }
+        else if(s&&s.act==="goproj"){ S.dismissed.push(s.id); save(); goView("projects"); }
         else if(s&&s.act==="cycle-stop"){ var ck=S.tasks.find(function(x){return x.id===s.tid;}); if(ck){ ck.cycle=null; ck.snoozes=0; } S.dismissed.push(s.id); save(); render(); toast("It won’t come back on its own — it’s a plain task now"); }
         else if(s&&s.data){ addTask(s.data.title,s.data.projectId,null); S.dismissed.push(s.id); save(); render(); toast("Added"); } }
       else if(act==="sugg-x"){ S.dismissed.push(a.dataset.sid); save(); render(); }
@@ -4443,7 +4543,8 @@ function GENA_MAIN() {
 
   /* ---------- quick capture ---------- */
   var qInput=document.getElementById("q-input"), qProj=document.getElementById("q-proj");
-  function fillProjSelect(){ qProj.innerHTML='<option value="">No project</option>'+S.projects.map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join("")+'<option value="__new">+ New project…</option>'; }
+  function projOptLabel(p){ return esc(p.name)+(stateLabel(p)?" ("+stateLabel(p)+")":""); }
+  function fillProjSelect(){ qProj.innerHTML='<option value="">No project</option>'+S.projects.slice().sort(function(a,b){return (projActive(b)?1:0)-(projActive(a)?1:0);}).map(function(p){return '<option value="'+p.id+'">'+projOptLabel(p)+'</option>';}).join("")+'<option value="__new">+ New project…</option>'; }
   qProj.onchange=function(){ if(qProj.value==="__new"){ qProj.value=""; openProjModal(null,function(id){ qProj.value=id; }); } };
   function addTask(title,projectId,day,block,at,personIds){
     title=title.trim(); if(!title)return;
@@ -4748,22 +4849,35 @@ function GENA_MAIN() {
       '<div class="fld"><label>Name</label><input id="p-name" value="'+esc(p.name)+'"/></div></div>'+
       emojiPickerHtml("p-emoji")+
       '<div class="fld"><label>Color</label><div class="swatches" id="p-sw">'+COLORS.map(function(c){return '<button class="'+swClass(c)+'" style="background:'+c+'" data-c="'+c+'" aria-pressed="'+(c===p.color)+'"></button>';}).join("")+'<input type="color" class="sw-custom" id="p-sw-hex" value="'+esc(/^#/.test(p.color||"")?p.color:"#c99a3a")+'" title="Any colour you like" aria-label="Custom colour"/>'+'</div></div>'+
-      '<div class="row"><div class="fld"><label>Profile</label><select id="p-prof">'+profOpts+'</select></div>'+
+      '<div class="row"><div class="fld"><label>Area</label><select id="p-prof">'+profOpts+'</select></div>'+
       '<div class="fld"><label>Favorite</label><div class="chips"><button type="button" class="chip" id="p-fav" aria-pressed="'+!!p.fav+'">'+(p.fav?"★":"☆")+' Favorite</button></div></div></div>'+
+      '<div class="fld"><label>State</label><div class="chips" id="p-state">'+[["active","Active"],["off","Off-season"],["ended","Ended"]].map(function(st){
+        return '<button type="button" class="chip" data-st="'+st[0]+'" aria-pressed="'+((p.state||"active")===st[0])+'">'+st[1]+'</button>'; }).join("")+'</div>'+
+        '<div class="sub" style="font-size:11px;margin-top:6px">Ended: greyed and shelved, nothing deleted, dated tasks still show on their day. Off-season: shelved until its season.</div></div>'+
+      '<div class="fld"><label>Season <span style="text-transform:none;letter-spacing:0;font-weight:600">(optional — it sleeps and wakes on its own)</span></label><div class="cyc-row">'+
+        '<select id="p-wfrom"><option value="">from…</option>'+MONTHS.map(function(m,i){return '<option value="'+(i+1)+'"'+((p.window||{}).from===i+1?" selected":"")+'>'+m+'</option>';}).join("")+'</select>'+
+        '<select id="p-wto"><option value="">to…</option>'+MONTHS.map(function(m,i){return '<option value="'+(i+1)+'"'+((p.window||{}).to===i+1?" selected":"")+'>'+m+'</option>';}).join("")+'</select></div></div>'+
+      (editing?'<div class="fld"><label>Change its shape</label><div class="chips"><button type="button" class="chip" id="p-toarea" title="Makes an area of this name and moves the project under it">↗ Turn into an area</button></div></div>':'')+
       '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="p-del" style="margin-right:auto">Delete</button>':'')+
       '<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>');
     var color=p.color; var sw=document.getElementById("p-sw");
     var hexIn=document.getElementById("p-sw-hex");
     sw.onclick=function(e){ var b=e.target.closest(".sw"); if(!b)return; color=b.dataset.c; [].forEach.call(sw.querySelectorAll(".sw"),function(c){c.setAttribute("aria-pressed",c===b);}); };
     if(hexIn) hexIn.oninput=function(){ color=hexIn.value; [].forEach.call(sw.querySelectorAll(".sw"),function(c){c.setAttribute("aria-pressed",false);}); };
+    var stateV=p.state||"active"; var psb=document.getElementById("p-state");
+    if(psb) psb.onclick=function(e){ var b=e.target.closest("[data-st]"); if(!b) return; stateV=b.dataset.st; [].forEach.call(psb.children,function(c){c.setAttribute("aria-pressed",c===b);}); };
+    var ta=document.getElementById("p-toarea");
+    if(ta) ta.onclick=function(){ var na={id:uid(),name:p.name,emoji:p.emoji||"",color:/^#/.test(p.color||"")?p.color:null}; S.profiles.push(na); p.profileId=na.id; save(); close(); render(); toast("“"+p.name+"” is now an area, with this project inside it"); };
     var favV=!!p.fav; var fb=document.getElementById("p-fav");
     fb.onclick=function(){ favV=!favV; fb.setAttribute("aria-pressed",favV); fb.textContent=(favV?"★":"☆")+" Favorite"; };
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("m-save").onclick=function(){ var name=document.getElementById("p-name").value.trim(); if(!name){toast("Name it");return;}
       var profV=document.getElementById("p-prof").value||null;
       var emojiV=(document.getElementById("p-emoji")||{}).value||"";
-      if(editing){ p.name=name; p.color=color; p.emoji=emojiV.trim(); p.profileId=profV; p.fav=favV; }
-      else { var np={id:uid(),name:name,color:color,emoji:emojiV.trim(),notes:"",profileId:profV,fav:favV}; S.projects.push(np); createdId=np.id; }
+      var wf=+((document.getElementById("p-wfrom")||{}).value)||0, wt=+((document.getElementById("p-wto")||{}).value)||0;
+      var winV=(wf&&wt)?{from:wf,to:wt}:null;
+      if(editing){ p.name=name; p.color=color; p.emoji=emojiV.trim(); p.profileId=profV; p.fav=favV; p.state=stateV==="active"?null:stateV; p.window=winV; if(stateV==="ended") p.pinned=false; }
+      else { var np={id:uid(),name:name,color:color,emoji:emojiV.trim(),notes:"",profileId:profV,fav:favV,state:stateV==="active"?null:stateV,window:winV}; S.projects.push(np); createdId=np.id; }
       save(); fillProjSelect(); close(); render(); if(onDone&&createdId) onDone(createdId); };
     if(editing){ document.getElementById("p-del").onclick=function(){ confirmModal("Delete project?","Its tasks stay but lose their tag.","Delete",function(){
       S.tasks.forEach(function(k){ if(k.projectId===p.id)k.projectId=null; }); S.projects=S.projects.filter(function(x){return x.id!==p.id;}); S.filterProjects=S.filterProjects.filter(function(x){return x!==p.id;}); save(); fillProjSelect(); render(); }); }; }
@@ -4772,16 +4886,19 @@ function GENA_MAIN() {
   function openProfileModal(pr){
     var editing=!!pr; var base=pr||{name:"",emoji:"💼"};
     var assigned={}; S.projects.forEach(function(p){ if(editing&&p.profileId===pr.id) assigned[p.id]=true; });
-    modal('<h3>'+(editing?"Edit profile":"New profile")+'</h3>'+
-      '<p class="sub">Profiles group projects into contexts — Work, School, Home. Pick one in the sidebar and Gena shows only that world.</p>'+
+    modal('<h3>'+(editing?"Edit area":"New area")+'</h3>'+
+      '<p class="sub">An area is one part of your life — Career, Finance, Family. It groups and colours projects; pick one in the sidebar when you want to see only that part.</p>'+
       '<div class="row"><div class="fld" style="flex:0 0 90px"><label>Icon</label><input id="pf-e" value="'+esc(base.emoji||"")+'" maxlength="4"/></div>'+
       '<div class="fld"><label>Name</label><input id="pf-n" value="'+esc(base.name)+'" placeholder="e.g. School"/></div></div>'+
       emojiPickerHtml("pf-e")+
       '<div class="fld"><label>Colour</label><div class="swatches" id="pf-sw">'+COLORS.map(function(c){return '<button class="'+swClass(c)+'" style="background:'+c+'" data-c="'+c+'" aria-pressed="'+(c===base.color)+'"></button>';}).join("")+
         '<input type="color" class="sw-custom" id="pf-sw-hex" value="'+esc(/^#/.test(base.color||"")?base.color:"#c99a3a")+'" title="Any colour you like" aria-label="Custom colour"/></div></div>'+
-      '<div class="fld"><label>Projects in this profile</label><div class="chips" id="pf-projs">'+
+      '<div class="fld"><label>Projects in this area</label><div class="chips" id="pf-projs">'+
         (S.projects.length?S.projects.map(function(p){return '<button type="button" class="chip" data-pid="'+p.id+'" aria-pressed="'+!!assigned[p.id]+'">'+esc(p.name)+'</button>';}).join(""):'<span class="sub">No projects yet</span>')+'</div>'+
-      (editing?'':'<div class="sub" style="font-size:11px;margin-top:6px">Tip: a project can live in one profile at a time.</div>')+'</div>'+
+      (editing?'':'<div class="sub" style="font-size:11px;margin-top:6px">Tip: a project can live in one area at a time.</div>')+'</div>'+
+      (editing?'<div class="fld"><label>Change its shape</label><div class="chips">'+
+        (S.profiles.length>1?'<select id="pf-merge" style="font-size:12px"><option value="">Merge into another area…</option>'+S.profiles.filter(function(x){return x.id!==pr.id;}).map(function(x){return '<option value="'+x.id+'">'+esc(x.name)+'</option>';}).join("")+'</select>':'')+
+        '<button type="button" class="chip" id="pf-toproj" title="Its projects fold into one project of this name; the area goes">↘ Turn into a project</button></div></div>':'')+
       '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="pf-del" style="margin-right:auto">Delete</button>':'')+
       '<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>');
     document.querySelector("[data-x]").onclick=close;
@@ -4792,6 +4909,27 @@ function GENA_MAIN() {
       [].forEach.call(pfSw.querySelectorAll(".sw"),function(c){c.setAttribute("aria-pressed",c===b);}); };
     if(pfHex) pfHex.oninput=function(){ window.__pfColor=pfHex.value; [].forEach.call(pfSw.querySelectorAll(".sw"),function(c){c.setAttribute("aria-pressed",false);}); };
     pp.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; var on=b.getAttribute("aria-pressed")==="true"; b.setAttribute("aria-pressed",!on); assigned[b.dataset.pid]=!on; };
+    var mg=document.getElementById("pf-merge");
+    if(mg) mg.onchange=function(){ var to=profileById(mg.value); if(!to) return;
+      confirmModal("Merge “"+pr.name+"” into “"+to.name+"”?","Its projects move across; nothing is deleted but the empty area.","Merge",function(){
+        S.projects.forEach(function(p){ if(p.profileId===pr.id) p.profileId=to.id; });
+        S.profiles=S.profiles.filter(function(x){return x.id!==pr.id;}); if(S.activeProfile===pr.id) S.activeProfile="all";
+        save(); close(); render(); toast("Merged into "+to.name); }); };
+    var tp=document.getElementById("pf-toproj");
+    if(tp) tp.onclick=function(){
+      var mine=S.projects.filter(function(p){return p.profileId===pr.id;});
+      var destOpts=S.profiles.filter(function(x){return x.id!==pr.id;});
+      confirmModal("Turn “"+pr.name+"” into a project?", mine.length?mine.length+" project"+(mine.length===1?"":"s")+" fold into it — their tasks keep everything but the old project tag. Pick the area it lives in next.":"It becomes a project you can put under another area.","Turn into a project",function(){
+        var np={id:uid(),name:pr.name,emoji:pr.emoji||"",color:pr.color||COLORS[0],notes:"",profileId:destOpts.length?destOpts[0].id:null,fav:false};
+        S.projects.push(np);
+        mine.forEach(function(p){ S.tasks.forEach(function(k){ if(k.projectId===p.id) k.projectId=np.id; });
+          S.templates.forEach(function(t){ if(t.projectId===p.id) t.projectId=np.id; });
+          S.events.forEach(function(ev){ if(ev.projectId===p.id) ev.projectId=np.id; });
+          S.phases.forEach(function(ph){ if(ph.projectId===p.id) ph.projectId=np.id; });
+          if(p.notes) np.notes=(np.notes?np.notes+"<br>":"")+p.notes; });
+        S.projects=S.projects.filter(function(p){return p.profileId!==pr.id||p.id===np.id;});
+        S.profiles=S.profiles.filter(function(x){return x.id!==pr.id;}); if(S.activeProfile===pr.id) S.activeProfile="all";
+        save(); fillProjSelect(); close(); openProjModal(np); toast("Now a project — pick its area"); }); };
     document.getElementById("m-save").onclick=function(){
       var name=document.getElementById("pf-n").value.trim(); if(!name){toast("Name it");return;}
       var emoji=document.getElementById("pf-e").value.trim();
@@ -5495,6 +5633,7 @@ function GENA_MAIN() {
     var items=[];
     try{ var lg=localStorage.getItem(KEY+"-lastgood"); if(lg){ var dl=JSON.parse(lg); items.push({label:"Most recent good save", t:dl.savedAt, n:dl.enc?"🔒":(dl.tasks||[]).length, raw:lg}); } }catch(e){}
     try{ JSON.parse(localStorage.getItem(SNAP_KEY)||"[]").slice().reverse().forEach(function(s){ items.push({label:"Snapshot", t:s.t, n:s.n, raw:s.data}); }); }catch(e){}
+    try{ var p42=localStorage.getItem(KEY+"-pre42"); if(p42){ var d42=JSON.parse(p42); items.push({label:"Before areas & seasons (42)", t:d42.savedAt, n:(d42.tasks||[]).length, raw:p42}); } }catch(e){}
     try{ var cr=localStorage.getItem(KEY+"-corrupt"); if(cr){ items.push({label:"Recovered (last readable)", t:null, n:"?", raw:cr}); } }catch(e){}
     var body='<h3>🛟 Restore from a local backup</h3><p class="sub">Gena keeps automatic on-device snapshots. Pick one to roll back to — it replaces the current data on this device (and re-syncs afterward).</p>';
     if(!items.length){ body+='<div class="empty" style="padding:20px">No local backups yet — they build up as you use the app.</div>'; }
@@ -7019,6 +7158,7 @@ function GENA_MAIN() {
     // "which profile" is answered by picking a project — tasks scope through their project
     S.projects.slice().sort(function(a,b){ return (b.fav?1:0)-(a.fav?1:0); }).forEach(function(p){
       if(!hit(p.name)) return;
+      if(!projActive(p) && !lt) return;    // shelved: only when you type its name
       var pr=p.profileId?profileById(p.profileId):null;
       out.push({ins:"@"+p.name.replace(/\s+/g,"-"),label:(p.emoji?esc(p.emoji)+" ":"")+esc(p.name),dot:p.color,hint:pr?esc(pr.name):"project"}); });
     S.people.forEach(function(pp){ if(hit(pp.name)) out.push({ins:"@"+pp.name.replace(/\s+/g,"-"),label:(pp.emoji?esc(pp.emoji):"👤")+" "+esc(pp.name),dot:pp.color||"var(--p5)",hint:"person"}); });
@@ -7305,6 +7445,9 @@ function GENA_MAIN() {
   if(bootDedupeCount>0){ save(); setTimeout(function(){ toast("Cleaned up "+bootDedupeCount+" duplicate item"+(bootDedupeCount===1?"":"s")+" (⌘Z to undo)"); },600); } // persist + push the de-duplicated data
   if(S.welcomed===false){ S.welcomed=true; save(); openWelcomeModal(); }
   else if(dayStartFrom){ setTimeout(function(){ openDayStartReview(dayStartFrom); }, 400); }
+  if(AREAS_MIGRATED) setTimeout(function(){
+    toast("Your profiles are now seven areas — Career, Growth, Finance, Home, Health, Family, Friends — and "+AREAS_MIGRATED+" projects are sorted under them. The copy from before is in ⋯ → Restore.");
+  }, 1600);
   if(SWEPT_REPEATS) setTimeout(function(){
     toast("Tidied "+SWEPT_REPEATS+" lapsed repeat"+(SWEPT_REPEATS===1?"":"s")+" — recorded as skipped on their own day, not carried");
   }, 1200);
