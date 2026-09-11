@@ -452,6 +452,14 @@
     .modal .ins-tile{ padding:6px 7px; } .modal .ins-tile b{ font-size:13px; } .modal .ins-tile span{ font-size:9.5px; }
     .sg-box{ padding:8px 10px; }
   }
+  .tidy-list{ max-height:52vh; overflow:auto; margin:8px 0 0; }
+  .tidy-row{ display:flex; gap:10px; align-items:flex-start; padding:10px 2px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .tidy-row:last-child{ border-bottom:0; }
+  .tidy-row.dup{ background:var(--warn-bg); border-radius:10px; padding-left:8px; padding-right:8px; }
+  .tidy-main{ flex:1 1 260px; min-width:0; }
+  .tidy-t{ font-weight:650; font-size:13.5px; margin-bottom:3px; }
+  .tidy-pick{ display:flex; gap:6px; align-items:center; flex:0 0 auto; }
+  .tidy-pick select{ font-size:12px; padding:5px 7px; }
   .rv-grp{ border-bottom:1px solid var(--line); }
   .rv-grp:last-child{ border-bottom:0; }
   .rv-grp>summary{ list-style:none; cursor:pointer; }
@@ -1202,7 +1210,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-11 12:11";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-11 12:27";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -1644,7 +1652,7 @@ function GENA_MAIN() {
       // remember the day we came from, so the day-start review knows what to ask about
       dayStartFrom=S.lastOpen||null;
       S.lastOpen=t; save();
-    } else { generateRecurring(t); }
+    } else { sweepRepeats(t); generateRecurring(t); }
   }
   function generateRecurring(day){
     S.templates.forEach(function(tp){
@@ -1665,7 +1673,7 @@ function GENA_MAIN() {
   function sweepRepeats(day){
     var n=0;
     S.tasks.forEach(function(k){
-      if(k.tplId && k.day && k.day<day && isOpen(k)){ k.status="skipped"; k.skippedOn=k.day; n++; }
+      if(k.tplId && k.day && k.day<day && isOpen(k) && !k.unskipped){ k.status="skipped"; k.skippedOn=k.day; n++; }
     });
     return n;
   }
@@ -2469,7 +2477,14 @@ function GENA_MAIN() {
       habitsnotes: '<div class="grid2">'+fold("habits","Habits &amp; wellness",hb,foldProg(habitDone,habitTotal))+fold("notes","Notes",richTextHtml("daily",S.notes[vd]||"","Jot anything — ideas, blockers, wins… try [[a project name]]",110))+'</div>'+
         fold("sessions","Focus sessions"+(focusMinutes(vd)?" · "+focusMinutes(vd)+"m":""), focusLogHtml(vd))
     };
-    var DEF_UNITS=["focus","tasks","blocks","habitsnotes"];
+    var cd=isToday?comingDueTasks():[];
+    if(cd.length){
+      curList=null;
+      units.comingdue=fold("comingdue","⚑ Coming due"+(cd.length?" · "+cd.length:""),
+        '<p class="sub" style="margin:0 0 8px;font-size:12px">Deadlines inside the next two weeks that aren’t on a day yet — give each one a day and it joins the list above.</p>'+
+        '<ul class="tasks">'+cd.map(comingDueRow).join("")+'</ul>');
+    }
+    var DEF_UNITS=["focus","comingdue","tasks","blocks","habitsnotes"];
     var uorder=(S.todayOrder&&S.todayOrder.length)?S.todayOrder.slice():DEF_UNITS.slice();
     DEF_UNITS.forEach(function(k){ if(uorder.indexOf(k)<0) uorder.push(k); });
     uorder=uorder.filter(function(k){ return units[k]!==undefined; });
@@ -2579,6 +2594,46 @@ function GENA_MAIN() {
 
   /* The hand-coded SPU dashboard is the best-loved card in the app and dies with the semester.
      This is the same idea for any project you pin: note, progress, nearest deadline, next three. */
+  /* ---------- 39: project work reaches the day ----------
+     A project task carries a `due` (the deadline) but often no `day` (when you will actually do it),
+     so it lives in the Backlog and never appears in Today — the gap the user hit with the IRT project.
+     "Coming due" is the standing bridge: anything with a deadline inside the horizon that isn't
+     already planned for today or earlier, with one tap to put it on a day. */
+  var DUE_HORIZON=14;
+  function comingDueTasks(){
+    var t=today();
+    return S.tasks.filter(function(k){
+      return isOpen(k) && k.due && inScope(k.projectId) &&
+        diffDays(k.due,t)<=DUE_HORIZON && !(k.day && k.day<=t);
+    }).sort(function(a,b){ return a.due.localeCompare(b.due) || (a.day||"9999").localeCompare(b.day||"9999"); });
+  }
+  function comingDueRow(k){
+    var p=k.projectId?proj(k.projectId):null;
+    var t=today(), d=diffDays(k.due,t);
+    var lead=d<=0?t:addDays(k.due,-1);    // "start it" = the day before the deadline at the latest
+    return '<li class="task'+(p?" pc":"")+'" data-id="'+k.id+'"'+(p?' style="--pc:'+esc(p.color)+'"':'')+'>'+
+      '<button class="chk" data-act="toggle" aria-label="Done" aria-pressed="false"></button>'+
+      '<div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title">'+esc(k.title)+'</div>'+
+      '<div class="task-meta">'+duePill(k)+
+        (p?'<span class="pill proj" style="--pc:'+esc(p.color)+'"><i class="pdot"></i>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':'')+
+        (k.day?'<span class="pill block">planned '+esc(niceDate(k.day))+'</span>':'<span class="pill aged">no day yet</span>')+
+      '</div></div>'+
+      '<button class="chip" data-act="dueday" data-d="'+t+'" title="Do it today">→ Today</button>'+
+      (lead>t?'<button class="chip" data-act="dueday" data-d="'+lead+'" title="Plan it for '+esc(niceDate(lead))+'">→ '+esc(niceDate(lead))+'</button>':'')+
+      '<button class="task-focus'+(inFocus(k.id)?" on":"")+'" data-act="tofocus" aria-label="Add to Today’s Focus" title="Add to Today’s Focus">◎</button>'+
+      '</li>';
+  }
+  // The phase a project is in right now (or the next one up), so a brief can count down to it.
+  function phaseNow(pid){
+    var t=today(), ph=S.phases.filter(function(x){return x.projectId===pid;})
+      .sort(function(a,b){ return (a.start||"").localeCompare(b.start||""); });
+    var cur=ph.filter(function(x){ return x.start<=t && x.end>=t; })[0];
+    if(cur) return {ph:cur,state:"now"};
+    var next=ph.filter(function(x){ return x.start>t; })[0];
+    if(next) return {ph:next,state:"next"};
+    var last=ph[ph.length-1];
+    return last?{ph:last,state:"past"}:null;
+  }
   function projectBriefsHtml(){
     var pinned=S.projects.filter(function(p){return p.pinned&&inScope(p.id);});
     if(!pinned.length) return "";
@@ -2596,11 +2651,23 @@ function GENA_MAIN() {
         (nearest?duePill(nearest):"")+
         '<button class="chip" data-act="pinproj" data-pid="'+p.id+'" style="margin-left:auto;padding:2px 9px" title="Unpin from Today">📌</button></div>'+
         (note?'<p class="sub" style="margin:2px 0 6px">'+esc(note)+'</p>':"")+
+        (function(){
+          var pn=phaseNow(p.id); if(!pn) return "";
+          var left=diffDays(pn.ph.end,today());
+          var inPhase=open.filter(function(k){ return k.day && k.day>=pn.ph.start && k.day<=pn.ph.end; }).length;
+          var lbl = pn.state==="now" ? "now: "+pn.ph.title+" · "+(left<0?"ended":(left===0?"ends today":left+"d left"))
+                  : pn.state==="next" ? "next: "+pn.ph.title+" · starts "+niceDate(pn.ph.start)
+                  : "last phase: "+pn.ph.title+" · ended "+niceDate(pn.ph.end);
+          return '<div class="task-meta" style="margin:0 0 6px"><span class="pill '+(pn.state==="now"&&left<=2?"aged":"block")+'">◧ '+esc(lbl)+'</span>'+
+            (pn.state==="now"&&inPhase?'<span class="pill block">'+inPhase+' planned in it</span>':'')+'</div>';
+        })()+
         '<div class="prog-row"><div class="prog"><span style="width:'+pct+'%;background:'+p.color+'"></span></div><span class="prog-pct">'+pct+'%</span></div>'+
         (next.length?'<ul class="tasks">'+next.map(function(k){
           return '<li class="task" data-id="'+k.id+'"><button class="chk" data-act="toggle" aria-label="Done" aria-pressed="false"></button>'+
             '<div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title">'+esc(k.title)+'</div>'+
-            '<div class="task-meta">'+duePill(k)+(k.day?'<span class="pill block">'+esc(niceDate(k.day))+'</span>':"")+'</div></div></li>';
+            '<div class="task-meta">'+duePill(k)+(k.day?'<span class="pill block">'+esc(niceDate(k.day))+'</span>':'<span class="pill aged">no day yet</span>')+'</div></div>'+
+            '<button class="chip" data-act="dueday" data-d="'+today()+'" title="Put it on today">→ Today</button>'+
+            '<button class="task-focus'+(inFocus(k.id)?" on":"")+'" data-act="tofocus" aria-label="Add to Today’s Focus" title="Add to Today’s Focus">◎</button></li>';
         }).join("")+'</ul>':'<div class="empty">Nothing open 🎉</div>')+
         '</div>';
     }).join("");
@@ -2789,6 +2856,7 @@ function GENA_MAIN() {
       html+=richTextHtml("proj:"+p.id,p.notes||"","Project notes…",70,null,"rte-compact");
       html+='<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="chip" data-act="editproj" data-pid="'+p.id+'">edit</button>'+
         '<button class="chip" data-act="pinproj" data-pid="'+p.id+'" aria-pressed="'+!!p.pinned+'">'+(p.pinned?"📌 Unpin from Today":"📌 Pin to Today")+'</button>'+
+        '<button class="chip" data-act="projtask" data-pid="'+p.id+'">+ task</button>'+
         '<button class="chip" data-act="milestone" data-pid="'+p.id+'">+ milestone</button>'+
         '<button class="chip" data-act="phase" data-pid="'+p.id+'">+ phase</button></div>';
       html+='</div></details>';
@@ -2800,7 +2868,8 @@ function GENA_MAIN() {
           '<button class="chip" data-act="tpl-pause" data-tid="'+tp.id+'">'+(tp.paused?"Resume":"Pause")+'</button>'+
           '<button class="task-x" data-act="tpl-del" data-tid="'+tp.id+'" style="opacity:1" aria-label="Stop repeating">✕</button></li>';
       }).join("")+'</ul>';
-      html+='<div style="margin-top:16px">'+fold("templates","↻ Repeating tasks",tl)+'</div>';
+      html+='<div style="margin-top:16px">'+fold("templates","↻ Repeating tasks",tl,
+        '<button class="chip" style="padding:3px 9px" data-act="tidytpl">Tidy…</button>')+'</div>';
     }
     html+='<div style="margin-top:16px">'+fold("routines","📋 Routines &amp; checklists",routinesBodyHtml())+'</div>';
     return html;
@@ -3426,7 +3495,7 @@ function GENA_MAIN() {
           ieCollect(); save(); ieClose(); toast("Saved"); return; }
         if(w==="skip"){ ieCollect();
           var sk=S.tasks.find(function(x){return x.id===ieId;});
-          if(sk){ if(isSkipped(sk)){ sk.status="todo"; delete sk.skippedOn; } else { sk.status="skipped"; sk.skippedOn=sk.day||today(); } }
+          if(sk){ if(isSkipped(sk)){ sk.status="todo"; delete sk.skippedOn; if(sk.tplId) sk.unskipped=1; } else { sk.status="skipped"; sk.skippedOn=sk.day||today(); delete sk.unskipped; } }
           save(); ieClose(); toast(sk&&isSkipped(sk)?"Skipped — it won’t carry":"Back on the list"); return; }
         if(w==="cancel"){ ieClose(); return; }
         if(w==="focus"){ var t0=ieCollect(); save(); var vd0=viewDay; viewDay=today(); addTaskToFocus(ieId,true); viewDay=vd0; save(); ieClose(); toast("Added to Today’s Focus"); return; }
@@ -3803,6 +3872,11 @@ function GENA_MAIN() {
         toast(pp0.pinned?"Pinned to Today — its brief shows at the top":"Unpinned"); } }
       else if(act==="newproj"){ openProjModal(); }
       else if(act==="editproj"){ openProjModal(proj(a.dataset.pid)); }
+      else if(act==="dueday"){ var dk=S.tasks.find(function(x){return x.id===(id||anyId);});
+        if(dk){ rescheduleTask(dk,a.dataset.d); save(); render();
+          toast("“"+dk.title.slice(0,28)+"” → "+niceDate(a.dataset.d)); } }
+      else if(act==="projtask"){ openTaskModal({projectId:a.dataset.pid}); }
+      else if(act==="tidytpl"){ openTidyRepeatsModal(); }
       else if(act==="milestone"){ openMilestoneModal(a.dataset.pid); }
       else if(act==="phase"){ openPhaseModal(a.dataset.pid); }
       else if(act==="cal"){ moveCal(+a.dataset.d); }
@@ -4272,7 +4346,7 @@ function GENA_MAIN() {
         var di=S.tasks.findIndex(function(x){return x.id===ed.id;}); var dt=di>=0?S.tasks[di]:null; if(di>=0) S.tasks.splice(di,1); save(); close(); render(); if(dt) toastUndo("Task deleted",function(){ S.tasks.splice(Math.min(di,S.tasks.length),0,dt); save(); render(); }); };
       document.getElementById("m-dup").onclick=function(){ var c={}; for(var kk in ed) c[kk]=ed[kk]; c.id=uid(); c.status="todo"; c.completedOn=null; c.created=today(); delete c.tplId; c.subs=(ed.subs||[]).map(function(s){return {id:uid(),text:s.text,done:false};}); S.tasks.push(c); save(); close(); render(); toast("Task duplicated"); };
       document.getElementById("m-skip").onclick=function(){
-        if(ed.status==="skipped"){ ed.status="todo"; delete ed.skippedOn; save(); close(); render(); toast("Back on the list"); }
+        if(ed.status==="skipped"){ ed.status="todo"; delete ed.skippedOn; if(ed.tplId) ed.unskipped=1; save(); close(); render(); toast("Back on the list"); }
         else { ed.status="skipped"; ed.skippedOn=ed.day||today(); save(); close(); render(); toast("Skipped — it won’t carry"); }
       };
       document.getElementById("m-focus").onclick=function(){ close(); startFocusTimer(ed.title,25); };
@@ -4435,6 +4509,165 @@ function GENA_MAIN() {
       S.phases.push({id:uid(),projectId:pid,title:t,start:s,end:e}); save(); close(); toast("Phase added — see Timeline"); };
   }
 
+  /* ---------- 39: tidy repeating tasks ----------
+     Repeats rot in two ways this fixes. (1) The same rule gets created twice on two devices, so a day
+     mints two or three copies of one habit. (2) A one-off obligation with a deadline gets entered as a
+     daily repeat to nag — which is what a `due` date is for, and which generated sixteen copies of one
+     MacBook errand. Every row here is a decision the user can change; nothing is applied until Apply. */
+  function tplStats(tp){
+    var ins=S.tasks.filter(function(k){return k.tplId===tp.id;});
+    var done=ins.filter(function(k){return k.status==="done";});
+    var last=""; done.forEach(function(k){ if((k.completedOn||"")>last) last=k.completedOn||""; });
+    return {n:ins.length, done:done.length, open:ins.filter(isOpen).length,
+            skipped:ins.filter(isSkipped).length, last:last};
+  }
+  function tplSuggest(tp,dupOf){
+    if(dupOf) return "merge";
+    if(tp.until && tp.until<today()) return "stop";
+    var st=tplStats(tp);
+    // generated a lot, finished almost none: it was never a habit, it was a reminder with a deadline
+    if(st.n>=5 && st.done<=1) return "convert";
+    return "keep";
+  }
+  function openTidyRepeatsModal(){
+    if(!S.templates.length){ toast("No repeating tasks to tidy"); return; }
+    // survivors first: for a duplicated title, keep the one with the most completions
+    var byTitle={};
+    S.templates.forEach(function(tp){
+      var key=norm(tp.title||"");
+      (byTitle[key]=byTitle[key]||[]).push(tp);
+    });
+    Object.keys(byTitle).forEach(function(key){
+      byTitle[key].sort(function(a,b){ return tplStats(b).done-tplStats(a).done; });
+    });
+    var dupOf={};      // template id -> id of the survivor it merges into
+    Object.keys(byTitle).forEach(function(key){
+      var grp=byTitle[key]; if(grp.length<2) return;
+      grp.slice(1).forEach(function(tp){ dupOf[tp.id]=grp[0].id; });
+    });
+    var choice={};
+    S.templates.forEach(function(tp){ choice[tp.id]=tplSuggest(tp,dupOf[tp.id]); });
+    var dueVal={};
+    S.templates.forEach(function(tp){ dueVal[tp.id]=addDays(today(),7); });
+
+    var OPTS=[["keep","Keep repeating"],["merge","Merge into the copy above"],
+              ["convert","Make it one task with a due date"],["stop","Stop repeating (keep the history)"],
+              ["wipe","Delete it and all its rows"]];
+    function body(){
+      var dayDupes=0, seen={};
+      S.tasks.forEach(function(k){ if(!k.tplId||!isOpen(k)) return; var key=k.tplId+"|"+k.day;
+        if(seen[key]) dayDupes++; else seen[key]=1; });
+      var h='<h3>↻ Tidy repeating tasks</h3><p class="sub">'+S.templates.length+' repeating rule'+
+        (S.templates.length===1?'':'s')+
+        (Object.keys(dupOf).length?' · <b>'+Object.keys(dupOf).length+' look like duplicates</b>':'')+
+        '. Change any row; nothing happens until you apply.</p>';
+      h+='<div class="tidy-list">';
+      Object.keys(byTitle).forEach(function(key){
+        byTitle[key].forEach(function(tp,i){
+          var st=tplStats(tp), p=tp.projectId?proj(tp.projectId):null, dup=!!dupOf[tp.id];
+          h+='<div class="tidy-row'+(dup?" dup":"")+'"><div class="tidy-main">'+
+            '<div class="tidy-t">'+esc(tp.title||"Untitled")+(dup?' <span class="pill skip">duplicate of the row above</span>':'')+'</div>'+
+            '<div class="task-meta"><span class="pill rec">'+recDesc(tp)+'</span>'+
+              (p?'<span class="pill proj" style="--pc:'+esc(p.color)+'"><i class="pdot"></i>'+esc(p.name)+'</span>':'')+
+              '<span class="pill block">'+st.n+' row'+(st.n===1?'':'s')+'</span>'+
+              '<span class="pill '+(st.done?'good':'block')+'">'+st.done+' done</span>'+
+              (st.open?'<span class="pill aged">'+st.open+' still open</span>':'')+
+              (st.skipped?'<span class="pill skip">⤬ '+st.skipped+' skipped</span>':'')+
+              (tp.until?'<span class="pill block">until '+esc(niceDate(tp.until))+'</span>':'')+
+              (st.last?'<span class="pill block">last done '+esc(niceDate(st.last))+'</span>':'')+
+            '</div></div>'+
+            '<div class="tidy-pick"><select data-tidy="'+tp.id+'" aria-label="What to do with '+esc(tp.title||"")+'">'+
+              OPTS.filter(function(o){ return o[0]!=="merge"||dup; }).map(function(o){
+                return '<option value="'+o[0]+'"'+(choice[tp.id]===o[0]?" selected":"")+'>'+o[1]+'</option>'; }).join("")+
+            '</select>'+
+            (choice[tp.id]==="convert"?'<label class="rv-date" title="Due date for the single task"><span>⚑</span>'+
+              '<input type="date" data-tidydue="'+tp.id+'" value="'+esc(dueVal[tp.id])+'"/></label>':'')+
+            '</div></div>';
+        });
+      });
+      h+='</div>';
+      if(dayDupes) h+='<p class="sub" style="margin:10px 0 0">Also found <b>'+dayDupes+
+        ' duplicate row'+(dayDupes===1?'':'s')+'</b> on days that already had that repeat — applying clears those too.</p>';
+      h+='<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button>'+
+        '<button class="btn primary" data-tidy-apply>Apply</button></div>';
+      return h;
+    }
+    function apply(){
+      var snap=JSON.stringify({tasks:S.tasks,templates:S.templates});
+      var removedT=0, madeTasks=0, removedRows=0;
+      // 1. merge duplicates onto their survivor, then drop the extra rule
+      S.templates.slice().forEach(function(tp){
+        if(choice[tp.id]!=="merge") return;
+        var keep=dupOf[tp.id];
+        S.tasks.forEach(function(k){ if(k.tplId===tp.id) k.tplId=keep; });
+        S.templates=S.templates.filter(function(x){return x.id!==tp.id;}); removedT++;
+      });
+      // 2. a repeat that was really a deadline becomes one task with a due date
+      S.templates.slice().forEach(function(tp){
+        if(choice[tp.id]!=="convert") return;
+        var before=S.tasks.length;
+        S.tasks=S.tasks.filter(function(k){ return !(k.tplId===tp.id && isOpen(k)); });
+        removedRows+=before-S.tasks.length;
+        S.tasks.push({id:uid(),title:tp.title,projectId:tp.projectId||null,status:"todo",day:null,
+          block:tp.block||null,at:null,priority:true,rollover:0,due:dueVal[tp.id]||addDays(today(),7),
+          subs:[],created:today()});
+        madeTasks++;
+        S.templates=S.templates.filter(function(x){return x.id!==tp.id;}); removedT++;
+      });
+      // 3. stop repeating: the rule and its unfinished rows go, the history stays
+      S.templates.slice().forEach(function(tp){
+        if(choice[tp.id]!=="stop") return;
+        var before=S.tasks.length;
+        S.tasks=S.tasks.filter(function(k){ return !(k.tplId===tp.id && isOpen(k)); });
+        removedRows+=before-S.tasks.length;
+        S.templates=S.templates.filter(function(x){return x.id!==tp.id;}); removedT++;
+      });
+      // 4. wipe: rule and every row it ever made
+      S.templates.slice().forEach(function(tp){
+        if(choice[tp.id]!=="wipe") return;
+        var before=S.tasks.length;
+        S.tasks=S.tasks.filter(function(k){ return k.tplId!==tp.id; });
+        removedRows+=before-S.tasks.length;
+        S.templates=S.templates.filter(function(x){return x.id!==tp.id;}); removedT++;
+      });
+      // 5. one row per repeat per day. Merging two rules leaves two rows on every shared day, past
+      //    days included — keep the most informative one: a completion beats an open row beats a skip.
+      var rank=function(k){ return k.status==="done"?3:(isSkipped(k)?1:2); };
+      var best={};
+      S.tasks.forEach(function(k){
+        if(!k.tplId) return;
+        var key=k.tplId+"|"+k.day;
+        if(!best[key] || rank(k)>rank(best[key])) best[key]=k;
+      });
+      var keepRows=[];
+      S.tasks.forEach(function(k){
+        if(!k.tplId){ keepRows.push(k); return; }
+        if(best[k.tplId+"|"+k.day]===k){ keepRows.push(k); return; }
+        removedRows++;
+      });
+      S.tasks=keepRows;
+      save(); close(); render();
+      toastUndo(removedT+" rule"+(removedT===1?"":"s")+" tidied · "+removedRows+" row"+(removedRows===1?"":"s")+
+        " cleared"+(madeTasks?" · "+madeTasks+" due-dated task"+(madeTasks===1?"":"s")+" created":""),
+        function(){ var b=JSON.parse(snap); S.tasks=b.tasks; S.templates=b.templates; save(); render(); });
+    }
+    function wire(){
+      var root=document.querySelector(".modal");
+      root.onchange=function(e){
+        var sel=e.target.closest("[data-tidy]");
+        if(sel){ choice[sel.dataset.tidy]=sel.value; rebuild(); return; }
+        var dd=e.target.closest("[data-tidydue]");
+        if(dd){ dueVal[dd.dataset.tidydue]=dd.value; }
+      };
+      root.onclick=function(e){
+        if(e.target.closest("[data-x]")){ close(); return; }
+        if(e.target.closest("[data-tidy-apply]")) apply();
+      };
+    }
+    function rebuild(){ var m=document.querySelector(".modal"); if(!m) return;
+      var y=m.scrollTop; m.innerHTML=body(); wire(); m.scrollTop=y; }
+    modal(body(),"wide"); wire();
+  }
   function openHabitModal(h){
     var editing=!!h; var base=h||{name:"",goal:1};
     modal('<h3>'+(editing?"Edit habit":"New habit")+'</h3>'+
@@ -4956,6 +5189,7 @@ function GENA_MAIN() {
       '<button class="btn" id="x-share">🔗 Share a read-only snapshot</button>'+
       '<button class="btn" id="x-capture">⚡ Quick capture (bookmarklet / share)</button>'+
       '<button class="btn" id="x-lock">🔒 Passcode &amp; encryption: '+(ENC?"on":(lockCfg()?"screen lock only":"off"))+'</button>'+
+      '<button class="btn" id="x-tidy" title="Merge duplicated repeats, turn deadline-shaped repeats into one task with a due date, and clear the leftover rows.">↻ Tidy repeating tasks</button>'+
       '<button class="btn" id="x-folds" title="Collapse every card in view — Today, the panel, Hub, projects and people — or open them all back up.">⇕ Collapse all cards</button>'+
       '<button class="btn" id="x-archive">🗄 Archive done tasks older than 60 days'+(archN?' ('+archN+')':'')+'</button>'+
       '<button class="btn" id="x-install">📱 Add to phone home screen</button>'+
@@ -5001,6 +5235,7 @@ function GENA_MAIN() {
       this.textContent="⏳ Carry unfinished onto today: "+(S.autoCarry?"on":"off");
       toast(S.autoCarry?"Unfinished tasks will move onto today":"Unfinished tasks stay put — pull them in from Carried over");
     };
+    document.getElementById("x-tidy").onclick=function(){ close(); openTidyRepeatsModal(); };
     document.getElementById("x-folds").onclick=function(){ var c=anyFoldOpen(); close(); setAllFolds(c); };
     document.getElementById("x-archive").onclick=function(){
       if(!archN){ toast("Nothing old enough to archive yet"); return; }
@@ -5400,8 +5635,11 @@ function GENA_MAIN() {
       "    \"time\": \"HH:MM\",\n"+
       "    \"priority\": true,\n"+
       "    \"notes\": \"string\",\n"+
-      "    \"subtasks\": [\"string\"]\n"+
+      "    \"subtasks\": [\"string\"],\n"+
+      "    \"due\": \"YYYY-MM-DD\",\n"+
+      "    \"end\": \"YYYY-MM-DD\"\n"+
       "  }],\n"+
+      "  \"phases\": [{\"title\": \"string\", \"project\": \"string\", \"start\": \"YYYY-MM-DD\", \"end\": \"YYYY-MM-DD\"}],\n"+
       "  \"events\": [{\"title\": \"string\", \"date\": \"YYYY-MM-DD\", \"project\": \"string\"}],\n"+
       "  \"jobs\": [{\"company\": \"string\", \"role\": \"string\", \"stage\": \"Saved|Applied|Interviewing|Offer|Closed\", \"next\": \"string\", \"nextDate\": \"YYYY-MM-DD\", \"checklist\": [\"string\"], \"link\": \"string\", \"notes\": \"string\"}],\n"+
       "  \"emails\": [{\"subject\": \"string\", \"sender\": \"string\"}],\n"+
@@ -5411,6 +5649,8 @@ function GENA_MAIN() {
       "- Today is "+today()+" — use real YYYY-MM-DD dates.\n"+
       "- KEEP TITLES SHORT — write quick cues, not full sentences. This is a scannable checklist. Use short shorthand where natural. Example: turn \"Reply to the budget email from Sarah and loop in the finance team\" into title \"Reply: budget email → loop finance\". Keep the essential qualifiers, cut filler words.\n"+
       "- For a task with NO deadline, OMIT \"day\" entirely — it goes to my Someday list. For today, use today's date.\n"+
+      "- \"day\" is WHEN I WILL DO IT; \"due\" is the DEADLINE — they are different, and a task can have either or both. Use \"due\" for anything with a real date it must be finished by. \"end\" makes a task span several days (a stretch of work), and needs \"day\" as its first day.\n"+
+      "- \"phases\" are the named stages of a multi-week project for my Timeline (e.g. \"Data prep\", 2026-09-15 → 2026-09-28). Use them when I describe a project with a shape, and give each stage's tasks a \"due\" inside that stage.\n"+
       "- \"subtasks\" are the checklist sub-steps nested under a task (or a focus item). Break any multi-step thing into a short parent title + terse subtask cues (e.g. title \"W4 student deck\" with subtasks \"finish\", \"upload\", \"verify in Student View\").\n"+
       "- \"block\" is the time of day. Use \"anytime\" (or omit) if there's no specific part of day. \"time\" is a 24-hour clock time like \"15:00\".\n"+
       "- \"priority\": true marks a task as important (it sorts to the top).\n"+
@@ -5481,8 +5721,13 @@ function GENA_MAIN() {
       var pid=k.project?projByName(k.project,k.profile).id:null;
       var bl=["morning","afternoon","evening"].indexOf(k.block)>=0?k.block:null;
       var dayVal; if(!("day" in k)||k.day==null||k.day===""||String(k.day).toLowerCase()==="someday") dayVal=null; else dayVal=validDate(k.day)||t;
+      var dueVal=validDate(k.due)||null, endVal=validDate(k.end)||null;
       var at=parseTimeAI(k.time); if(at&&!bl) bl=blockForTime(at);
-      S.tasks.push({id:uid(),title:String(k.title),projectId:pid,status:"todo",day:dayVal,block:bl,at:at,priority:!!k.priority,rollover:0,notes:k.notes?plainToHtml(String(k.notes)):null,subs:aiSubs(k.subtasks),created:t}); n++; });
+      S.tasks.push({id:uid(),title:String(k.title),projectId:pid,status:"todo",day:dayVal,block:bl,at:at,priority:!!k.priority,rollover:0,due:dueVal,end:(endVal&&dayVal&&endVal>dayVal)?endVal:null,notes:k.notes?plainToHtml(String(k.notes)):null,subs:aiSubs(k.subtasks),created:t}); n++; });
+    (d.phases||[]).forEach(function(ph){ if(!ph||!ph.title||!validDate(ph.start)||!validDate(ph.end))return;
+      var ppid=ph.project?projByName(ph.project,ph.profile).id:null;
+      if(ph.end<ph.start) return;
+      S.phases.push({id:uid(),projectId:ppid,title:String(ph.title),start:ph.start,end:ph.end}); n++; });
     (d.events||[]).forEach(function(ev){ if(!ev||!ev.title||!validDate(ev.date))return; var pid=ev.project?projByName(ev.project,ev.profile).id:null; S.events.push({id:uid(),title:String(ev.title),date:validDate(ev.date),projectId:pid,source:"ai"}); n++; });
     (d.jobs||[]).forEach(function(j){ if(!j||!j.company)return; var st=JOB_STAGES.indexOf(j.stage)>=0?j.stage:"Saved"; S.jobs.push({id:uid(),company:String(j.company),role:j.role||"",stage:st,next:j.next||"",nextDate:validDate(j.nextDate),link:j.link||"",notes:j.notes||"",checklist:aiSubs(j.checklist).map(function(s){return {id:s.id,text:s.text,done:false};})}); n++; });
     (d.emails||[]).forEach(function(e){ if(!e||!e.subject)return; S.emails.unshift({id:uid(),subject:String(e.subject),sender:e.sender||"",done:false,created:t}); n++; });
@@ -5497,6 +5742,8 @@ function GENA_MAIN() {
       if(typeof u.priority==="boolean") k.priority=u.priority;
       if(u.title) k.title=String(u.title);
       if(u.notes) k.notes=plainToHtml(String(u.notes));
+      if("due" in u){ if(u.due===null||u.due==="") k.due=null; else if(validDate(u.due)) k.due=u.due; }
+      if("end" in u){ if(u.end===null||u.end==="") k.end=null; else if(validDate(u.end)) k.end=u.end; }
       n++; });
     (d.deletes||[]).forEach(function(id){ var i=S.tasks.findIndex(function(x){return x.id===id;}); if(i>=0){ S.tasks.splice(i,1); n++; } });
     ensureOrd(); fillProjSelect(); save(); toast("Applied "+n+" change"+(n===1?"":"s")+" from Claude");
@@ -5554,6 +5801,7 @@ function GENA_MAIN() {
       ["🧭","Show / hide the sidebar",function(){ if(window.innerWidth>1000){ S.sbOpen=!S.sbOpen; save(); applySidebarState(); } else document.body.classList.toggle("sb-open"); }],
       ["◐","Toggle light / dark",function(){ document.getElementById("theme-btn").onclick(); }],
       ["🔍","Search everything",function(){ openSearchModal(); }],
+      ["↻","Tidy repeating tasks",function(){ openTidyRepeatsModal(); }],
       ["⇕","Collapse all cards",function(){ setAllFolds(true); }],
       ["⇕","Expand all cards",function(){ setAllFolds(false); }],
       ["🌅","Morning review — loose ends",function(){ openReviewModal("morning",S.lastOpen); }],
