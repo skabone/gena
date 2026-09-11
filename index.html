@@ -1254,7 +1254,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-11 17:04";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-09-11 17:30";   // set by ship.sh on every release — the footer is how you tell a surface is current
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID="spu-social-psych-2026";
   var SPU_PLAN_REVISION=2026071404;
@@ -6109,7 +6109,7 @@ function GENA_MAIN() {
         return '<div>'+(openL.length?openL.map(function(e){return impRow(e,nums[e.id]);}).join(""):'<div class="empty">Nothing open — everything logged has shipped ✨</div>')+'</div>'+
           (shipped.length?'<details class="done-strip" data-fold="imp-shipped"'+(S.collapsed["imp-shipped"]===false?" open":"")+'><summary><span class="fold-chev">▸</span>✅ Shipped · '+shipped.length+'</summary>'+
             '<div>'+shipped.map(function(e){return impRow(e);}).join("")+'</div></details>':'')+
-          (openL.length?'<div class="capture" style="margin:10px 0 0"><input class="q" id="imp-ship-in" placeholder="Shipped numbers from Claude — e.g. 1,4,7" aria-label="Mark numbers as shipped"/><button class="add" id="imp-ship-go">Mark shipped</button></div>':'');
+          (openL.length?'<div class="capture" style="margin:10px 0 0"><input class="q" id="imp-ship-in" placeholder="Shipped numbers — e.g. 1,4,7 · 1-20 · all" aria-label="Mark numbers as shipped"/><button class="add" id="imp-ship-go">Mark shipped</button></div>':'');
       })(),
       '<button class="chip" id="imp-copy">Copy open items for Claude</button>');
 
@@ -6219,7 +6219,14 @@ function GENA_MAIN() {
       function(){ save(); toast(openL.length+" open item"+(openL.length===1?"":"s")+" copied"); });
   }
   function markImproveShipped(text){
-    var nums=(text||"").replace(/shipped:/i,"").split(/[^0-9]+/).filter(Boolean).map(Number);
+    // "1,4,7", "1-70", "all", or any mix — the log had 75 open items the day this shipped
+    var nums=[], src=(text||"").replace(/shipped:/i,"").trim();
+    if(/^all$/i.test(src)) nums=(S.impCopyIds||[]).map(function(_,i){return i+1;});
+    else src.split(/[\s,;]+/).filter(Boolean).forEach(function(tok){
+      var m=tok.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+      if(m){ for(var i=+m[1]; i<=+m[2] && i-(+m[1])<500; i++) nums.push(i); }
+      else if(/^\d+$/.test(tok)) nums.push(+tok);
+    });
     if(!nums.length){ toast("Give me the numbers — e.g. 1,4,7"); return; }
     var ids=S.impCopyIds||[], n=0;
     nums.forEach(function(num){
