@@ -11,7 +11,9 @@ self.addEventListener("activate", function (e) {
   e.waitUntil(
     caches.keys()
       .then(function (keys) {
-        return Promise.all(keys.filter(function (k) { return k !== CACHE; })
+        // Only Gena's own caches. skabone.github.io is a shared origin — FantasyCast keeps its offline
+        // shell here too, and deleting every key would evict a neighbouring app on each Gena release.
+        return Promise.all(keys.filter(function (k) { return k !== CACHE && k.indexOf("daybook-") === 0; })
           .map(function (k) { return caches.delete(k); }));
       })
       .then(function () { return self.clients.claim(); })

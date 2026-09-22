@@ -11,6 +11,24 @@ import WebKit
 let APP_URL = "https://skabone.github.io/gena/"
 let HOME_HOST = "skabone.github.io"
 
+let OFFLINE_HTML = """
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gena</title>
+<style>
+  :root{ color-scheme: light dark; }
+  body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    font:16px/1.5 -apple-system, system-ui, sans-serif; background:Canvas; color:CanvasText; }
+  main{ max-width:340px; padding:28px; text-align:center; }
+  h1{ font-size:20px; margin:0 0 6px; }
+  p{ margin:0 0 18px; opacity:.7; }
+  a{ display:inline-block; padding:11px 20px; border-radius:12px; background:#9c7420; color:#fff;
+    text-decoration:none; font-weight:600; }
+</style>
+<main><h1>Gena can’t be reached</h1>
+<p>You’re offline, and this Mac has no saved copy yet. Your tasks are safe on this device — they’ll be here when Gena opens.</p>
+<a href="\(APP_URL)">Try again</a></main>
+"""
+
 final class WebController: NSViewController, WKNavigationDelegate, WKUIDelegate {
     let web: WKWebView
 
@@ -54,6 +72,28 @@ final class WebController: NSViewController, WKNavigationDelegate, WKUIDelegate 
     }
 
     @objc func reload(_ sender: Any?) { loadApp() }
+
+    // Offline. Revalidating needs the network, so a failed load first retries from the cache — Gena is
+    // local-first and the cached page is the whole app — and only then shows a page of its own instead
+    // of WebKit's blank window. The page has no origin (baseURL nil), so it cannot touch Gena's storage.
+    private var triedCache = false
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        let e = error as NSError
+        if e.domain == NSURLErrorDomain && e.code == NSURLErrorCancelled { return }
+        guard let u = URL(string: APP_URL) else { return }
+        if !triedCache {
+            triedCache = true
+            web.load(URLRequest(url: u, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 15))
+            return
+        }
+        triedCache = false
+        web.loadHTMLString(OFFLINE_HTML, baseURL: nil)
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        if webView.url?.host == HOME_HOST { triedCache = false }
+    }
 
     // Keep Gena inside the app; send outside links to the real browser.
     func webView(_ webView: WKWebView,
