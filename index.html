@@ -74,6 +74,10 @@
   .sb-brand{ display:flex; align-items:center; gap:8px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; font-size:12px; color:var(--ink); padding:4px 6px 0; }
   .sb-brand .sb-act{ margin-left:auto; background:none; border:none; color:var(--ink-faint); cursor:pointer; font-size:11.5px; font-weight:700; font-family:inherit; }
   .sb-brand .sb-act:hover{ color:var(--terra-deep); }
+  .sb-ver{ font-weight:600; letter-spacing:0; text-transform:none; font-size:11.5px; color:var(--ink-faint); }
+  .sb-foot{ margin-top:auto; padding:10px 8px 0; font-size:11.5px; color:var(--ink-soft); }
+  .build-line{ user-select:text; -webkit-user-select:text; cursor:text; font-variant-numeric:tabular-nums; }
+  .hub-build{ text-align:center; font-size:11.5px; color:var(--ink-soft); padding:6px 0 2px; }
   #rightbar{ position:fixed; right:0; top:0; bottom:0; width:var(--rbw); z-index:45; background:var(--sheet); border-left:1.5px solid var(--line); padding:14px 12px 20px; overflow:auto; display:flex; flex-direction:column; gap:14px; transition:transform .2s ease; }
   body.rb-closed #rightbar{ transform:translateX(102%); }
   .rb-brand{ display:flex; align-items:center; gap:8px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; font-size:12px; color:var(--ink); padding:4px 6px 0; }
@@ -245,8 +249,12 @@
   .waitbox{ margin:4px 0 6px; padding:8px 10px; border:1px dashed var(--line); border-radius:10px; }
   .waitbox input,.waitbox select{ width:100%; margin-bottom:4px; }
   .cyc-row{ display:flex; gap:6px; } .cyc-row input{ width:64px; flex:0 0 64px; }
-  .imp-item.shipped{ opacity:.6; }
-  .imp-item.shipped>div>div:first-child{ text-decoration:line-through; }
+  .imp-item.resolved{ opacity:.6; }
+  .imp-item.resolved>div>div:first-child{ text-decoration:line-through; }
+  .imp-counts{ font-size:12px; color:var(--ink-soft); margin:0 0 6px; }
+  .imp-sec{ margin-top:14px; padding-top:8px; border-top:1px solid var(--line-soft); }
+  .imp-sec-h{ font-weight:700; font-size:13px; } .imp-sec-h span{ display:block; font-weight:400; font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+  .imp-acts{ display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
   .imp-n{ display:inline-block; min-width:18px; margin-right:6px; padding:0 4px; border-radius:6px;
     background:var(--line); color:var(--ink-faint); font-size:11px; font-weight:700; text-align:center; }
   .task-meta{ display:block; margin-top:3px; font-size:11.5px; line-height:1.7; color:var(--ink-soft); }
@@ -1292,7 +1300,12 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-09-21 18:40";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-10-05-V5";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  // The version is the part of the build ID after -V (GD-014): derived here, never typed anywhere else.
+  // The legacy YYYY-MM-DD HH:MM stamp has none, so it reads plain "Gena" until the first V5 ship.
+  function appVersion(b){ var m=/-V(\d+(?:\.\d+){0,2})$/.exec(b||""); return m?"V"+m[1]:""; }
+  var APP_VERSION=appVersion(APP_BUILD);
+  function buildLine(){ return "Gena"+(APP_VERSION?" "+APP_VERSION:"")+" · "+APP_BUILD; }
   var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID=null;
   var SPU_PLAN_REVISION=0;
@@ -1547,8 +1560,48 @@ function GENA_MAIN() {
     out42.tasks.forEach(function(k){ if(!Array.isArray(k.personIds)) k.personIds=[]; if(!Array.isArray(k.subs)) k.subs=[]; });
     out42.projects.forEach(function(p){ if(p.profileId===undefined)p.profileId=null; p.fav=!!p.fav; });
     Object.keys(out42.focus).forEach(function(k){ (out42.focus[k]||[]).forEach(function(f){ if(!Array.isArray(f.subs)) f.subs=[]; }); });
+    migrateClosing5(out42);
     IDLISTS.forEach(function(key){ (out42[key]||[]).forEach(function(x){ if(x&&x.id&&!x._m) x._m=_base; }); });
     return out42; }
+  /* V5 closing states (GD-017): a note is open, shipped (built, not yet seen) or resolved (he looked).
+     Under the old rule "shipped" closed a note, so a note marked shipped WITHOUT shippedIn, which every
+     V5 path writes, was closed by him and becomes resolved. Keyed on the note itself, not on a flag, so
+     it is idempotent and safe in every normalize: a merge with a stale device or a restored old backup
+     converts only old-rule notes and never a V5 Shipped one. No _m bump: every V5 device converts the
+     same notes the same way. Returns how many it converted; load() keeps the copy and says so.
+     Only notes shipped BEFORE this build's day (or with no ship day) are his old closes: a stale pre-V5
+     device can still ship a note the old way on or after the V5 ship day, and that one stays Shipped for
+     him to check (I-18). The date part of APP_BUILD is the ship day in either stamp format. */
+  function closedOldRule(e){ return !!e&&e.status==="shipped"&&!e.shippedIn&&(!e.shippedOn||e.shippedOn<String(APP_BUILD).slice(0,10)); }
+  function migrateClosing5(d){
+    var n=0;
+    (d.improve||[]).forEach(function(e){ if(closedOldRule(e)){ e.status="resolved"; n++; } });   // resolvedOn stays empty: the day he closed it is unknown (A6)
+    return n;
+  }
+  function impStatus(e){ return e&&(e.status==="shipped"||e.status==="resolved")?e.status:"open"; }
+  // The only writer of a note's status. Resolved is reached only from his tap (or the V5 migration).
+  function impSetStatus(e,st,ver){
+    if(st==="shipped"){ e.status="shipped"; e.shippedIn=ver||APP_VERSION||APP_BUILD; e.shippedOn=today(); delete e.resolvedOn; }
+    else if(st==="resolved"){ e.status="resolved"; e.resolvedOn=today(); }
+    else { e.status="open"; delete e.shippedIn; delete e.shippedOn; delete e.resolvedOn; }
+  }
+  /* The paste box: "SHIPPED: 1,4,7", "SHIPPED V5: 1,4,7", "1-20", "all", or bare numbers. Returns
+     {ver, all, nums} or null for a line it cannot read whole (one stray word refuses the line rather
+     than shipping half of it). The numbers are the last copy's (impCopyIds). */
+  function parseShippedLine(text){
+    var src=String(text||"").trim().replace(/[.;]\s*$/,""), ver="";
+    var m=/^shipped(?:\s+v(\d+(?:\.\d+){0,2}))?\s*:?\s*/i.exec(src);
+    if(m){ ver=m[1]?"V"+m[1]:""; src=src.slice(m[0].length); }
+    if(/^all$/i.test(src)) return {ver:ver,all:true,nums:[]};
+    var nums=[], bad=false;
+    src.split(/[\s,;]+/).filter(Boolean).forEach(function(tok){
+      var r=tok.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+      if(r){ if(+r[2]<+r[1]) bad=true; for(var i=+r[1]; i<=+r[2] && i-(+r[1])<500; i++) nums.push(i); }
+      else if(/^\d+$/.test(tok)) nums.push(+tok);
+      else bad=true;
+    });
+    return (bad||!nums.length)?null:{ver:ver,all:false,nums:nums};
+  }
   function migrateAreas42(d){
   d.areasRev42=1;
   }
@@ -1558,6 +1611,8 @@ function GENA_MAIN() {
   // which is exactly the bug class this feature exists to catch).
   var INTEGRITY_WARN;
   var SWEPT_REPEATS;
+  var CLOSING5;   // notes the V5 closing-states migration converted on this load (boot toasts it once); no initializer, as above
+  var PRE_V5;     // what load() keeps for the V5 recovery copy until boot writes it (keepPreV5Copy); no initializer, as above
   var AREAS_MIGRATED;
   function storeCounts(d){
     return { tasks:(d.tasks||[]).length, projects:(d.projects||[]).length, people:(d.people||[]).length,
@@ -1576,6 +1631,13 @@ function GENA_MAIN() {
     // collections before and after, and if anything shrank hard, keep the untouched original and offer
     // it back instead of trusting the migration.
     var before=storeCounts(d);
+    // V5 closing states: before the first conversion, keep the store as it was (with a passcode on, the
+    // stored envelope itself, so nothing lands in plain text), once. Boot writes it (keepPreV5Copy: packed,
+    // and only once the storage helpers below this line exist) and then says what happened, copy or not.
+    var old5=(d.improve||[]).filter(closedOldRule).length;
+    if(old5){ var had5=null; try{ had5=localStorage.getItem(KEY+"-preV5"); }catch(e6){}
+      if(had5===null){ var keep5=raw; if(ENC){ keep5=null; try{ keep5=localStorage.getItem(KEY); }catch(e7){} }
+        PRE_V5={raw:keep5, t:d.savedAt||null, n:(d.tasks||[]).length, enc:!!ENC}; CLOSING5=old5; } }
     try{ var out=normalize(d);
       var after=storeCounts(out);
       var lost=Object.keys(before).filter(function(k){ return before[k]>=5 && after[k]<before[k]*0.8; });
@@ -1652,26 +1714,49 @@ function GENA_MAIN() {
      Order: snapshots (oldest first) → recovery copies → the pre-migration copy → the last good save. */
   var SNAP_BUDGET=2200000, storageTight=false;
   function snapChars(arr){ return arr.reduce(function(n,x){ return n+(x.z||x.data||"").length; },0); }
-  function evictOne(){
+  function evictOne(snapsOnly){
     try{ var arr=JSON.parse(localStorage.getItem(SNAP_KEY)||"[]");
       if(arr.length){ arr.shift(); if(arr.length) localStorage.setItem(SNAP_KEY, JSON.stringify(arr)); else localStorage.removeItem(SNAP_KEY); return SNAP_KEY; }
     }catch(e){ if(localStorage.getItem(SNAP_KEY)!==null){ localStorage.removeItem(SNAP_KEY); return SNAP_KEY; } }
-    var extra=[KEY+"-guard", KEY+"-corrupt", KEY+"-pre42", KEY+"-lastgood"];
+    if(snapsOnly) return null;
+    var extra=[KEY+"-guard", KEY+"-corrupt", KEY+"-pre42", KEY+"-preV5", KEY+"-lastgood"];
     for(var i=0;i<extra.length;i++) if(localStorage.getItem(extra[i])!==null){ localStorage.removeItem(extra[i]); return extra[i]; }
     return null;
   }
   // A pre-migration copy is a whole plain store kept "just in case". After 60 days — and only while a
   // newer backup exists — it has done its job; the space goes back to snapshots. Returns the date it held.
   var PRE_COPY_DAYS=60;
+  // A packed copy carries its date outside the data ({z:1,t,…}); a plain encrypted one has no readable date
+  // and is kept until storage needs the room (evictOne).
   function expirePreCopies(){
     var gone=null;
-    try{ var raw=localStorage.getItem(KEY+"-pre42"); if(!raw) return null;
-      var m=/"savedAt":(\d+)/.exec(raw), t=m?+m[1]:0;
-      if(!t || Date.now()-t < PRE_COPY_DAYS*864e5) return null;
-      if(localStorage.getItem(KEY+"-lastgood")===null && localStorage.getItem(SNAP_KEY)===null) return null;
-      localStorage.removeItem(KEY+"-pre42"); gone=fmt(new Date(t));
-    }catch(e){}
+    [["-pre42","areas & seasons"],["-preV5","V5 closing states"]].forEach(function(pc){
+      try{ var raw=localStorage.getItem(KEY+pc[0]); if(!raw) return;
+        var m=/^\{"z":1,"t":(\d+)/.exec(raw)||/"savedAt":(\d+)/.exec(raw), t=m?+m[1]:0;
+        if(!t || Date.now()-t < PRE_COPY_DAYS*864e5) return;
+        if(localStorage.getItem(KEY+"-lastgood")===null && localStorage.getItem(SNAP_KEY)===null) return;
+        localStorage.removeItem(KEY+pc[0]); gone={day:fmt(new Date(t)),what:pc[1]};
+      }catch(e){}
+    });
     return gone;
+  }
+  /* The V5 recovery copy (what load() kept in PRE_V5) is written after boot, packed like the last good save
+     ({z:1,t,n,enc,d}, about 15x smaller) or plain without CompressionStream. On a full disk it may take the
+     room of the oldest snapshots, never a recovery copy's, the last good save's or the store's. Resolves
+     true once it landed, false if it could not; boot says which (closing5Note). */
+  function keepPreV5Copy(p){
+    var put=function(str){
+      for(var i=0;i<16;i++){ try{ localStorage.setItem(KEY+"-preV5", str); return true; }catch(e){ if(!evictOne(true)) return false; } }
+      return false;
+    };
+    if(!p||p.raw==null) return Promise.resolve(false);
+    if(!canPack()) return Promise.resolve(put(p.raw));
+    return packStr(p.raw).then(function(z){ return put(JSON.stringify({z:1,t:p.t,n:p.n,enc:p.enc,d:z})); },function(){ return put(p.raw); })
+      .catch(function(){ return false; });
+  }
+  function closing5Note(n,kept){
+    return n+" note"+(n===1?"":"s")+" you closed as shipped "+(n===1?"is":"are")+" now resolved — Hub → Learnings. "+
+      (kept?"The copy from before is in ⋯ → Restore":"Storage is too full to keep a copy from before: export a backup from ⋯");
   }
   function writeMain(str){
     for(var i=0;i<16;i++){
@@ -1684,7 +1769,7 @@ function GENA_MAIN() {
   }
   function storageUsage(){
     var rows=[], total=0, names={}; names[KEY]="Your data"; names[SNAP_KEY]="Snapshots"; names[KEY+"-lastgood"]="Last good save";
-    names[KEY+"-pre42"]="Before areas & seasons"; names[KEY+"-guard"]="Recovery copy"; names[KEY+"-corrupt"]="Recovery copy";
+    names[KEY+"-pre42"]="Before areas & seasons"; names[KEY+"-preV5"]="Before V5 closing states"; names[KEY+"-guard"]="Recovery copy"; names[KEY+"-corrupt"]="Recovery copy";
     for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i), v=localStorage.getItem(k)||"", b=(k.length+v.length)*2;
       total+=b; var label=names[k]||"Settings"; var r=rows.filter(function(x){ return x.label===label; })[0];
       if(r) r.bytes+=b; else rows.push({label:label, bytes:b}); }
@@ -2397,7 +2482,7 @@ function GENA_MAIN() {
     var VIEWCNT={today:todayOpen, backlog:backlogOpen};
     // The Views list duplicated the top nav chip-for-chip; the sidebar earns its width with what is
     // uniquely its own — profiles and project filters.
-    var h='<div class="sb-brand">🌼 Gena<button class="sb-act" data-sb="collapse" title="Hide the sidebar">⟨ hide</button></div>';
+    var h='<div class="sb-brand">🌼 Gena'+(APP_VERSION?'<span class="sb-ver">'+APP_VERSION+'</span>':'')+'<button class="sb-act" data-sb="collapse" title="Hide the sidebar">⟨ hide</button></div>';
     var favCnt=S.projects.filter(function(p){return p.fav;}).length;
     h+='<div class="sb-card"><div class="sb-h">Areas<button class="sb-act" data-sb="newprofile">+ new</button></div>';
     h+='<button class="sb-row" data-sb="profile" data-id="all" aria-pressed="'+(S.activeProfile==="all")+'">🌐<span class="sb-name">All</span></button>';
@@ -2420,6 +2505,8 @@ function GENA_MAIN() {
       h+='<div class="sb-mini">Click a project to filter — pick several. ★ pins it to Favorites.'+(shelved.length?' · '+shelved.length+' off-season / ended in Projects.':'')+'</div>';
     } else h+='<div class="sb-mini">No active projects in this area yet — edit a project (or the area) to add some.</div>';
     h+='</div>';
+    // the build ID, lower left: how he tells this surface is current (CG-1); the phone shows it on the Hub
+    h+='<div class="sb-foot build-line" title="Version and build ID">'+esc(buildLine())+'</div>';
     sb.innerHTML=h+'<div class="pane-grip" data-pane="sb" title="Drag to resize"></div>';
   }
   document.getElementById("sidebar").onclick=function(e){
@@ -4692,8 +4779,9 @@ function GENA_MAIN() {
           eb.done=true; save(); render(); toast("Added to today — the email is marked handled"); } }
       else if(act==="job-open"){ openJobModal(S.jobs.find(function(x){return x.id===anyId;})); }
       else if(act==="imp-del"){ S.improve=S.improve.filter(function(x){return x.id!==anyId;}); save(); render(); }
-      else if(act==="imp-ship"){ var im=S.improve.find(function(x){return x.id===anyId;});
-        if(im){ if(im.status==="shipped"){ im.status="open"; delete im.shippedOn; } else { im.status="shipped"; im.shippedOn=today(); } save(); render(); } }
+      // closing states: each button moves exactly one note; resolved only ever comes from his tap
+      else if(act==="imp-resolve"||act==="imp-reopen"){ var im=S.improve.find(function(x){return x.id===anyId;});
+        if(im){ impSetStatus(im,act==="imp-resolve"?"resolved":"open"); save(); render(); } }
       else if(act==="tpl-pause"){ var tp1=S.templates.find(function(x){return x.id===a.dataset.tid;}); if(tp1){ tp1.paused=!tp1.paused; save(); render(); toast(tp1.paused?"Paused — no new copies":"Resumed"); } }
       else if(act==="tpl-del"){ var ti=S.templates.findIndex(function(x){return x.id===a.dataset.tid;}); if(ti>=0){ var tdel=S.templates[ti]; S.templates.splice(ti,1); save(); render(); toastUndo("Repeat removed",function(){ S.templates.splice(Math.min(ti,S.templates.length),0,tdel); save(); render(); }); } }
       else if(act==="routine-new"){ openRoutineModal(); }
@@ -6125,12 +6213,18 @@ function GENA_MAIN() {
     document.body.innerHTML=snapshotHtml(snap,location.pathname);
     document.body.setAttribute("data-snapshot","1");
   }
-  function openRestoreModal(){
+  // What ⋯ → Restore offers: a packed item ({z:1,…}) carries z, a plain or encrypted one raw; the restore reads both.
+  function restoreItems(){
     var items=[];
     try{ var lg=localStorage.getItem(KEY+"-lastgood"); if(lg){ var dl=JSON.parse(lg); items.push(dl.z?{label:"Most recent good save", t:dl.t, n:dl.enc?"🔒":dl.n, z:dl.d}:{label:"Most recent good save", t:dl.savedAt, n:dl.enc?"🔒":(dl.tasks||[]).length, raw:lg}); } }catch(e){}
     try{ JSON.parse(localStorage.getItem(SNAP_KEY)||"[]").slice().reverse().forEach(function(s){ items.push({label:"Snapshot", t:s.t, n:s.n, raw:s.data, z:s.z}); }); }catch(e){}
+    try{ var pv5=localStorage.getItem(KEY+"-preV5"); if(pv5){ var dv5=EC.isEnv(pv5)?null:JSON.parse(pv5); items.push(dv5&&dv5.z?{label:"Before V5 closing states", t:dv5.t, n:dv5.enc?"🔒":dv5.n, z:dv5.d}:{label:"Before V5 closing states", t:dv5?dv5.savedAt:null, n:dv5?(dv5.tasks||[]).length:"🔒", raw:pv5}); } }catch(e){}
     try{ var p42=localStorage.getItem(KEY+"-pre42"); if(p42){ var d42=JSON.parse(p42); items.push({label:"Before areas & seasons (42)", t:d42.savedAt, n:(d42.tasks||[]).length, raw:p42}); } }catch(e){}
     try{ var cr=localStorage.getItem(KEY+"-corrupt"); if(cr){ items.push({label:"Recovered (last readable)", t:null, n:"?", raw:cr}); } }catch(e){}
+    return items;
+  }
+  function openRestoreModal(){
+    var items=restoreItems();
     var body='<h3>🛟 Restore from a local backup</h3><p class="sub">Gena keeps automatic on-device snapshots. Pick one to roll back to — it replaces the current data on this device (and re-syncs afterward).</p>';
     var use=storageUsage();
     body+='<p class="sub" id="storage-meter">On this device: <b>'+niceBytes(use.total)+'</b> of about 10 MB — '+use.rows.slice(0,4).map(function(r){ return esc(r.label)+" "+niceBytes(r.bytes); }).join(" · ")+'</p>';
@@ -6203,7 +6297,7 @@ function GENA_MAIN() {
       '<button class="btn" id="x-host">🌐 Put it online (GitHub Pages)</button>'+
       '<button class="btn ghost danger" id="x-reset" >Reset everything</button>'+
       '</div>'+
-      '<div class="sub" style="font-size:10.5px;margin-top:14px;text-align:center">Gena · build '+APP_BUILD+' · © Mintay Misgano · PolyForm Noncommercial · press ? for shortcuts</div>'+
+      '<div class="sub" style="font-size:10.5px;margin-top:14px;text-align:center"><span class="build-line">'+esc(buildLine())+'</span> · © Mintay Misgano · PolyForm Noncommercial · press ? for shortcuts</div>'+
       '<div class="modal-actions"><button class="btn primary" id="set-done">Done</button></div>');
     document.getElementById("set-done").onclick=function(){ close(); render(); };
     document.getElementById("x-csv").onclick=exportCSV;
@@ -6459,17 +6553,23 @@ function GENA_MAIN() {
       '<div class="capture" style="margin:0 0 12px"><select class="q" id="imp-type" style="flex:0 0 120px" aria-label="Type">'+Object.keys(IMP_META).map(function(k){return '<option value="'+k+'">'+IMP_META[k][0]+'</option>';}).join("")+'</select>'+
       '<input class="q" id="imp-in" placeholder="What happened, or what would be better?" aria-label="Note"/><button class="add" id="imp-add">Log</button></div>'+
       (function(){
-        var openL=S.improve.filter(function(e){return e.status!=="shipped";});
-        var shipped=S.improve.filter(function(e){return e.status==="shipped";});
+        var by={open:[],shipped:[],resolved:[]}; S.improve.forEach(function(e){ by[impStatus(e)].push(e); });
         var nums={}; (S.impCopyIds||[]).forEach(function(id,i){ nums[id]=i+1; });
-        return '<div>'+(openL.length?openL.map(function(e){return impRow(e,nums[e.id]);}).join(""):'<div class="empty">Nothing open — everything logged has shipped ✨</div>')+'</div>'+
-          (shipped.length?'<details class="done-strip" data-fold="imp-shipped"'+(S.collapsed["imp-shipped"]===false?" open":"")+'><summary><span class="fold-chev">▸</span>✅ Shipped · '+shipped.length+'</summary>'+
-            '<div>'+shipped.map(function(e){return impRow(e);}).join("")+'</div></details>':'')+
-          (openL.length?'<div class="capture" style="margin:10px 0 0"><input class="q" id="imp-ship-in" placeholder="Shipped numbers — e.g. 1,4,7 · 1-20 · all" aria-label="Mark numbers as shipped"/><button class="add" id="imp-ship-go">Mark shipped</button></div>':'');
+        var counts=[by.open.length+" open"]; if(by.shipped.length) counts.push(by.shipped.length+" shipped, check them"); if(by.resolved.length) counts.push(by.resolved.length+" resolved");
+        return '<div class="imp-counts">'+counts.join(" · ")+'</div>'+
+          '<div>'+(by.open.length?by.open.map(function(e){return impRow(e,nums[e.id]);}).join(""):'<div class="empty">Nothing open ✨</div>')+'</div>'+
+          (by.open.length?'<div class="capture" style="margin:10px 0 0"><input class="q" id="imp-ship-in" placeholder="Paste SHIPPED: 1,4,7 · 1-20 · all" aria-label="Mark numbers as shipped"/><button class="add" id="imp-ship-go">Mark shipped</button></div>':'')+
+          (by.shipped.length?'<div class="imp-sec"><div class="imp-sec-h">🔍 Shipped, check these<span>Built, not yet seen: look at the build you use, then resolve or send it back.</span></div>'+
+            by.shipped.map(function(e){return impRow(e);}).join("")+
+            (by.shipped.length>1?'<button class="chip" id="imp-resolve-all" style="margin-top:8px">✓ Resolve all shipped</button>':'')+'</div>':'')+
+          (by.resolved.length?'<details class="done-strip" data-fold="imp-resolved"'+(S.collapsed["imp-resolved"]===false?" open":"")+'><summary><span class="fold-chev">▸</span>✅ Resolved · '+by.resolved.length+'</summary>'+
+            '<div>'+by.resolved.map(function(e){return impRow(e);}).join("")+'</div></details>':'');
       })(),
       '<button class="chip" id="imp-copy">Copy open items for Claude</button>');
 
     html+='</div>';
+    // the last line of the Hub: the phone's place for the build ID (the sidebar is closed there; A3)
+    html+='<div class="hub-build build-line">'+esc(buildLine())+'</div>';
     return html;
   }
   function emailRow(e){
@@ -6488,13 +6588,17 @@ function GENA_MAIN() {
   }
   // n is the number this item carried in the last "Copy log for Claude" — the same number Claude
   // reports back as shipped, so the round-trip needs no ids on screen.
+  // Open: a tick resolves it (he closes it himself). Shipped: ✓ Resolved or ↩ Not fixed. Resolved: ↩ Reopen.
   function impRow(e,n){
-    var m=IMP_META[e.type]||IMP_META.idea, done=e.status==="shipped";
-    return '<div class="imp-item'+(done?" shipped":"")+'" data-id="'+esc(e.id)+'">'+
-      '<button class="chk '+(done?"done":"")+'" data-act="imp-ship" aria-label="Mark as shipped" aria-pressed="'+done+'" title="'+(done?"Move back to open":"Mark as shipped")+'"></button>'+
+    var m=IMP_META[e.type]||IMP_META.idea, st=impStatus(e);
+    var meta=niceDate(e.date)+(e.shippedIn||e.shippedOn?' · shipped'+(e.shippedIn?' in '+esc(e.shippedIn):'')+(e.shippedOn?' '+niceDate(e.shippedOn):''):'')+(st==="resolved"&&e.resolvedOn?' · resolved '+niceDate(e.resolvedOn):'');
+    var acts=st==="shipped"?'<button class="chip" data-act="imp-resolve" title="You looked and it works">✓ Resolved</button><button class="chip" data-act="imp-reopen" title="It did not work: back to open">↩ Not fixed</button>'
+      :st==="resolved"?'<button class="chip" data-act="imp-reopen" title="Back to open">↩ Reopen</button>':'';
+    return '<div class="imp-item'+(st==="resolved"?" resolved":"")+'" data-id="'+esc(e.id)+'">'+
+      (st==="open"?'<button class="chk" data-act="imp-resolve" aria-label="Mark resolved" aria-pressed="false" title="Mark resolved"></button>':'')+
       '<span class="imp-badge" style="background:'+m[1]+';color:'+m[2]+'">'+m[0]+'</span>'+
       '<div style="flex:1"><div>'+(n?'<span class="imp-n">'+n+'</span>':'')+esc(e.text)+'</div>'+
-      '<div class="sub" style="font-size:11px;margin-top:2px">'+niceDate(e.date)+(done&&e.shippedOn?' · shipped '+niceDate(e.shippedOn):'')+'</div></div>'+
+      '<div class="sub" style="font-size:11px;margin-top:2px">'+meta+'</div>'+(acts?'<div class="imp-acts">'+acts+'</div>':'')+'</div>'+
       '<button class="task-x" data-act="imp-del" style="opacity:1" aria-label="delete">✕</button></div>';
   }
   function bindHub(){
@@ -6523,6 +6627,11 @@ function GENA_MAIN() {
     if(g("imp-copy")) g("imp-copy").onclick=function(e){ e.preventDefault(); copyImprove(); };
     if(g("imp-ship-go")) g("imp-ship-go").onclick=function(){ markImproveShipped(g("imp-ship-in").value); };
     if(g("imp-ship-in")) g("imp-ship-in").addEventListener("keydown",function(e){ if(e.key==="Enter") markImproveShipped(this.value); });
+    if(g("imp-resolve-all")) g("imp-resolve-all").onclick=function(){
+      var sh=S.improve.filter(function(e){ return impStatus(e)==="shipped"; });
+      confirmModal("Resolve all "+sh.length+" shipped notes?","Only if you have looked at each one in the build you use. A note that did not work belongs back in Open.","Resolve all",function(){
+        sh.forEach(function(e){ impSetStatus(e,"resolved"); }); save(); render(); toast(sh.length+" notes resolved"); });
+    };
   }
   /* Best-effort parse of whatever a mail app hands over on drop: an .eml file (RFC 822 headers), a
      text/plain body that begins with headers, an HTML fragment, a mailto:/message: URL, or plain
@@ -6559,39 +6668,34 @@ function GENA_MAIN() {
     save(); render(); toast("Flagged: "+parsed.subject.slice(0,40)); return true;
   }
   function addEmails(text){ text=(text||"").trim(); if(!text)return; text.split(/\n/).forEach(function(line){ line=line.trim(); if(!line)return; var parts=line.split(/\s[—–-]\s/); S.emails.unshift({id:uid(),subject:parts[0].trim(),sender:(parts[1]||"").trim(),done:false,created:today()}); }); save(); render(); toast("Flagged"); }
-  function addImprove(type,text){ text=(text||"").trim(); if(!text)return; S.improve.unshift({id:uid(),type:type||"idea",text:text,date:today()}); save(); render(); }
+  function addImprove(type,text){ text=(text||"").trim(); if(!text)return; S.improve.unshift({id:uid(),type:type||"idea",text:text,date:today(),build:APP_BUILD}); save(); render(); }
   // Only the open items travel, numbered — so a session never has to diff the whole log against the
   // roadmap again, and the numbers come back as "SHIPPED: 1,4" for one-tap bookkeeping.
+  var IMP_COPY_END="End your reply with one line listing the numbers you actually shipped, like SHIPPED V5: 1,4,7. Shipped means built, not seen: I mark a note resolved only after I look.";
   function copyImprove(){
-    var openL=S.improve.filter(function(e){return e.status!=="shipped";});
-    if(!openL.length){ toast("Nothing open — all logged items are marked shipped"); return; }
+    var openL=S.improve.filter(function(e){return impStatus(e)==="open";});
+    if(!openL.length){ toast("Nothing open — every note is shipped or resolved"); return; }
     S.impCopyIds=openL.map(function(e){return e.id;});
     var lines=openL.map(function(e,i){return (i+1)+". ["+e.type+"] "+e.text+" ("+e.date+")";});
     var shippedN=S.improve.length-openL.length;
     copyText("Here is my Gena improvement log — only the items still open, numbered."+
-      (shippedN?" ("+shippedN+" earlier items are already marked shipped and left out.)":"")+
+      (shippedN?" ("+shippedN+" earlier items are shipped or resolved and left out.)":"")+
       " Please suggest and implement upgrades based on these notes.\n\n"+lines.join("\n")+
-      "\n\nWhen you finish, end your reply with one line listing the numbers you actually shipped, like:\nSHIPPED: 1,4,7\nI paste that back into the Hub to close them out.",
+      "\n\n"+IMP_COPY_END,
       function(){ save(); toast(openL.length+" open item"+(openL.length===1?"":"s")+" copied"); });
   }
+  // Sets SHIPPED (built, not seen), never resolved; "all" means every open note in the last copy (A5)
   function markImproveShipped(text){
-    // "1,4,7", "1-70", "all", or any mix — the log had 75 open items the day this shipped
-    var nums=[], src=(text||"").replace(/shipped:/i,"").trim();
-    if(/^all$/i.test(src)) nums=(S.impCopyIds||[]).map(function(_,i){return i+1;});
-    else src.split(/[\s,;]+/).filter(Boolean).forEach(function(tok){
-      var m=tok.match(/^(\d+)\s*[-–]\s*(\d+)$/);
-      if(m){ for(var i=+m[1]; i<=+m[2] && i-(+m[1])<500; i++) nums.push(i); }
-      else if(/^\d+$/.test(tok)) nums.push(+tok);
-    });
-    if(!nums.length){ toast("Give me the numbers — e.g. 1,4,7"); return; }
-    var ids=S.impCopyIds||[], n=0;
+    var p=parseShippedLine(text);
+    if(!p){ toast("Paste the line as it came, e.g. SHIPPED V5: 1,4,7 or 1-20 or all"); return; }
+    var ids=S.impCopyIds||[], nums=p.all?ids.map(function(_,i){return i+1;}):p.nums, n=0, ver=p.ver||APP_VERSION||APP_BUILD;
     nums.forEach(function(num){
       var id=ids[num-1]; if(!id) return;
       var it=S.improve.find(function(e){return e.id===id;});
-      if(it&&it.status!=="shipped"){ it.status="shipped"; it.shippedOn=today(); n++; }
+      if(it&&impStatus(it)==="open"){ impSetStatus(it,"shipped",ver); n++; }
     });
     if(!n){ toast("Those numbers don’t match the last copy — copy the log again first"); return; }
-    save(); render(); toast(n+" item"+(n===1?"":"s")+" marked shipped");
+    save(); render(); toast(n+" note"+(n===1?"":"s")+" shipped in "+ver+" — resolve each one after you look");
   }
 
   function parseChecklist(text, prev){
@@ -8005,7 +8109,8 @@ function GENA_MAIN() {
     toast("Your profiles are now seven areas — Career, Growth, Finance, Home, Health, Family, Friends — and "+AREAS_MIGRATED+" projects are sorted under them. The copy from before is in ⋯ → Restore.");
   }, 1600);
   var preGone=expirePreCopies();
-  if(preGone) setTimeout(function(){ toast("The copy kept from before areas & seasons ("+niceDate(preGone)+") has expired after "+PRE_COPY_DAYS+" days — snapshots and exports are unaffected"); }, 2400);
+  if(preGone) setTimeout(function(){ toast("The copy kept from before "+preGone.what+" ("+niceDate(preGone.day)+") has expired after "+PRE_COPY_DAYS+" days — snapshots and exports are unaffected"); }, 2400);
+  if(CLOSING5) keepPreV5Copy(PRE_V5).then(function(kept){ setTimeout(function(){ toast(closing5Note(CLOSING5,kept)); }, 2000); });
   if(SWEPT_REPEATS) setTimeout(function(){
     toast("Tidied "+SWEPT_REPEATS+" lapsed repeat"+(SWEPT_REPEATS===1?"":"s")+" — recorded as skipped on their own day, not carried");
   }, 1200);
