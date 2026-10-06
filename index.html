@@ -695,6 +695,7 @@
 
   .toast{ position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--slate); color:var(--slate-ink); padding:11px 18px; border-radius:12px; font-size:13.5px; font-weight:600; opacity:0; pointer-events:none; transition:all .25s; z-index:60; box-shadow:0 12px 30px -10px rgba(0,0,0,.5); }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .toast.show button{ pointer-events:auto; }   /* Undo, Reload, Copy: the toast lets clicks through, its button must not */
 
   .hub-cap textarea{ width:100%; min-height:96px; font-family:inherit; font-size:15px; line-height:1.5; color:var(--ink); background:var(--sheet); border:1.5px solid var(--line); border-radius:12px; padding:12px; resize:vertical; }
   .hub-cap textarea:focus{ outline:none; border-color:var(--terra); }
@@ -1068,6 +1069,7 @@
   .sync-chip:hover{ opacity:1; background:rgba(255,255,255,.16); }
   .sync-chip[data-state="error"]{ background:var(--warn); color:#fff; opacity:1; }
   .sync-chip[data-state="busy"]{ animation:syncPulse 1.2s ease-in-out infinite; }
+  .sync-chip[data-state="held"]{ opacity:1; }
   @keyframes syncPulse{ 50%{ opacity:.35; } }
 
   /* insights */
@@ -1159,6 +1161,9 @@
     /* a dot cannot say "error" by colour alone next to a terracotta "fine" */
     .sync-chip[data-state="error"]{ width:22px; height:22px; }
     .sync-chip[data-state="error"]::after{ content:"!"; font-size:14px; font-weight:800; line-height:22px; color:#fff; }
+    /* nor can it say "finishing your typing": the held dot carries the ✎ */
+    .sync-chip[data-state="held"]{ width:22px; height:22px; }
+    .sync-chip[data-state="held"]::after{ content:"✎"; font-size:13px; font-weight:700; line-height:22px; color:#fff; }
     /* one chip is not worth a line of a 375px row — it lives in the ⋯ sheet. A landed check-back keeps
        its three answers in sight: they are the question being asked. */
     #view .fu-row .chip[data-act="fu-snooze"], #view .task.waiting:not(.landed) > .chip[data-act="wait-live"]{ display:none; }
@@ -1300,7 +1305,10 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-10-05-V5";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-10-06-V5.1";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  // The day V5 shipped (tag gena-2026-10-05-V5): the closing-states cutoff, fixed, so a later build's stamp
+  // never moves it (I-28). Above `var S = load()`, which reads it.
+  var V5_SHIP_DAY = "2026-10-05";
   // The version is the part of the build ID after -V (GD-014): derived here, never typed anywhere else.
   // The legacy YYYY-MM-DD HH:MM stamp has none, so it reads plain "Gena" until the first V5 ship.
   function appVersion(b){ var m=/-V(\d+(?:\.\d+){0,2})$/.exec(b||""); return m?"V"+m[1]:""; }
@@ -1330,7 +1338,7 @@ function GENA_MAIN() {
   // Subscribed calendar events are re-fetched by every device from the feed itself, so they stay out of
   // sync: no stamps, no tombstones, never pushed, and a cloud copy (older builds wrote them) is ignored.
   function isSubEvent(x){ return !!(x&&x.sourceId); }
-  function syncPayload(){ var o={}; Object.keys(S).forEach(function(k){ o[k]=S[k]; }); o.events=(S.events||[]).filter(function(e){ return !isSubEvent(e); }); return JSON.stringify(o); }
+  function syncPayload(d){ d=d||S; var o={}; Object.keys(d).forEach(function(k){ o[k]=d[k]; }); o.events=(d.events||[]).filter(function(e){ return !isSubEvent(e); }); return JSON.stringify(o); }
   // An item's content without its stamp. JSON.stringify leaves out undefined values, so the stamp is
   // lifted for the call instead of copying every item on every save.
   function itemSig(x){ if(!x||typeof x!=="object"||x._m===undefined) return JSON.stringify(x); var m=x._m; x._m=undefined; var s=JSON.stringify(x); x._m=m; return s; }
@@ -1569,10 +1577,11 @@ function GENA_MAIN() {
      it is idempotent and safe in every normalize: a merge with a stale device or a restored old backup
      converts only old-rule notes and never a V5 Shipped one. No _m bump: every V5 device converts the
      same notes the same way. Returns how many it converted; load() keeps the copy and says so.
-     Only notes shipped BEFORE this build's day (or with no ship day) are his old closes: a stale pre-V5
-     device can still ship a note the old way on or after the V5 ship day, and that one stays Shipped for
-     him to check (I-18). The date part of APP_BUILD is the ship day in either stamp format. */
-  function closedOldRule(e){ return !!e&&e.status==="shipped"&&!e.shippedIn&&(!e.shippedOn||e.shippedOn<String(APP_BUILD).slice(0,10)); }
+     Only notes shipped BEFORE the V5 ship day (or with no ship day) are his old closes: a stale pre-V5
+     device can still ship a note the old way on or after it, and that one stays Shipped for him to check
+     (I-18). The cutoff is V5's day, not this build's: V5.1 must not resolve a note a stale device shipped
+     between V5 and V5.1 (I-28). */
+  function closedOldRule(e){ return !!e&&e.status==="shipped"&&!e.shippedIn&&(!e.shippedOn||e.shippedOn<V5_SHIP_DAY); }
   function migrateClosing5(d){
     var n=0;
     (d.improve||[]).forEach(function(e){ if(closedOldRule(e)){ e.status="resolved"; n++; } });   // resolvedOn stays empty: the day he closed it is unknown (A6)
@@ -1769,7 +1778,7 @@ function GENA_MAIN() {
   }
   function storageUsage(){
     var rows=[], total=0, names={}; names[KEY]="Your data"; names[SNAP_KEY]="Snapshots"; names[KEY+"-lastgood"]="Last good save";
-    names[KEY+"-pre42"]="Before areas & seasons"; names[KEY+"-preV5"]="Before V5 closing states"; names[KEY+"-guard"]="Recovery copy"; names[KEY+"-corrupt"]="Recovery copy";
+    names[KEY+"-pre42"]="Before areas & seasons"; names[KEY+"-preV5"]="Before V5 closing states"; names[KEY+"-guard"]="Recovery copy"; names[KEY+"-corrupt"]="Recovery copy"; names["gena-drafts"]="Drafts";
     for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i), v=localStorage.getItem(k)||"", b=(k.length+v.length)*2;
       total+=b; var label=names[k]||"Settings"; var r=rows.filter(function(x){ return x.label===label; })[0];
       if(r) r.bytes+=b; else rows.push({label:label, bytes:b}); }
@@ -1792,6 +1801,7 @@ function GENA_MAIN() {
   // One walk for the stamps, and its item JSON reused for everything else: the string that goes to disk is
   // also the undo step and, with the signatures, the next save's base.
   function save(){
+    lastSaveAt=Date.now();
     var ix=stampChanges(baseState,S);
     if(!suppressUndo){ var nowT=Date.now();
       if(nowT-lastUndoPush>700){ undoStack.push(baseState&&baseState.__idx?baseState.str:JSON.stringify(baseState)); if(undoStack.length>25) undoStack.shift(); redoStack.length=0; }
@@ -1799,22 +1809,154 @@ function GENA_MAIN() {
     }
     S.savedAt=Date.now(); ix.str=storeJson(S,ix); ix.seq=null; baseState=ix; persist(ix.str); scheduleSync(); scheduleGh();
   }
-  // Editors hold references into S, and a render rebuilds the field you are typing in. So anything that
-  // replaces S or re-renders on its own clock (cloud sync, another tab, midnight) waits until no editor
-  // is open and the keyboard has been quiet for a few seconds. The merge runs when the wait ends, so
-  // whatever you saved in the meantime is part of it.
-  var lastKeyAt=0;
-  function editingNow(){
-    if(document.getElementById("modal-root").children.length) return true;
-    var a=document.activeElement;
-    if(!a||!(a.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName||""))) return false;
-    return Date.now()-lastKeyAt<4000;
+  // Editors hold references into S, and a render rebuilds the field you are typing in. So whatever
+  // replaces S or re-renders on its own clock (cloud sync, another tab, midnight, the focus timer) is a
+  // passive change, and it waits while you are in the middle of something (GD-021, V5.1):
+  //  - an open modal or inline editor holds with no limit: both write into objects taken from S, so an
+  //    apply would leave them writing into an orphan. Uploads keep flowing meanwhile (ghSync);
+  //  - a field whose text differs from what was rendered (typed, pasted, dictated) holds until 10 minutes
+  //    after that field was last edited; then the change applies through renderPassive, which puts the
+  //    text back. A focused empty field, or a value a script set, holds nothing.
+  var HOLD_CAP=10*60000, fieldEditAt=new WeakMap(), lastSaveAt=0, composingAt=0;
+  function editorOpen(){ return !!(document.getElementById("modal-root").children.length || document.querySelector("li.ie-row[data-editing]")); }
+  function fieldDirty(f){
+    if(f.isContentEditable) return (fieldEditAt.get(f)||0)>lastSaveAt;
+    if(f.tagName==="SELECT"){ if(!f.options.length) return false;   // a select has no defaultValue: compare with its defaultSelected option
+      var d=[].findIndex.call(f.options,function(o){ return o.defaultSelected; }); return f.selectedIndex!==(d<0?0:d); }
+    if(f.type==="checkbox"||f.type==="radio") return f.checked!==f.defaultChecked;
+    return f.value!==f.defaultValue;
   }
+  function dirtyFields(){
+    var out=[];
+    [document.getElementById("view"),document.getElementById("rightbar")].forEach(function(r){
+      if(r) [].forEach.call(r.querySelectorAll("input,textarea,select,[contenteditable]"),function(f){ if(fieldDirty(f)) out.push(f); }); });
+    var q=document.getElementById("q-input"); if(q&&fieldDirty(q)) out.push(q);
+    return out;
+  }
+  function holdReason(){
+    if(editorOpen()) return "editor";
+    var now=Date.now();
+    if(composingAt&&now-composingAt<HOLD_CAP) return "typing";
+    return dirtyFields().some(function(f){ var t=fieldEditAt.get(f); return !!t&&now-t<HOLD_CAP; }) ? "typing" : "";
+  }
+  function editingNow(){ return !!holdReason(); }
   function whenIdle(fn){ if(!editingNow()){ fn(); return; } setTimeout(function(){ whenIdle(fn); },1000); }
+  // One pending slot for what arrives (the cloud, another tab): a newer arrival merges into it, one timer
+  // watches the hold, and the apply re-merges against the current S, S first, so whatever you saved while
+  // it waited stays, and a later tombstone or edit still wins. mergeStates itself is unchanged.
+  var pendingIn=null, pendingFrom={}, holdTimer=null, held=false, dayStartWaiting=false;
+  function completingNow(){ return !!document.querySelector(".task.completing"); }
+  function setHeld(on){ if(held!==on){ held=on; updateSyncStatus(); } }
+  function queueIncoming(inc,from,o){
+    pendingIn=pendingIn?mergeStates(pendingIn,inc):inc; pendingFrom[from]=1;
+    if(o&&o.toast) pendingFrom.toast=1;
+    return tryApplyPending(o);
+  }
+  // o.day: the midnight rollover applies through typing (never through an open editor); o.inCycle: the
+  // caller is a sync cycle that pushes for itself. Returns true when nothing is left waiting.
+  function tryApplyPending(o){
+    o=o||{}; clearTimeout(holdTimer); holdTimer=null;
+    if(!pendingIn){ setHeld(false); return true; }
+    var why=holdReason(); if(why==="typing"&&o.day) why="";
+    if(why||completingNow()){ setHeld(!!why); holdTimer=setTimeout(tryApplyPending, why?1000:100); return false; }
+    var inc=pendingIn, from=pendingFrom; pendingIn=null; pendingFrom={};
+    var merged=mergeStates(S,inc);
+    if(stateSig(merged)!==stateSig(S)){
+      var ahead=stateSig(merged)!==stateSig(inc);
+      S=normalize(merged); baseState=clone(S);
+      undoStack.length=0; redoStack.length=0;   // U1: a snapshot from before the arrival would delete it on undo or redo
+      if(from.gh||ahead) persist();
+      if(from.toast) toast("Synced — merged changes from the cloud");
+      applyTheme(); fillProjSelect(); renderPassive();   // after the toast: a vanished draft's toast must win
+    }
+    setHeld(false);
+    if(from.gh&&!o.inCycle) setTimeout(function(){ ghSync("resume"); },0);   // restart the cycle: what is new here goes up
+    return true;
+  }
+  // What a push sends: S, or during a hold the merge of S and what waits, so the cloud never loses the
+  // other device's edits because they have not reached S yet.
+  function ghOutgoing(){ return pendingIn?normalize(mergeStates(S,pendingIn)):S; }
+  /* The one way a passive caller renders (the sync apply, another tab, ghPull on return, checkDay, the
+     focus-timer end, the calendar callback). Never under an open modal or inline editor: the next render
+     after they close catches up. Otherwise it keeps what you were in the middle of: the scroll position,
+     anchored to the first visible row (not when the day changed), focus and selection, unsaved text in
+     #view and #rightbar by (selector, nth), the sub-item box, the editor state and the check-off anchor.
+     Blur handlers stand down while it runs. User-initiated renders never come through here. */
+  var passiveRendering=false;
+  function uiSel(el){
+    var s=el.tagName.toLowerCase(); if(el.id) return s+'[id="'+el.id.replace(/["\\]/g,"\\$&")+'"]';
+    if(el.classList.length) s+="."+el.classList[0].replace(/[^\w-]/g,"\\$&");
+    [].forEach.call(el.attributes,function(a){ if(a.name.indexOf("data-")===0) s+="["+a.name+'="'+a.value.replace(/["\\]/g,"\\$&")+'"]'; });
+    return s;
+  }
+  function uiFind(root,sel,n){ try{ return root.querySelectorAll(sel)[n]||null; }catch(e){ return null; } }
+  function uiKey(el,root){ var sel=uiSel(el), all; try{ all=root.querySelectorAll(sel); }catch(e){ return null; } return {sel:sel, n:[].indexOf.call(all,el)}; }
+  function textOffset(root,node,off){ var r=document.createRange(); r.selectNodeContents(root); try{ r.setEnd(node,off); }catch(e){ return 0; } return r.toString().length; }
+  function placeCaret(root,off){
+    var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT), n, left=off;
+    while((n=w.nextNode())){ if(left<=n.length){ var r=document.createRange(); r.setStart(n,left); r.collapse(true); var sl=window.getSelection(); sl.removeAllRanges(); sl.addRange(r); return; } left-=n.length; }
+  }
+  function captureUi(){
+    var roots={view:document.getElementById("view"), rightbar:document.getElementById("rightbar")};
+    var k={view:view, day:viewDay, anchor:renderAnchor, sub:pendingSubAdd, pf:pendingFocus, ed:editingTaskId, iel:ieList, fields:[], det:[], focus:null, row:null,
+      rbTop:roots.rightbar?roots.rightbar.scrollTop:0};
+    Object.keys(roots).forEach(function(rn){ var r=roots[rn]; if(!r) return;
+      [].forEach.call(r.querySelectorAll("input,textarea,select,[contenteditable]"),function(f){ if(!fieldDirty(f)) return; var key=uiKey(f,r); if(!key) return;
+        key.root=rn; key.edit=fieldEditAt.get(f)||0; key.ce=f.isContentEditable; key.v=key.ce?f.innerHTML:(f.tagName==="SELECT"?f.selectedIndex:(f.type==="checkbox"||f.type==="radio"?f.checked:f.value)); k.fields.push(key); });
+      // a fold whose state S does not keep (no data-fold, e.g. the capture card) would close under you
+      [].forEach.call(r.querySelectorAll("details:not([data-fold])"),function(d){ var key=uiKey(d,r); if(key){ key.root=rn; key.open=d.open; k.det.push(key); } }); });
+    var a=document.activeElement;
+    if(a&&a!==document.body) Object.keys(roots).forEach(function(rn){ var r=roots[rn]; if(!r||!r.contains(a)) return; var key=uiKey(a,r); if(!key) return; key.root=rn;
+      if(a.isContentEditable){ var sl=window.getSelection(); if(sl.rangeCount&&a.contains(sl.anchorNode)) key.caret=textOffset(a,sl.anchorNode,sl.anchorOffset); }
+      else { try{ key.s0=a.selectionStart; key.s1=a.selectionEnd; }catch(e){} }
+      k.focus=key; });
+    var rows=roots.view.querySelectorAll("[data-id]");
+    for(var i=0;i<rows.length;i++){ var b=rows[i].getBoundingClientRect(); if(b.height&&b.bottom>0){ var rk=uiKey(rows[i],roots.view); if(rk){ rk.top=b.top; k.row=rk; } break; } }
+    return k;
+  }
+  function restoreUi(k){
+    var roots={view:document.getElementById("view"), rightbar:document.getElementById("rightbar")}, lost=[];
+    pendingSubAdd=k.sub; pendingFocus=k.pf; editingTaskId=k.ed; ieList=k.iel; renderAnchor=k.anchor;
+    k.det.forEach(function(d){ var el=roots[d.root]&&uiFind(roots[d.root],d.sel,d.n); if(el&&el.open!==d.open) el.open=d.open; });
+    k.fields.forEach(function(f){ var el=roots[f.root]&&uiFind(roots[f.root],f.sel,f.n);
+      if(!el){ if(!f.ce&&typeof f.v==="string"&&f.v.trim()) lost.push(f.v.trim()); return; }
+      if(f.ce) el.innerHTML=f.v; else if(el.tagName==="SELECT") el.selectedIndex=f.v; else if(typeof f.v==="boolean") el.checked=f.v; else el.value=f.v;
+      if(f.edit) fieldEditAt.set(el,f.edit); });
+    if(k.focus){ var fe=roots[k.focus.root]&&uiFind(roots[k.focus.root],k.focus.sel,k.focus.n);
+      if(fe){ try{ fe.focus({preventScroll:true}); }catch(e){ fe.focus(); }
+        if(fe.isContentEditable){ if(k.focus.caret!=null) placeCaret(fe,k.focus.caret); }
+        else if(k.focus.s0!=null){ try{ fe.setSelectionRange(k.focus.s0,k.focus.s1); }catch(e){} } } }
+    if(roots.rightbar) roots.rightbar.scrollTop=k.rbTop;
+    if(k.row&&k.view===view&&k.day===viewDay){ var re=uiFind(roots.view,k.row.sel,k.row.n);
+      if(re){ var d=re.getBoundingClientRect().top-k.row.top; if(Math.abs(d)>1) window.scrollBy(0,d); } }
+    if(lost.length){ var lt=lost.join("\n"); toastUndo("A sync removed the row you were typing in. Your text: “"+lt.slice(0,140)+"”",function(){ copyText(lt,function(){ toast("Copied"); }); },"Copy",20000); }
+  }
+  function renderPassive(){
+    if(editorOpen()) return false;
+    var k=captureUi(); renderAnchor=null;   // the check-off's anchor belongs to its own commit render
+    passiveRendering=true;
+    try{ render(); } finally{ passiveRendering=false; }
+    restoreUi(k);
+    return true;
+  }
+  /* Drafts (SY5): what you are typing in the quick-add box and the sub-item boxes is kept on this device in
+     its own key, never in S, so it is never synced, exported or snapshotted, and a reload gives it back.
+     Cleared when you commit or press Escape, wiped by Reset on this device. While a passcode is on no draft
+     is kept (it would sit in plain text beside the encrypted store), and turning one on wipes the key. */
+  var DRAFT_KEY="gena-drafts";
+  function draftsOn(){ if(ENC) return false; try{ return !localStorage.getItem("gena-lock"); }catch(e){ return false; } }
+  function draftsAll(){ try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)||"{}")||{}; }catch(e){ return {}; } }
+  function draftId(el){ if(el.id==="q-input") return "q"; var d=el.dataset||{}; return d.subfor?"sub:"+d.subfor:(d.fsubfor?"fsub:"+d.fsubfor:null); }
+  function draftPut(id,text){
+    if(!draftsOn()) return;
+    var all=draftsAll(); if(text&&text.trim()) all[id]={t:text,at:Date.now()}; else if(all[id]) delete all[id]; else return;
+    try{ if(Object.keys(all).length) localStorage.setItem(DRAFT_KEY,JSON.stringify(all)); else localStorage.removeItem(DRAFT_KEY); }catch(e){}
+  }
+  function draftOf(id){ if(!draftsOn()) return ""; var x=draftsAll()[id]; return x?x.t:""; }
   // "Reset on this device" means this device only. Diffing the fresh seed against the old state would
   // tombstone every item and the next sync would erase the gist and every other device with it.
   function resetDevice(){
-    localStorage.removeItem(KEY); try{ localStorage.removeItem("daybook-v1"); }catch(e){}
+    localStorage.removeItem(KEY); try{ localStorage.removeItem("daybook-v1"); localStorage.removeItem(DRAFT_KEY); }catch(e){}
     S=seed(); baseState=null; undoStack.length=0; redoStack.length=0;
     suppressUndo=true; save(); suppressUndo=false;
   }
@@ -2280,6 +2422,9 @@ function GENA_MAIN() {
   // element ids, so exactly one row may expand into it — the one in the list you actually clicked.
   // ieList is where the editor was opened from; curList is the list being built right now.
   var ieShown=false, ieList=null, curList=null;
+  // The inline editor's unsaved sub-items, people, block and priority. Kept here, keyed by the task being
+  // edited, rather than rebuilt from S on every render, so a render while the editor is open keeps them.
+  var ieKeep=null;
   function ieOpensHere(id){
     if(editingTaskId!==id || ieShown) return false;
     if(curList && ieList && curList!==ieList) return false;
@@ -2374,20 +2519,37 @@ function GENA_MAIN() {
   var navHist=[], navPos=-1, navReplaying=false;
   /* Scroll anchoring across a re-render. render() swaps the whole view's HTML, so the browser's own
      anchoring can't help: click ◎ on a To-do row, the Focus card above grows, and the list slides out
-     from under the cursor. v.onclick notes the row you acted on and where it was; render() puts it
-     back there. Same task can appear in several lists, so the anchor is (id, nth instance). */
-  var renderAnchor=null;
-  function noteAnchor(el){
-    var row=el&&el.closest&&el.closest(".task[data-id]"); if(!row) return;
-    var same=[].slice.call(document.querySelectorAll('.task[data-id="'+esc(row.dataset.id)+'"]'));
-    renderAnchor={id:row.dataset.id, i:same.indexOf(row), top:row.getBoundingClientRect().top, at:Date.now()};
+     from under the cursor. noteAnchor records the row you acted on and its next neighbour; render() puts
+     one of them back where it was. A row that stays in its list anchors on itself. A row that leaves it
+     (ticked into Done, swiped to another day) anchors on its next surviving neighbour, the previous one
+     if it was last; the only row leaves the page where it is (note 9, GD-020: anchoring on the moved copy
+     is what made the window follow a tick into the done strip). A row is keyed by (task, containing list):
+     a Focus row's data-id is the Focus entry, its task id is on .chk[data-tid]; a habit row keys on
+     data-hid. Hidden copies (a closed fold) are skipped. The right panel scrolls on its own, so a row
+     there corrects the panel, not the window. Nothing lingers: one render consumes the anchor. */
+  var renderAnchor=null, ANCHOR_ROWS="li.task[data-id]:not(.inline-row),li.task[data-hid]:not(.inline-row)";
+  function anchorKey(r){ var c=r.dataset.focus&&r.querySelector(":scope > .chk[data-tid]"); return c?c.dataset.tid:(r.dataset.hid?"h:"+r.dataset.hid:r.dataset.id); }
+  function anchorOf(r){ var l=r.parentNode; return {key:anchorKey(r), list:(l&&l.dataset&&l.dataset.list)||"", box:r.closest("#rightbar")?"rightbar":"view", top:r.getBoundingClientRect().top}; }
+  function anchorFind(a){
+    var box=document.getElementById(a.box), rows=box?box.querySelectorAll(ANCHOR_ROWS):[];
+    for(var i=0;i<rows.length;i++){ var r=rows[i], l=r.parentNode;
+      if(anchorKey(r)===a.key&&((l&&l.dataset&&l.dataset.list)||"")===a.list&&r.getBoundingClientRect().height) return r; }
+    return null;
   }
-  function restoreAnchor(m){
+  function noteAnchor(el){
+    var row=el&&el.closest&&el.closest(ANCHOR_ROWS); if(!row||!row.isConnected) return;
+    var near=function(dir){ for(var n=row;(n=dir>0?n.nextElementSibling:n.previousElementSibling);) if(n.matches(ANCHOR_ROWS)&&n.getBoundingClientRect().height) return n; return null; };
+    var nb=near(1)||near(-1);
+    renderAnchor={self:anchorOf(row), nb:nb?anchorOf(nb):null, at:Date.now()};
+  }
+  function restoreAnchor(){
     var a=renderAnchor; renderAnchor=null;
     if(!a || Date.now()-a.at>1500) return;                 // a stale anchor must never move the page
-    var same=m.querySelectorAll('.task[data-id="'+esc(a.id)+'"]'), el=same[a.i]||same[0]; if(!el) return;
-    var d=el.getBoundingClientRect().top-a.top;
-    if(Math.abs(d)>2) window.scrollBy(0,d);
+    var ref=anchorFind(a.self)?a.self:a.nb, el=ref&&anchorFind(ref); if(!el) return;
+    var box=document.getElementById(ref.box), d=el.getBoundingClientRect().top-ref.top;
+    // nothing to correct, or further than about 1.5 screens: that cannot be the row he was reading
+    if(Math.abs(d)<=2||Math.abs(d)>1.5*(ref.box==="rightbar"?box.clientHeight:window.innerHeight)) return;
+    if(ref.box==="rightbar") box.scrollTop+=d; else window.scrollBy(0,d);
   }
   function navRecord(){
     if(navReplaying) return;
@@ -2434,7 +2596,7 @@ function GENA_MAIN() {
     renderPanes();
     renderGlobalHead();
     bind();
-    restoreAnchor(m);
+    restoreAnchor();
     if(lastRenderedView!==view && view==="day" && viewDay===today()){
       // arriving on the Day view: bring "now" into the upper third instead of starting at 6am
       var nl=m.querySelector(".now-line"); if(nl) setTimeout(function(){ var y=nl.getBoundingClientRect().top+window.scrollY-Math.round(window.innerHeight*0.35); window.scrollTo({top:Math.max(0,y),behavior:"smooth"}); },30);
@@ -2705,7 +2867,7 @@ function GENA_MAIN() {
       subRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subkind="sub" data-subof="'+esc(k.id)+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-sid="'+esc(s.id)+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("");
     }
     if(ieOpensHere(k.id)) return inlineEditorLi(k);
-    if(pendingSubAdd===k.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+esc(k.id)+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
+    if(pendingSubAdd===k.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+esc(k.id)+'" value="'+esc(draftOf("sub:"+k.id))+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
     var subsHtml=subRows?'<ul class="subs">'+subRows+'</ul>':'';
     return '<li class="task '+(k.status==="done"?"done":(isSkipped(k)?"skipped":""))+(p?" pc":"")+'" data-id="'+esc(k.id)+'" draggable="true"'+(p?' style="--pc:'+esc(p.color)+'"':'')+'>'+
       '<button class="chk '+(k.status==="done"?"done":"")+'" data-act="toggle" aria-label="Toggle done" aria-pressed="'+(k.status==="done")+'"></button>'+
@@ -2817,7 +2979,7 @@ function GENA_MAIN() {
         lpills+=subsPill(k.id,k.subs);
         lsubRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subkind="sub" data-subof="'+esc(k.id)+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-tid="'+esc(k.id)+'" data-sid="'+esc(s.id)+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("");
       }
-      if(pendingSubAdd===k.id) lsubRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+esc(k.id)+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
+      if(pendingSubAdd===k.id) lsubRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+esc(k.id)+'" value="'+esc(draftOf("sub:"+k.id))+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
       var lsubsHtml=lsubRows?'<ul class="subs">'+lsubRows+'</ul>':'';
       return '<li class="task '+(done?"done":"")+(kp?" pc":"")+'" data-id="'+esc(f.id)+'" data-focus="1" draggable="true"'+(kp?' style="--pc:'+esc(kp.color)+'"':'')+'>'+
         '<button class="chk '+(done?"done":"")+'" data-act="focus-tasktoggle" data-tid="'+esc(k.id)+'" aria-label="Complete task" aria-pressed="'+done+'"></button>'+
@@ -2835,7 +2997,7 @@ function GENA_MAIN() {
       pills+=subsPill(f.id,f.subs);
       subRows=subsCollapsed(f.id)?"":f.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subkind="fsub" data-subof="'+esc(f.id)+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="fsub-toggle" data-sid="'+esc(s.id)+'" aria-label="Toggle subitem" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(f.id,i,f.subs.length,"fsub")+'</li>';}).join("");
     }
-    if(pendingSubAdd===f.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-fsubfor="'+esc(f.id)+'" placeholder="Add a subitem… (Esc to close)" aria-label="Add a subitem"/></li>';
+    if(pendingSubAdd===f.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-fsubfor="'+esc(f.id)+'" value="'+esc(draftOf("fsub:"+f.id))+'" placeholder="Add a subitem… (Esc to close)" aria-label="Add a subitem"/></li>';
     var subsHtml=subRows?'<ul class="subs">'+subRows+'</ul>':'';
     return '<li class="task '+(f.done?"done":"")+'" data-id="'+esc(f.id)+'" data-focus="1" draggable="true">'+
       '<button class="chk '+(f.done?"done":"")+'" data-act="focus-toggle" aria-label="Toggle done" aria-pressed="'+!!f.done+'"></button>'+
@@ -2863,7 +3025,7 @@ function GENA_MAIN() {
   function addFocusSubInline(fid,val){
     val=(val||"").trim(); if(!val) return;
     var f=(S.focus[viewDay]||[]).find(function(x){return x.id===fid;}); if(!f) return;
-    f.subs=f.subs||[]; f.subs.push({id:uid(),text:val,done:false});
+    f.subs=f.subs||[]; f.subs.push({id:uid(),text:val,done:false}); draftPut("fsub:"+fid,"");
     pendingSubAdd=fid; save(); render();
   }
   // Typing into the Focus card creates a real task on the day you are looking at and promotes it, so a
@@ -4247,7 +4409,7 @@ function GENA_MAIN() {
       if(tsc&&ttd){ var tl0=ttd.offsetLeft+130; tsc.scrollLeft=Math.max(0, tl0-Math.round(tsc.clientWidth*0.3)); } }
     if(view==="hub") bindHub();
     v.onkeydown=function(e){
-      if(e.key==="Escape" && e.target.dataset && (e.target.dataset.subfor||e.target.dataset.fsubfor)){ pendingSubAdd=null; render(); return; }
+      if(e.key==="Escape" && e.target.dataset && (e.target.dataset.subfor||e.target.dataset.fsubfor)){ draftPut(draftId(e.target),""); pendingSubAdd=null; render(); return; }
       if(e.key==="Enter" && e.target.classList && e.target.classList.contains("inline-add")){ e.preventDefault();
       if(e.target.dataset.subfor){ addSubInline(e.target.dataset.subfor, e.target.value); }
       else if(e.target.dataset.fsubfor){ addFocusSubInline(e.target.dataset.fsubfor, e.target.value); }
@@ -4257,12 +4419,13 @@ function GENA_MAIN() {
     if(reopenEditorFor){ var _r=reopenEditorFor; reopenEditorFor=null; editingTaskId=_r; render(); return; }
     // ---- inline task editor wiring (Phase 8) ----
     var ieRow=v.querySelector("li.ie-row[data-editing]");
+    if(!ieRow) ieKeep=null;   // kept only while the editor stays on screen: one reopened later starts from S (review R1)
     if(ieRow){
-      var ieId=ieRow.dataset.id;
-      var ieSubs=(function(){ var t=S.tasks.find(function(x){return x.id===ieId;}); return ((t&&t.subs)||[]).map(function(sb){return {id:sb.id,text:sb.text,done:!!sb.done};}); })();
-      var iePeople=(function(){ var t=S.tasks.find(function(x){return x.id===ieId;}); return ((t&&t.personIds)||[]).slice(); })();
-      var ieBlock=(function(){ var t=S.tasks.find(function(x){return x.id===ieId;}); return (t&&t.block)||""; })();
-      var iePrio=(function(){ var t=S.tasks.find(function(x){return x.id===ieId;}); return !!(t&&t.priority); })();
+      var ieId=ieRow.dataset.id, ieCarried=!!ieKeep&&ieKeep.id===ieId;
+      if(!ieCarried){ var ieT=S.tasks.find(function(x){return x.id===ieId;});
+        ieKeep={id:ieId, subs:((ieT&&ieT.subs)||[]).map(function(sb){return {id:sb.id,text:sb.text,done:!!sb.done};}),
+          people:((ieT&&ieT.personIds)||[]).slice(), block:(ieT&&ieT.block)||"", prio:!!(ieT&&ieT.priority)}; }
+      var ieSubs=ieKeep.subs, iePeople=ieKeep.people;
       // fi/which re-focus the arrow that was just pressed at its new index, so you can keep tapping;
       // at either end that arrow is disabled, so the focus falls to its partner.
       function ieRenderSubs(fi,which){
@@ -4272,6 +4435,10 @@ function GENA_MAIN() {
         if(!pick||pick.disabled) pick=document.querySelector('#ie-subs [data-ie="'+(which==="subup"?"subdown":"subup")+'"][data-i="'+fi+'"]');
         if(pick&&!pick.disabled) pick.focus();
       }
+      if(ieCarried){ ieRenderSubs();   // a render while the editor is open: show what it kept, not what S has
+        [].forEach.call(ieRow.querySelectorAll("#ie-people [data-pid]"),function(c){ c.setAttribute("aria-pressed",iePeople.indexOf(c.dataset.pid)>=0); });
+        [].forEach.call(ieRow.querySelectorAll("#ie-block [data-b]"),function(c){ c.setAttribute("aria-pressed",c.dataset.b===ieKeep.block); });
+        [].forEach.call(ieRow.querySelectorAll("#ie-imp [data-i]"),function(c){ c.setAttribute("aria-pressed",(c.dataset.i==="1")===ieKeep.prio); }); }
       function ieCollect(){
         var t=S.tasks.find(function(x){return x.id===ieId;}); if(!t) return null;
         var newSub=(document.getElementById("ie-subnew")||{}).value||"";
@@ -4281,19 +4448,19 @@ function GENA_MAIN() {
         t.personIds=iePeople.slice();
         var dv=document.getElementById("ie-day").value||null;
         var evv=(document.getElementById("ie-end")||{}).value||null;
-        t.day=dv; if(!dv) t.block=null; else t.block=ieBlock||null;
+        t.day=dv; if(!dv) t.block=null; else t.block=ieKeep.block||null;
         t.end=(dv&&evv&&evv>dv)?evv:null;   // no start, or an end that isn't later, means a single day
         t.due=(document.getElementById("ie-due")||{}).value||null;
         t.at=readTimeInput("ie-time",t.at);
         t.dur=+((document.getElementById("ie-dur")||{}).value)||null;
-        t.priority=iePrio;
+        t.priority=ieKeep.prio;
         t.subs=ieSubs.filter(function(sb){return (sb.text||"").trim();});
         var nv=(document.getElementById("ie-notes").value||"").trim();
         t.notes=nv?plainToHtml(nv):null;
         readTypeFields("ie",t);
         return t;
       }
-      function ieClose(){ editingTaskId=null; render(); }
+      function ieClose(){ editingTaskId=null; ieKeep=null; render(); }
       ieRow.addEventListener("keydown",function(e){
         if(e.key==="Escape"){ e.preventDefault(); ieClose(); return; }
         if(e.key==="Enter"&&e.target.id==="ie-subnew"){ e.preventDefault();
@@ -4332,10 +4499,10 @@ function GENA_MAIN() {
         if(b.dataset.pid!==undefined && b.closest("#ie-people")){ var at=iePeople.indexOf(b.dataset.pid);
           if(at>=0) iePeople.splice(at,1); else iePeople.push(b.dataset.pid);
           b.setAttribute("aria-pressed",iePeople.indexOf(b.dataset.pid)>=0); return; }
-        if(b.dataset.b!==undefined && b.closest("#ie-block")){ ieBlock=b.dataset.b;
+        if(b.dataset.b!==undefined && b.closest("#ie-block")){ ieKeep.block=b.dataset.b;
           [].forEach.call(b.parentNode.children,function(c){c.setAttribute("aria-pressed",c===b);}); return; }
-        if(b.dataset.i!==undefined && b.closest("#ie-imp")){ iePrio=b.dataset.i==="1";
-          [].forEach.call(b.parentNode.children,function(c){c.setAttribute("aria-pressed",(c.dataset.i==="1")===iePrio);}); return; }
+        if(b.dataset.i!==undefined && b.closest("#ie-imp")){ ieKeep.prio=b.dataset.i==="1";
+          [].forEach.call(b.parentNode.children,function(c){c.setAttribute("aria-pressed",(c.dataset.i==="1")===ieKeep.prio);}); return; }
         if(w==="save"){
           var t0=S.tasks.find(function(x){return x.id===ieId;});
           if(t0&&t0.tplId){
@@ -4359,14 +4526,14 @@ function GENA_MAIN() {
           save(); ieClose(); toast(sk&&isSkipped(sk)?"Skipped — it won’t carry":"Back on the list"); return; }
         if(w==="cancel"){ ieClose(); return; }
         if(w==="focus"){ var t0=ieCollect(); save(); var vd0=viewDay; viewDay=today(); addTaskToFocus(ieId,true); viewDay=vd0; save(); ieClose(); toast("Added to Today’s Focus"); return; }
-        if(w==="more"){ var t1=ieCollect(); save(); editingTaskId=null; openTaskModal({edit:t1}); return; }
+        if(w==="more"){ var t1=ieCollect(); save(); editingTaskId=null; ieKeep=null; openTaskModal({edit:t1}); return; }
         if(w==="del"){ var di=S.tasks.findIndex(function(x){return x.id===ieId;});
-          if(di>=0){ var dt=S.tasks.splice(di,1)[0]; editingTaskId=null; save(); render();
-            toastUndo("Task deleted",function(){ S.tasks.splice(Math.min(di,S.tasks.length),0,dt); save(); render(); }); } return; }
+          if(di>=0){ var dt=S.tasks.splice(di,1)[0]; editingTaskId=null; ieKeep=null; save(); render();
+            toastUndo("Task deleted",function(){ if(S.tasks.some(function(x){return x.id===dt.id;})) return; S.tasks.splice(Math.min(di,S.tasks.length),0,dt); save(); render(); }); } return; }
       });
     }
     if(pendingSubAdd){ var psi=v.querySelector('.inline-add[data-subfor="'+pendingSubAdd+'"],.inline-add[data-fsubfor="'+pendingSubAdd+'"]');
-      if(psi){ psi.focus(); psi.onblur=function(){ if(!psi.value.trim()&&pendingSubAdd){ pendingSubAdd=null; render(); } }; } }
+      if(psi){ psi.focus(); psi.onblur=function(){ if(passiveRendering) return; if(!psi.value.trim()&&pendingSubAdd){ pendingSubAdd=null; render(); } }; } }
     if(pendingFocus){ var psel=pendingFocus==="focus" ? '.inline-add[data-focus="1"]' : '.inline-add[data-block="'+pendingFocus+'"]'; var pf=v.querySelector(psel)||document.querySelector("#rightbar "+psel); pendingFocus=null; if(pf){ pf.focus(); } }
     v.querySelectorAll("details.fold,details.done-strip,details.pfold").forEach(function(d){ d.addEventListener("toggle",function(){ S.collapsed[d.dataset.fold]=!d.open; save(); }); });
     var rbEl=document.getElementById("rightbar");
@@ -4602,7 +4769,7 @@ function GENA_MAIN() {
       var taskEl=e.target.closest(".task"); var id=taskEl&&taskEl.dataset.id;
       var idEl=e.target.closest("[data-id]"); var anyId=idEl&&idEl.dataset.id;
       if(a.closest("summary")) e.preventDefault();
-      if(act==="toggle"){ toggleTask(id||anyId); }
+      if(act==="toggle"){ toggleTask(id||anyId, taskEl||idEl); }
       else if(act==="edit"){ var tk=S.tasks.find(function(x){return x.id===(id||anyId);});
         if(!tk){}
         else if(a.closest("#rightbar")||a.closest(".proj-card")||a.closest(".modal")||a.closest(".wk-land")||a.closest(".card.brief")||a.closest('[data-fold="comingdue"]')) openTaskModal({edit:tk});
@@ -4652,7 +4819,7 @@ function GENA_MAIN() {
         if(fitem){ var fk=fitem.taskId?S.tasks.find(function(x){return x.id===fitem.taskId;}):focusItemToTask(fitem);
           if(fk){ ieList="focus"; editingTaskId=fk.id; save(); render();
             var fti=document.getElementById("ie-title"); if(fti){ fti.focus(); fti.setSelectionRange(fti.value.length,fti.value.length); } } } }
-      else if(act==="focus-tasktoggle"){ toggleTask(a.dataset.tid); }
+      else if(act==="focus-tasktoggle"){ toggleTask(a.dataset.tid, a.closest("li.task")); }
       else if(act==="todaygroup"){ S.todayGroup=a.dataset.g; save(); render(); }
       else if(act==="fu-done"){ var fp=S.people.find(function(x){return x.id===(a.closest("[data-pid]")||{}).dataset.pid;});
         if(fp){ var fb={last:fp.last,next:fp.next}; retirePrep(fp); fp.last=today(); fp.next=fp.cadence?addDays(today(),fp.cadence):null; save(); render();
@@ -4729,7 +4896,7 @@ function GENA_MAIN() {
       else if(act==="goMonth"){ S.calAnchor=a.dataset.m+"-01"; S.calView="month"; save(); render(); }
       else if(act==="del"){ var delId=id||anyId; var di=S.tasks.findIndex(function(x){return x.id===delId;}); if(di>=0){ var dt=S.tasks[di];
         if(dt.tplId && S.templates.some(function(x){return x.id===dt.tplId;})){ openRecurDeleteModal(dt); return; }
-        S.tasks.splice(di,1); save(); render(); toastUndo("Task deleted",function(){ S.tasks.splice(Math.min(di,S.tasks.length),0,dt); save(); render(); }); } }
+        S.tasks.splice(di,1); save(); render(); toastUndo("Task deleted",function(){ if(S.tasks.some(function(x){return x.id===dt.id;})) return; S.tasks.splice(Math.min(di,S.tasks.length),0,dt); save(); render(); }); } }
       else if(act==="addblock"){ openTaskModal({block:a.dataset.block}); }
       else if(act==="addhabit"){ openHabitModal(); }
       else if(act==="edithabit"){ var hh=S.habits.find(function(x){return x.id===a.dataset.hid;}); if(hh) openHabitModal(hh); }
@@ -4797,18 +4964,23 @@ function GENA_MAIN() {
     var rb=document.getElementById("rightbar"); if(!rb) return;
     rb.querySelectorAll("details.fold").forEach(function(d){ d.addEventListener("toggle",function(){ S.collapsed[d.dataset.fold]=!d.open; save(); }); });
   }
-  function toggleTask(id){ var k=S.tasks.find(function(x){return x.id===id;}); if(!k)return;
+  // srcRow: the row it was ticked from (click, swipe or the ⋯ sheet, which presses the row's own box), for the anchor
+  function toggleTask(id,srcRow){ var k=S.tasks.find(function(x){return x.id===id;}); if(!k)return;
+    if(srcRow) noteAnchor(srcRow);
     if(isCycle(k)&&k.status!=="done"){
       var before={day:k.day,end:k.end,lastDone:k.lastDone,cycleN:k.cycleN,snoozes:k.snoozes,rollover:k.rollover,subs:JSON.stringify(k.subs||[])};
       var echoBefore=S.tasks.length;
       cycleAdvance(k,true); save(); render();
       toastUndo("Done — comes back "+niceDate(k.day),function(){
+        k=S.tasks.find(function(x){return x.id===id;}); if(!k){ toast("That task is no longer here"); return; }
         k.day=before.day; k.end=before.end; k.lastDone=before.lastDone; k.cycleN=before.cycleN; k.snoozes=before.snoozes; k.rollover=before.rollover; k.subs=JSON.parse(before.subs);
         S.tasks=S.tasks.filter(function(x,i){ return !(x.cycleEcho===k.id && i>=echoBefore); }); save(); render(); });
       return;
     }
     var toDone=k.status!=="done";   // skipped ticks straight to done — the check always means "I did it"
-    function commit(){ k.status=toDone?"done":"todo"; k.completedOn=toDone?(view==="today"?viewDay:today()):null;
+    function commit(){ k=S.tasks.find(function(x){return x.id===id;}); if(!k) return;   // a merge in the 380 ms must not leave this on an orphan
+      if(srcRow&&srcRow.isConnected) noteAnchor(srcRow);   // where things are now, after the 380 ms
+      k.status=toDone?"done":"todo"; k.completedOn=toDone?(view==="today"?viewDay:today()):null;
       if(toDone) (k.personIds||[]).forEach(function(pid){ var pp=S.people.find(function(x){return x.id===pid;}); if(pp && (!pp.last || pp.last<today())) pp.last=today(); });
       save(); render(); }
     if(!toDone || matchMedia("(prefers-reduced-motion: reduce)").matches){ commit(); return; }
@@ -4825,7 +4997,7 @@ function GENA_MAIN() {
   function addSubInline(taskId,val){
     val=(val||"").trim(); if(!val) return;
     var k=S.tasks.find(function(x){return x.id===taskId;}); if(!k) return;
-    k.subs=k.subs||[]; k.subs.push({id:uid(),text:val,done:false});
+    k.subs=k.subs||[]; k.subs.push({id:uid(),text:val,done:false}); draftPut("sub:"+taskId,"");
     pendingSubAdd=taskId; save(); render();
   }
   function nestTask(childId,parentId){
@@ -5083,7 +5255,7 @@ function GENA_MAIN() {
   /* ---------- quick capture ---------- */
   var qInput=document.getElementById("q-input"), qProj=document.getElementById("q-proj");
   function projOptLabel(p){ return esc(p.name)+(stateLabel(p)?" ("+stateLabel(p)+")":""); }
-  function fillProjSelect(){ qProj.innerHTML='<option value="">No project</option>'+S.projects.slice().sort(function(a,b){return (projActive(b)?1:0)-(projActive(a)?1:0);}).map(function(p){return '<option value="'+esc(p.id)+'">'+projOptLabel(p)+'</option>';}).join("")+'<option value="__new">+ New project…</option>'; }
+  function fillProjSelect(){ var keep=qProj.value; qProj.innerHTML='<option value="">No project</option>'+S.projects.slice().sort(function(a,b){return (projActive(b)?1:0)-(projActive(a)?1:0);}).map(function(p){return '<option value="'+esc(p.id)+'">'+projOptLabel(p)+'</option>';}).join("")+'<option value="__new">+ New project…</option>'; if(keep&&[].some.call(qProj.options,function(o){ return o.value===keep; })) qProj.value=keep; }
   qProj.onchange=function(){ if(qProj.value==="__new"){ qProj.value=""; openProjModal(null,function(id){ qProj.value=id; }); } };
   function addTask(title,projectId,day,block,at,personIds,parsed){
     title=title.trim(); if(!title)return;
@@ -5121,8 +5293,13 @@ function GENA_MAIN() {
     else { pendingFocus=key; save(); render(); }
     if(sd&&key!=="someday") toast("Added to Someday"); else if(p.day&&p.day!=="someday"&&p.day!==viewDay) toast("Scheduled for "+niceDate(p.day)); else if(key==="master") toast(bl?"Added to "+bl:"Added to Anytime"); }
   document.getElementById("q-add").onclick=quickAdd;
-  qInput.addEventListener("keydown",function(e){ if(e.key==="Enter") quickAdd(); });
-  function quickAdd(){ if(!qInput.value.trim())return; var p=nlParse(qInput.value); addTask(p.title,p.projectId||qProj.value,p.day,p.block,p.at,p.personIds,p); qInput.value=""; render(); toast(p.day==="someday"?"Added to Someday":(p.day&&p.day!==today()?"Added to "+niceDate(p.day):"Added to today"+(p.block?" · "+p.block:""))); }
+  qInput.addEventListener("keydown",function(e){ if(e.key==="Enter") quickAdd(); else if(e.key==="Escape") draftPut("q",""); });
+  (function(){ var qd=draftOf("q"); if(qd){ qInput.defaultValue=qd; qInput.value=qd; }   // a draft comes back as the rendered value, so it holds no sync
+    var all=draftsAll(), best=null;            // reopen the newest sub-item box that still has a row
+    Object.keys(all).forEach(function(id){ var m=/^(f?sub):(.+)$/.exec(id); if(!m||(best&&all[best].at>=all[id].at)) return;
+      if(m[1]==="sub"?S.tasks.some(function(x){return x.id===m[2];}):(S.focus[viewDay]||[]).some(function(x){return x.id===m[2];})) best=id; });
+    if(best&&draftsOn()) pendingSubAdd=best.replace(/^f?sub:/,""); })();
+  function quickAdd(){ if(!qInput.value.trim())return; var p=nlParse(qInput.value); draftPut("q",""); addTask(p.title,p.projectId||qProj.value,p.day,p.block,p.at,p.personIds,p); qInput.value=""; render(); toast(p.day==="someday"?"Added to Someday":(p.day&&p.day!==today()?"Added to "+niceDate(p.day):"Added to today"+(p.block?" · "+p.block:""))); }
   document.getElementById("q-more").onclick=function(){ openTaskModal({title:qInput.value,projectId:qProj.value}); };
 
   /* ---------- modals ---------- */
@@ -5309,7 +5486,7 @@ function GENA_MAIN() {
     if(ed){
       document.getElementById("m-del").onclick=function(){
         if(etp){ close(); openRecurDeleteModal(ed); return; }
-        var di=S.tasks.findIndex(function(x){return x.id===ed.id;}); var dt=di>=0?S.tasks[di]:null; if(di>=0) S.tasks.splice(di,1); save(); close(); render(); if(dt) toastUndo("Task deleted",function(){ S.tasks.splice(Math.min(di,S.tasks.length),0,dt); save(); render(); }); };
+        var di=S.tasks.findIndex(function(x){return x.id===ed.id;}); var dt=di>=0?S.tasks[di]:null; if(di>=0) S.tasks.splice(di,1); save(); close(); render(); if(dt) toastUndo("Task deleted",function(){ if(S.tasks.some(function(x){return x.id===dt.id;})) return; S.tasks.splice(Math.min(di,S.tasks.length),0,dt); save(); render(); }); };
       document.getElementById("m-dup").onclick=function(){ var c={}; for(var kk in ed) c[kk]=ed[kk]; c.id=uid(); c.status="todo"; c.completedOn=null; c.created=today(); delete c.tplId; c.subs=(ed.subs||[]).map(function(s){return {id:uid(),text:s.text,done:false};}); S.tasks.push(c); save(); close(); render(); toast("Task duplicated"); };
       document.getElementById("m-skip").onclick=function(){
         if(ed.status==="skipped"){ ed.status="todo"; delete ed.skippedOn; if(ed.tplId) ed.unskipped=1; save(); close(); render(); toast("Back on the list"); }
@@ -5342,6 +5519,9 @@ function GENA_MAIN() {
       if(msn&&msn.value.trim()) subs.push({id:uid(),text:msn.value.trim(),done:false});
       var cleanSubs=subs.filter(function(s){return (s.text||"").trim();});
       var ntv=rteValue("m-notes")||null;
+      // the modal kept a reference from when it opened: write into the live task (a merge may have replaced
+      // it), or put it back if a sync removed it under you
+      if(ed){ var edLive=S.tasks.find(function(x){return x.id===ed.id;}); if(edLive) ed=edLive; else S.tasks.push(ed); }
       if(ed){ ed.title=title; ed.projectId=pid; ed.day=day; ed.end=endD; ed.due=dueD; ed.dur=durV; ed.block=chosen[0]; ed.at=tv; ed.priority=priorityV; ed.subs=cleanSubs; ed.notes=ntv; ed.personIds=selPeople.slice();
         readTypeFields("m",ed);
         if(etp){
@@ -5970,6 +6150,9 @@ function GENA_MAIN() {
   function ghPull(){ ghSync("pull"); }
   function ghPush(){ ghSync("push"); }
   // One reconciliation cycle: fetch cloud, merge item-by-item (newest edit wins, no whole-file clobber), push the union back.
+  // Fetch, merge into a copy and push never wait (V5.1, SY1); only putting the merge into S and rendering
+  // does (tryApplyPending). During a hold the push is of the merge, not of S, so the gist keeps the other
+  // device's new edits, and whether the cloud needs a push is judged against that merge.
   var ghSyncing=false;
   function ghSync(reason){
     if(!GH||!GH.token||!GH.gistId) return;
@@ -5979,23 +6162,20 @@ function GENA_MAIN() {
       var done=function(){ ghSyncing=false; ghBusy=false; updateSyncStatus(); };
       if(err){ ghError=err; done(); return; }             // couldn't read the cloud — never overwrite blindly, retry later
       ghError=null;
-      if(!cloud){ doGhPush(done); return; }               // no cloud file yet -> create it from this device
-      whenIdle(function(){
+      if(!cloud){ doGhPush(ghOutgoing(),done); return; }  // no cloud file yet -> create it from this device
       var merged=mergeStates(S,cloud);
-      var localChanged=stateSig(merged)!==stateSig(S);
-      var cloudChanged=stateSig(merged)!==stateSig(cloud);
-      S=normalize(merged); baseState=clone(S); persist();
-      if(localChanged){ applyTheme(); fillProjSelect(); render(); if(reason!=="auto") toast("Synced — merged changes from the cloud"); }
+      if(stateSig(merged)!==stateSig(S)) queueIncoming(cloud,"gh",{inCycle:true,toast:reason!=="auto"&&reason!=="resume"});
+      var out=ghOutgoing();
       ghLastSync=Date.now();
-      if(cloudChanged){ doGhPush(done); } else { ghDirty=false; done(); }
-      });
+      if(stateSig(out)!==stateSig(cloud)){ doGhPush(out,done); } else { ghDirty=false; done(); }
     });
   }
-  function doGhPush(after){
-    (ENC?encString(syncPayload()):Promise.resolve(syncPayload())).then(function(content){
+  function doGhPush(d,after){
+    (ENC?encString(syncPayload(d)):Promise.resolve(syncPayload(d))).then(function(content){
     var files={"daybook.json":{content:content}};
-    // the reminder feed is plaintext by nature — with a passcode on, it stays off the cloud
-    if(!ENC){ try{ files["daybook.ics"]={content:buildICS(true)}; }catch(e){} }
+    // the reminder feed is plaintext by nature — with a passcode on, it stays off the cloud. It is built
+    // from S, so it goes up only with S itself; during a hold the cloud keeps the feed it has
+    if(!ENC&&d===S){ try{ files["daybook.ics"]={content:buildICS(true)}; }catch(e){} }
     return ghApi("PATCH","/gists/"+GH.gistId,{files:files}); })
       .then(function(){ ghLastSync=Date.now(); ghError=null; ghDirty=false; })
       .catch(function(e){ ghError=e.message; })
@@ -7479,7 +7659,7 @@ function GENA_MAIN() {
     S.sessions.push({id:uid(),day:today(),mins:mins||25,label:label||"",at:new Date().toTimeString().slice(0,5)});
     if(S.sessions.length>500) S.sessions=S.sessions.slice(-500);
     save();
-    if(view==="today") render();
+    if(view==="today") renderPassive();
   }
   function sessionsOn(day){ return (S.sessions||[]).filter(function(x){return x.day===day;}); }
   function focusMinutes(day){ return sessionsOn(day).reduce(function(a,x){ return a+(x.mins||0); },0); }
@@ -7525,7 +7705,7 @@ function GENA_MAIN() {
     function enable(pass, done){
       var salt=crypto.getRandomValues(new Uint8Array(16)), it=150000;
       return EC.derive(pass,salt,it).then(function(key){ ENC={key:key,salt:salt,it:it}; return encString(JSON.stringify(S)); })
-        .then(function(envStr){ localStorage.setItem(KEY,envStr); localStorage.removeItem(LOCK_KEY);
+        .then(function(envStr){ localStorage.setItem(KEY,envStr); localStorage.removeItem(LOCK_KEY); localStorage.removeItem(DRAFT_KEY);
           try{ localStorage.removeItem(KEY+"-corrupt"); localStorage.removeItem(KEY+"-guard"); }catch(e){}
           ghSaveCfg(); keepLocalBackups(); ghDirty=true; scheduleGh(); updateSyncStatus(); if(done) done(); });
     }
@@ -7698,7 +7878,7 @@ function GENA_MAIN() {
     modal('<h3>📡 Reminder calendar feed</h3><p class="sub">Building your feed…</p><div class="modal-actions"><button class="btn ghost" data-x>Close</button></div>');
     document.querySelector("[data-x]").onclick=close;
     // ensure daybook.ics exists & is current, then read the gist owner for the raw URL
-    doGhPush(function(){
+    doGhPush(ghOutgoing(),function(){
       ghBusy=false; updateSyncStatus();
       ghApi("GET","/gists/"+GH.gistId).then(function(g){
         var login=g&&g.owner&&g.owner.login;
@@ -7732,13 +7912,17 @@ function GENA_MAIN() {
     var el=document.getElementById("sync-status"); if(!el) return;
     // A status that is true 99% of the time is noise: show the chip while something is happening or
     // wrong, fade it once things are simply fine. Sync options stay reachable from the ⋯ menu.
-    var busyOrBad = (typeof ghError!=="undefined"&&ghError) || (typeof ghBusy!=="undefined"&&ghBusy);
+    // ✎ while a sync waits for your typing (⏸ means check-back in Gena): it stays up like busy or error
+    var isHeld = typeof held!=="undefined"&&held;
+    var busyOrBad = (typeof ghError!=="undefined"&&ghError) || (typeof ghBusy!=="undefined"&&ghBusy) || isHeld;
     clearTimeout(el._hideT);
     el.style.display="";
     if(!busyOrBad) el._hideT=setTimeout(function(){ el.style.display="none"; },2500);
-    el.dataset.state = (typeof ghError!=="undefined"&&ghError) ? "error" : ((typeof ghBusy!=="undefined"&&ghBusy) ? "busy" : "ok");
-    el.setAttribute("aria-label", el.dataset.state==="error" ? "Cloud sync error — tap for sync options" : "Sync status");
-    if(GH&&GH.gistId) el.textContent = ghError ? "⚠ cloud sync error" : (ghBusy ? "☁ syncing…" : "☁ synced"+(ghLastSync?" · "+new Date(ghLastSync).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):""));
+    el.dataset.state = (typeof ghError!=="undefined"&&ghError) ? "error" : (isHeld ? "held" : ((typeof ghBusy!=="undefined"&&ghBusy) ? "busy" : "ok"));
+    el.setAttribute("aria-label", el.dataset.state==="error" ? "Cloud sync error — tap for sync options" : (isHeld ? "Finishing your typing — changes from your other devices wait until you finish" : "Sync status"));
+    el.title = isHeld ? "Finishing your typing — changes from your other devices appear when you finish. Uploads keep going." : "Where your data is saved — tap for sync options";
+    if(isHeld&&!ghError) el.textContent="✎ finishing your typing";
+    else if(GH&&GH.gistId) el.textContent = ghError ? "⚠ cloud sync error" : (ghBusy ? "☁ syncing…" : "☁ synced"+(ghLastSync?" · "+new Date(ghLastSync).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):""));
     else if(syncName) el.textContent="🔗 file sync on";
     else el.textContent="● saved on device";
   }
@@ -7990,9 +8174,15 @@ function GENA_MAIN() {
   });
   document.getElementById("search-btn").onclick=openSearchModal;
   // catch the day change if the app stays open past midnight (tab or home-screen app)
+  // The rollover never waits for typing (a held sync must not starve it), only for an open modal or inline
+  // editor, which hold references into S (asked again every minute). What waits in the pending slot goes
+  // in first, so generateRecurring sees the other device's repeats; the review opens once you stop typing.
   function checkDay(){
-    if(S.lastOpen!==today()){ if(editingNow()) return;   // asked again every minute
-      viewDay=today(); onOpen(); render(); if(dayStartFrom) openDayStartReview(dayStartFrom); return; }
+    if(S.lastOpen!==today()){ if(editorOpen()) return;
+      tryApplyPending({day:true});
+      viewDay=today(); onOpen(); renderPassive();
+      if(dayStartFrom){ if(holdReason()) dayStartWaiting=true; else openDayStartReview(dayStartFrom); } return; }
+    if(dayStartWaiting){ if(!holdReason()){ dayStartWaiting=false; if(dayStartFrom) openDayStartReview(dayStartFrom); } return; }
     checkEveningReview();
   }
   /* ---------- swipe on task rows (touch screens) ----------
@@ -8035,7 +8225,7 @@ function GENA_MAIN() {
     function end(){
       if(!el||!swiping){ reset(false); return; }
       var k=S.tasks.find(function(x){return x.id===taskId;});
-      if(k && dx>THRESH){ reset(false); toggleTask(k.id); }
+      if(k && dx>THRESH){ var srow=el; reset(false); toggleTask(k.id, srow); }
       else if(k && dx<-THRESH){
         var past=viewDay<today();
         var to=past?today():addDays(k.day||viewDay,1);
@@ -8058,24 +8248,18 @@ function GENA_MAIN() {
     document.body.appendChild(fab);
   })();
   document.addEventListener("visibilitychange",function(){ if(!document.hidden) checkDay(); else flushBackups(); });
-  document.addEventListener("keydown",function(){ lastKeyAt=Date.now(); },true);
+  // when each field was last edited (typing, paste, dictation, autocorrect all fire input), and drafts (SY5)
+  document.addEventListener("input",function(e){ var t=e.target; if(!t||t.nodeType!==1) return; fieldEditAt.set(t,Date.now()); var di=draftId(t); if(di) draftPut(di,t.value); },true);
+  document.addEventListener("compositionstart",function(){ composingAt=Date.now(); },true);
+  document.addEventListener("compositionend",function(){ composingAt=0; },true);
+  document.addEventListener("focusout",function(){ composingAt=0; },true);
   // Two tabs each hold their own S, and whichever saves last used to overwrite the other's work wholesale.
   // A save elsewhere is merged in here item by item; it is written back only if this tab had something
   // the other lacked, so two tabs can't ping-pong.
   window.addEventListener("storage",function(e){
     if(e.key!==KEY) return;
     if(e.newValue===null){ setTimeout(function(){ location.reload(); },400); return; }   // reset in the other tab
-    resolveGh(e.newValue,function(inc){
-      if(!inc) return;
-      whenIdle(function(){
-        var merged=mergeStates(S,inc);
-        if(stateSig(merged)===stateSig(S)) return;
-        var ahead=stateSig(merged)!==stateSig(inc);
-        S=normalize(merged); baseState=clone(S);
-        if(ahead) persist();
-        applyTheme(); fillProjSelect(); render();
-      });
-    });
+    resolveGh(e.newValue,function(inc){ if(inc) queueIncoming(inc,"storage"); });
   });
   setInterval(checkDay,60000);
   // heartbeat: keep a local snapshot and retry cloud sync if a push is still pending/failed
@@ -8098,7 +8282,7 @@ function GENA_MAIN() {
   onOpen();
   handleCaptureParams();   // quick-capture from bookmarklet / PWA share -> Backlog (sets view before first paint)
   render();
-  refreshCalendars(function(){ if(view==="calendar") render(); });
+  refreshCalendars(function(){ if(view==="calendar") renderPassive(); });
   ghCfgReady.then(function(){ updateSyncStatus(); ghPull(); });
   document.addEventListener("visibilitychange",function(){ if(!document.hidden) ghPull(); });
   if(lockCfg()) showLock();
