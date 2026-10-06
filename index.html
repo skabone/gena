@@ -302,12 +302,35 @@
   /* habits */
   .habit{ display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--line-soft); }
   .habit:last-child{ border-bottom:none; }
-  .habit .hname{ flex:1; font-size:14px; }
+  .habit .hname{ flex:1; font-size:14px; min-width:96px; }
   .habit .streak{ font-size:11.5px; color:var(--terra-deep); font-weight:700; }
   .dots{ display:flex; gap:6px; }
   .dot{ width:16px; height:16px; border-radius:50%; border:1.6px solid var(--line); background:transparent; cursor:pointer; transition: all .12s; }
   .dot:hover{ border-color:var(--terra-deep); }
   .dot.on{ background: var(--terra); border-color: var(--terra-deep); }
+  /* V5.2: a unit past the goal is a different mark (gold ✦), the bar for goals above 12 units, a skipped day */
+  .dot.extra,.dot.plus{ border:none; width:auto; min-width:16px; height:18px; padding:0 2px; font-size:13px; line-height:18px; color:var(--terra-deep); font-weight:800; }
+  .dot.plus{ color:var(--ink-soft); }
+  .hx{ color:var(--terra-deep); font-weight:700; font-size:12px; white-space:nowrap; }
+  .dots{ align-items:center; flex-wrap:wrap; }
+  .hbar{ display:inline-block; width:90px; height:8px; border-radius:6px; background:var(--line-soft); overflow:hidden; vertical-align:middle; }
+  .hbar-fill{ display:block; height:100%; background:var(--terra); border-radius:6px; }
+  .hbar-n,.hbar-left{ font-size:12px; color:var(--ink-soft); white-space:nowrap; }
+  .habit-amt{ width:84px; padding:3px 6px; font-size:13px; border:1px solid var(--line); border-radius:8px; background:transparent; color:var(--ink); }
+  .task-meta .dots{ display:inline-flex; gap:4px; vertical-align:middle; margin:0 4px; }
+  .task-meta .dot{ width:13px; height:13px; }
+  .task-meta .dot.extra,.task-meta .dot.plus{ width:auto; height:15px; line-height:15px; font-size:12px; }
+  .task .habit-skip{ opacity:0; }
+  li.sub.sub-skip .sub-t{ opacity:.5; }
+  li.sub.sub-skip .sub-skipb{ opacity:1; color:var(--terra-deep); }
+  .sub-kind{ font-size:11px; color:var(--ink-faint); margin:0 4px; }
+  .sub-kind-b{ border:none; background:transparent; color:var(--ink-faint); font-size:12px; cursor:pointer; padding:2px 5px; border-radius:6px; flex:none; white-space:nowrap; }
+  .sub-kind-b.on{ color:var(--terra-deep); background:var(--terra-bg); font-weight:700; }
+  .sub-rm{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; font-size:12px; color:var(--ink-soft); margin:2px 0 6px 26px; }
+  .task:hover .habit-skip{ opacity:.8; }
+  @media (hover:none){ .task .habit-skip{ opacity:.8; } }
+  .habit.dim,li.task.habit-row.dim{ opacity:.55; }
+  li.task.habit-row.dim:hover{ opacity:.8; }
 
   textarea.notes{ width:100%; min-height:120px; font-family:inherit; font-size:14.5px; line-height:1.6; color:var(--ink); background:transparent; border:none; resize:vertical; }
   textarea.notes:focus{ outline:none; }
@@ -1305,7 +1328,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-10-06-V5.1";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-10-06-V5.2";   // set by ship.sh on every release — the footer is how you tell a surface is current
   // The day V5 shipped (tag gena-2026-10-05-V5): the closing-states cutoff, fixed, so a later build's stamp
   // never moves it (I-28). Above `var S = load()`, which reads it.
   var V5_SHIP_DAY = "2026-10-05";
@@ -1569,6 +1592,11 @@ function GENA_MAIN() {
     out42.projects.forEach(function(p){ if(p.profileId===undefined)p.profileId=null; p.fav=!!p.fav; });
     Object.keys(out42.focus).forEach(function(k){ (out42.focus[k]||[]).forEach(function(f){ if(!Array.isArray(f.subs)) f.subs=[]; }); });
     migrateClosing5(out42);
+    // V5.2 habit skips live on the habit; a year is all a streak or a period reads, so older ones go.
+    // Not today(): load() runs normalize before today()'s memo is declared (a fresh boot would throw, and a
+    // stored one would fall back to un-migrated data)
+    var _skipCut=addDays(fmt(new Date()),-400);
+    out42.habits.forEach(function(h){ if(h&&h.skips&&typeof h.skips==="object") Object.keys(h.skips).forEach(function(d){ if(d<_skipCut) delete h.skips[d]; }); });
     IDLISTS.forEach(function(key){ (out42[key]||[]).forEach(function(x){ if(x&&x.id&&!x._m) x._m=_base; }); });
     return out42; }
   /* V5 closing states (GD-017): a note is open, shipped (built, not yet seen) or resolved (he looked).
@@ -1864,6 +1892,7 @@ function GENA_MAIN() {
     if(stateSig(merged)!==stateSig(S)){
       var ahead=stateSig(merged)!==stateSig(inc);
       S=normalize(merged); baseState=clone(S);
+      if(collapseRepeatCopies()){ suppressUndo=true; save(); suppressUndo=false; }   // R2a: one copy per repeat and day, stamped so it syncs
       undoStack.length=0; redoStack.length=0;   // U1: a snapshot from before the arrival would delete it on undo or redo
       if(from.gh||ahead) persist();
       if(from.toast) toast("Synced — merged changes from the cloud");
@@ -2043,11 +2072,14 @@ function GENA_MAIN() {
     return {src:t, n:t.length, byId:byId, days:days, spans:spans, open:open};
   }
   function ixOk(){ return !!IX && IX.src===S.tasks && IX.n===S.tasks.length; }
+  // a paused cycle (GD-022) is on no day until it resumes; it waits in the repeat list with its Resume chip
+  function pausedCycle(k,d){ return !!k.paused&&isCycle(k)&&isPaused(k,d); }
   function tasksOn(d){
-    if(!ixOk()) return S.tasks.filter(function(k){ return taskOnDay(k,d); });
+    if(!ixOk()) return S.tasks.filter(function(k){ return taskOnDay(k,d)&&!pausedCycle(k,d); });
     var t=IX.src, at=IX.days[d]||[], sp=IX.spans.filter(function(i){ return taskOnDay(t[i],d); });
     var idx=sp.length?at.concat(sp).sort(function(a,b){ return a-b; }):at;
-    return idx.map(function(i){ return t[i]; });
+    var out=[]; for(var i=0;i<idx.length;i++){ var k=t[idx[i]]; if(!pausedCycle(k,d)) out.push(k); }
+    return out;
   }
   function taskById(id){ return ixOk()?IX.byId[id]:S.tasks.find(function(x){ return x.id===id; }); }
   function openCount(pid){ return ixOk()?(IX.open[pid]||0):S.tasks.filter(function(k){ return k.projectId===pid&&k.status==="todo"; }).length; }
@@ -2094,7 +2126,7 @@ function GENA_MAIN() {
       '<text x="18" y="21.5" text-anchor="middle">'+done+'/'+total+'</text></svg>';
   }
   function emptyLi(text){ return '<li class="task empty-li">'+text+'</li>'; }
-  function foldProg(done,total){ if(!total) return ""; var pct=Math.round(100*done/total);
+  function foldProg(done,total,frac){ if(!total) return ""; var pct=Math.round(100*(frac===undefined?done/total:frac));
     return '<span class="fold-prog" title="'+done+' of '+total+' done"><span class="fp-track"><span class="fp-fill" style="width:'+pct+'%"></span></span><span class="fp-n">'+done+'/'+total+'</span></span>'; }
 
   /* ---------- theme ---------- */
@@ -2134,6 +2166,7 @@ function GENA_MAIN() {
       // put on their original day and surface only in the Carried-over card, which you pull from by hand.
       S.tasks.forEach(function(k){
         if(k.tplId) return;                     // a repeat belongs on its own day, never dragged forward
+        if(pausedCycle(k,t)) return;            // a paused cycle does not advance or nag (P4)
         // A multi-day task isn't late while it's still running — age it from the last day of its span.
         var kEnd=lastDay(k.day,k.end);
         if(k.status==="todo" && kEnd && kEnd<t){
@@ -2144,6 +2177,7 @@ function GENA_MAIN() {
           } else k.carriedFrom=k.carriedFrom||k.day;
         }
       });
+      endExpiredHabitPauses(t);
       sweepRepeats(t);
       generateRecurring(t);
       announceArchivedSkips(archiveSkippedRepeats(t));
@@ -2163,6 +2197,7 @@ function GENA_MAIN() {
   function ensurePrepTasks(day){
     S.people.forEach(function(p){
       if(!p.next || !(p.prepDays>0)) return;
+      if(isPaused(p,day)) return;               // a paused person gets no prep task (P2)
       if(p.prepFor===p.next) return;
       var start=addDays(p.next,-p.prepDays);
       if(start>day) return;
@@ -2181,10 +2216,106 @@ function GENA_MAIN() {
       var exists=S.tasks.some(function(k){ return k.tplId===tp.id && k.day===day; });
       if(!exists){
         S.tasks.push({id:uid(),title:tp.title,projectId:tp.projectId,status:"todo",day:day,
-          block:tp.block||null,priority:!!tp.priority,rollover:0,tplId:tp.id,created:day});
+          block:tp.block||null,priority:!!tp.priority,rollover:0,tplId:tp.id,created:day,subs:repeatCopySubs(tp,day)});
+        if(tp.firstSubs) delete tp.firstSubs;   // the first copy took them
       }
     });
     save();
+  }
+  /* GD-029: a copy's sub-items = the rule's Every-time items (fresh ids, unchecked, kind "every") plus the
+     previous occurrence's unchecked Until-done items (kind "once"; checked ones are done with; Every-time
+     ones come from the rule, never carried, so nothing doubles). The first copy also takes the Until-done
+     items typed in the new repeat's editor (`firstSubs`). */
+  function repeatCopySubs(tp,day){
+    var out=(tp.subs||[]).map(function(sb){ var c=subCopy(sb,true); c.kind="every"; delete c.skipDay; return c; });
+    var have={}; out.forEach(function(sb){ have[subKey(sb.text)]=1; });
+    var prev=prevOccurrence(tp,day), carry=(prev&&prev.subs||[]).filter(function(sb){ return sb.kind!=="every"&&!sb.done; });
+    carry.concat(tp.firstSubs||[]).forEach(function(sb){ var k=subKey(sb.text); if(!k||have[k]) return; have[k]=1; out.push({id:uid(),text:sb.text,done:false,kind:"once"}); });
+    return out;
+  }
+  function subKey(t){ return String(t||"").trim().toLowerCase(); }
+  // A series is a rule plus what it came from: a detached copy keeps `fromTpl`, a split rule its `parent`
+  function seriesIds(tp){ var ids={}, x=tp, n=0;
+    while(x&&!ids[x.id]&&n++<50){ ids[x.id]=1; var pid=x.parent; if(!pid) break; ids[pid]=1; x=S.templates.find(function(t){ return t.id===pid; }); }
+    return ids; }
+  var COPY_RANK=function(k){ return k.status==="done"?3:(k.status==="skipped"?1:2); };
+  // The latest earlier copy of the series, lapsed and archived ones included; ties go the same way on every device
+  function prevOccurrence(tp,day){
+    var ids=seriesIds(tp), best=null;
+    function look(k){ if(!k||!k.day||k.day>=day) return; if(!(ids[k.tplId]||ids[k.fromTpl])) return;
+      if(!best||k.day>best.day||(k.day===best.day&&(COPY_RANK(k)>COPY_RANK(best)||(COPY_RANK(k)===COPY_RANK(best)&&k.id<best.id)))) best=k; }
+    S.tasks.forEach(look); (S.archive||[]).forEach(look);
+    return best;
+  }
+  /* R2a: two devices can each make today's copy before they sync (onOpen generates before the pull
+     returns), so after a merge applies, one copy per repeat and day stays: done > skipped on its own day
+     (a deliberate skip) > open > lapsed, then the lower id. Nothing an edit changes picks it: two devices
+     that collapse different views must keep the same copy, or each tombstones the other's (fix round 2,
+     N1). Then the content merges into it: a COPY_FILL field it leaves empty comes from the other copy, a
+     field both set takes the newer edit's value (`_m`), and the other's sub-items join by text (checked
+     wins; the kind comes from the rule). Not priority or block: every copy has the rule's, so an un-star
+     reads as empty and would come back (N2). Only today's and yesterday's copies (GD-046): an older pair
+     is history, not this race. Returns how many rows went. Not deterministic ids: a new copy is stamped
+     now and would beat the other device's checked one. */
+  var COPY_FILL=["at","notes","personIds","dur"];
+  function copyEmpty(v){ return isBlankVal(v)||v===false||(Array.isArray(v)&&!v.length); }
+  function collapseRank(k){ return k.status==="done"?3:(k.status==="skipped"?(k.skippedOn===k.day?2.5:1):2); }
+  function collapseRepeatCopies(){
+    var groups={}, gone=0, from=addDays(today(),-1);
+    S.tasks.forEach(function(k){ if(k.tplId&&k.day&&k.day>=from){ var g=k.tplId+"|"+k.day; (groups[g]=groups[g]||[]).push(k); } });
+    var drop={}, remap={};
+    Object.keys(groups).forEach(function(g){ var arr=groups[g]; if(arr.length<2) return;
+      arr.sort(function(a,b){ return collapseRank(b)-collapseRank(a)||(a.id<b.id?-1:(a.id>b.id?1:0)); });
+      var keep=arr[0], tp=S.templates.find(function(t){ return t.id===keep.tplId; }), rule={}, setAt={};
+      COPY_FILL.forEach(function(f){ setAt[f]=keep._m||0; });
+      (tp&&tp.subs||[]).forEach(function(sb){ rule[subKey(sb.text)]=1; });
+      keep.subs=keep.subs||[];
+      arr.slice(1).forEach(function(o){
+        COPY_FILL.forEach(function(f){ if(!copyEmpty(o[f])&&(copyEmpty(keep[f])||(o._m||0)>setAt[f])){ keep[f]=clone(o[f]); setAt[f]=o._m||0; } });
+        (o.subs||[]).forEach(function(sb){ var key=subKey(sb.text), m=keep.subs.find(function(x){ return subKey(x.text)===key; });
+          if(m){ if(sb.done) m.done=true; } else keep.subs.push(subCopy(sb)); });
+        drop[o.id]=1; remap[o.id]=keep.id; gone++; });
+      keep.subs.forEach(function(sb){ if(rule[subKey(sb.text)]) sb.kind="every"; else if(sb.kind==="every") sb.kind="once"; });
+    });
+    if(!gone) return 0;
+    S.tasks=S.tasks.filter(function(k){ return !drop[k.id]; });
+    Object.keys(S.focus||{}).forEach(function(d){ var seen={}; S.focus[d]=(S.focus[d]||[]).filter(function(f){ if(f.taskId&&remap[f.taskId]) f.taskId=remap[f.taskId]; if(!f.taskId) return true; if(seen[f.taskId]) return false; seen[f.taskId]=1; return true; }); });
+    return gone;
+  }
+  /* The rule follows a copy's kinds (R3): an item flipped to ↻ on a copy joins the rule; one flipped back
+     to Until done leaves it. Only what THIS edit flipped: `before` is the copy's sub-items as the editor
+     found them, so saving an older copy that never had the item as ↻ leaves the rule alone. `removed` (R5
+     "Remove from the repeat") leaves the rule and this and every later copy. Text is the key between a
+     rule and its copies (a copy's ids are fresh). */
+  // R5 "Remove from the repeat": out of the rule and out of this and every later copy, at once (no detach:
+  // detachInstance would end the copy's series and break the carry, review finding 4)
+  function removeFromRepeat(taskId,text){
+    var task=taskById(taskId); if(!task) return;
+    var tid=task.tplId, tp=tid&&S.templates.find(function(t){ return t.id===tid; }), key=subKey(text); if(!tp) return;
+    tp.subs=(tp.subs||[]).filter(function(r){ return subKey(r.text)!==key; });
+    S.tasks.forEach(function(k){ if(k.tplId===tid&&k.day&&task.day&&k.day>=task.day) k.subs=(k.subs||[]).filter(function(sb){ return subKey(sb.text)!==key; }); });
+    save();
+  }
+  /* The kind control in the repeat editor and on a copy (R3). Only the kind that is not the place's default
+     gets a marker: in the repeat's editor that is "→ until done", on a day's copy "↻ every time"; the
+     default shows a faint flip button. `ctx` is "rule" or "copy". */
+  function subKindIsEvery(sb,ctx){ return ctx==="rule"?sb.kind!=="once":sb.kind==="every"; }
+  function subKindBtn(sb,ctx,attr){
+    var ev=subKindIsEvery(sb,ctx), odd=ctx==="rule"?!ev:ev;
+    return '<button type="button" class="sub-kind-b'+(odd?" on":"")+'" '+attr+' title="'+(ev?"Every time: comes back unchecked on every copy. Tap for until done":"Until done: comes back only while unchecked. Tap for every time")+'">'+
+      (odd?(ev?"↻ every time":"→ until done"):(ev?"↻":"→"))+'</button>';
+  }
+  function subRmAsk(attr){ return '<div class="sub-rm">This one comes back every time: <button type="button" class="chip" '+attr+'="today">Just today</button><button type="button" class="chip" '+attr+'="rule">Remove from the repeat</button><button type="button" class="chip" '+attr+'="no">Cancel</button></div>'; }
+  function syncRuleFromCopy(task,removed,before){
+    var tp=task.tplId&&S.templates.find(function(t){ return t.id===task.tplId; }); if(!tp) return;
+    tp.subs=(tp.subs||[]).map(function(sb){ return {id:sb.id,text:sb.text}; });
+    var was={}, off={}; (before||[]).forEach(function(sb){ was[subKey(sb.text)]=sb.kind==="every"; });
+    (task.subs||[]).forEach(function(sb){ var k=subKey(sb.text), ev=sb.kind==="every"; if(was[k]===ev) return;   // not flipped in this edit
+      if(ev){ if(!tp.subs.some(function(r){ return subKey(r.text)===k; })) tp.subs.push({id:uid(),text:sb.text}); }
+      else if(was[k]) off[k]=1; });
+    var rm={}; (removed||[]).forEach(function(t){ rm[subKey(t)]=1; });
+    tp.subs=tp.subs.filter(function(r){ var k=subKey(r.text); return !rm[k]&&!off[k]; });
+    if((removed||[]).length) S.tasks.forEach(function(k){ if(k.tplId===tp.id&&k.day&&task.day&&k.day>=task.day) k.subs=(k.subs||[]).filter(function(sb){ return !(rm[subKey(sb.text)]&&sb.kind==="every"); }); });
   }
   // A repeat that was never ticked does not become debt — it lapses. Yesterday's "Prayer" is either
   // done or skipped; leaving it open bred one duplicate row per day (26 open Prayers, at one point).
@@ -2248,7 +2379,7 @@ function GENA_MAIN() {
   }
   function projActive(p){ return projState(p)==="active"; }
   function activeProjects(){ return S.projects.filter(projActive); }
-  function stateLabel(p){ var st=projState(p); return st==="ended"?"ended":(st==="off"?"off-season":""); }
+  function stateLabel(p){ var st=projState(p); return st==="ended"?"ended":(st==="off"?"💤 paused":""); }   // the state value stays "off" (GD-022)
   function windowDesc(w){ return (w&&w.from&&w.to)?MON3[w.from-1]+"–"+MON3[w.to-1]:""; }
   // days until an off-season window opens again (null when no window / already open)
   function daysToWake(p){
@@ -2414,7 +2545,7 @@ function GENA_MAIN() {
   var view="today";
   var viewDay=today();
   var pendingFocus=null;
-  var dragTaskId=null, dragJobId=null, dragNestTarget=null, dragFocusId=null, dragUnitKey=null;
+  var dragTaskId=null, dragJobId=null, dragNestTarget=null, dragFocusId=null, dragUnitKey=null, dragHabitId=null;
   var dragSub=null;   // {owner:<task or focus id>, i:<index>, kind:'sub'|'fsub'} while dragging a subtask
   var pendingSubAdd=null;
   var editingTaskId=null;   // task being edited in place (Phase 8 — no modal for the common case)
@@ -2459,9 +2590,25 @@ function GENA_MAIN() {
     var lbl=past?"Move to today":"Move to "+niceDate(to);
     return '<button class="task-bump" data-act="bump" data-id="'+esc(k.id)+'" data-d="'+to+'" aria-label="'+esc(lbl)+'" title="'+esc(lbl)+'">'+(past?"↩":"→")+'</button>';
   }
-  function subsPill(id,subs){
-    var dn=subs.filter(function(s){return s.done;}).length;
-    return '<span class="pill subs-n tap" data-act="subs-toggle" data-id="'+id+'" title="'+(subsCollapsed(id)?"Show":"Hide")+' subtasks">☑ '+dn+'/'+subs.length+'</span>';
+  // Every place that builds or copies a sub-item keeps its V5.2 `kind` ("every" / "once"; missing = once)
+  // and `skipDay` (D6). One save that dropped them would turn a repeat's Every-time items into Until-done
+  // ones, which the next copy would then carry as well as rebuild from the rule: duplicates.
+  function subCopy(s,fresh){ var o={id:fresh?uid():s.id, text:s.text, done:fresh?false:!!s.done};
+    if(s.kind==="every"||s.kind==="once") o.kind=s.kind; if(s.skipDay) o.skipDay=s.skipDay; return o; }
+  // R4: every "x / y" of sub-items comes from here; one skipped for its day (⏭) is excused, so not counted
+  function subSkipped(sb,day){ return !!(sb&&sb.skipDay&&day&&sb.skipDay===day); }
+  function subCounts(subs,day){ var n=0,dn=0; (subs||[]).forEach(function(sb){ if(subSkipped(sb,day)) return; n++; if(sb.done) dn++; }); return {done:dn,total:n}; }
+  function subCountText(subs,day){ var c=subCounts(subs,day); return "☑ "+c.done+"/"+c.total; }
+  function subsPill(id,subs,day){
+    return '<span class="pill subs-n tap" data-act="subs-toggle" data-id="'+id+'" title="'+(subsCollapsed(id)?"Show":"Hide")+' subtasks">'+subCountText(subs,day)+'</span>';
+  }
+  // On a repeat's copy (GD-029): Until done is the default there, so only Every time gets a marker (↻);
+  // ⏭ excuses an item for this day only (dimmed, not counted); it is back on the next copy
+  function subRepeatBits(k,s){
+    if(!k.tplId) return "";
+    var sk=subSkipped(s,k.day);
+    return (s.kind==="every"?'<span class="sub-kind" title="Every time: comes back unchecked on every copy">↻</span>':'')+
+      '<button class="sub-mv sub-skipb" data-act="sub-skip" data-tid="'+esc(k.id)+'" data-sid="'+esc(s.id)+'" aria-label="'+(sk?"Undo the skip":"Skip today")+'" title="'+(sk?"Skipped today: tap to undo":"Skip today: back on the next copy")+'">⏭</button>';
   }
   function subsCaret(id,n){
     if(!n) return "";
@@ -2664,7 +2811,7 @@ function GENA_MAIN() {
         var on=S.filterProjects.indexOf(p.id)>=0;
         h+='<div class="sb-row'+(on?' on':'')+'" role="button" tabindex="0" data-sb="projfilter" data-id="'+esc(p.id)+'"><span class="pdot" style="'+cbg(p.color)+'"></span><span class="sb-name">'+esc(p.name)+'</span><span class="cnt">'+openCnt(p.id)+'</span><button class="sb-star'+(p.fav?" on":"")+'" data-sb="fav" data-id="'+esc(p.id)+'" title="Favorite" aria-label="Toggle favorite" aria-pressed="'+!!p.fav+'">'+(p.fav?"★":"☆")+'</button></div>';
       });
-      h+='<div class="sb-mini">Click a project to filter — pick several. ★ pins it to Favorites.'+(shelved.length?' · '+shelved.length+' off-season / ended in Projects.':'')+'</div>';
+      h+='<div class="sb-mini">Click a project to filter — pick several. ★ pins it to Favorites.'+(shelved.length?' · '+shelved.length+' paused / ended in Projects.':'')+'</div>';
     } else h+='<div class="sb-mini">No active projects in this area yet — edit a project (or the area) to add some.</div>';
     h+='</div>';
     // the build ID, lower left: how he tells this surface is current (CG-1); the phone shows it on the Hub
@@ -2777,20 +2924,23 @@ function GENA_MAIN() {
      the modal, reachable from "More…". */
   // One definition of an editor subtask row: inlineEditorLi renders it first, ieRenderSubs redraws it
   // after every change, and the two must not drift apart.
-  function ieSubRow(sb,i,n){
-    return '<div class="ie-sub"><button type="button" class="chk '+(sb.done?"done":"")+'" data-ie="subtoggle" data-i="'+i+'" aria-label="Toggle subtask" aria-pressed="'+!!sb.done+'"></button>'+
-      '<input value="'+esc(sb.text)+'" data-ie="subtext" data-i="'+i+'" aria-label="Subtask"/>'+
+  function ieSubRow(sb,i,n,k){
+    var copy=!!(k&&k.tplId);   // a repeat's copy: the kind control and the two-choice remove (R3, R5)
+    return '<div class="ie-sub'+(copy&&subSkipped(sb,k.day)?" sub-skip":"")+'"><button type="button" class="chk '+(sb.done?"done":"")+'" data-ie="subtoggle" data-i="'+i+'" aria-label="Toggle subtask" aria-pressed="'+!!sb.done+'"></button>'+
+      '<input value="'+esc(sb.text)+'" data-ie="subtext" data-i="'+i+'" aria-label="Subtask"/>'+(copy?subKindBtn(sb,"copy",'data-ie="subkind" data-i="'+i+'"'):'')+
       '<span class="sub-move"><button type="button" class="sub-mv" data-ie="subup" data-i="'+i+'" '+(i===0?'disabled':'')+' aria-label="Move up" title="Move up">▴</button>'+
       '<button type="button" class="sub-mv" data-ie="subdown" data-i="'+i+'" '+(i===n-1?'disabled':'')+' aria-label="Move down" title="Move down">▾</button></span>'+
-      '<button type="button" class="task-x" style="opacity:1" data-ie="subdel" data-i="'+i+'" aria-label="Remove subtask">✕</button></div>';
+      '<button type="button" class="task-x" style="opacity:1" data-ie="subdel" data-i="'+i+'" aria-label="Remove subtask">✕</button></div>'+
+      (copy&&ieAskRm===i?subRmAsk('data-ie="subrm" data-v'):'');
   }
+  var ieAskRm=-1;
   var DUR_OPTS=[["","1 hour"],["15","15 min"],["30","30 min"],["45","45 min"],["90","1.5 hours"],
                 ["120","2 hours"],["180","3 hours"],["240","4 hours"],["360","6 hours"],["480","8 hours"]];
   function inlineEditorLi(k){
     var p=proj(k.projectId);
     var projOpts=S.projects.map(function(x){return '<option value="'+esc(x.id)+'" '+(x.id===k.projectId?"selected":"")+'>'+esc(x.name)+'</option>';}).join("");
     var BLKS=[["","Anytime"],["morning","Morning"],["afternoon","Afternoon"],["evening","Evening"]];
-    var subs=(k.subs||[]).map(function(sb,i,arr){ return ieSubRow(sb,i,arr.length); }).join("");
+    var subs=(k.subs||[]).map(function(sb,i,arr){ return ieSubRow(sb,i,arr.length,k); }).join("");
     return '<li class="task ie-row" data-id="'+esc(k.id)+'" data-editing="1">'+
       '<div class="ie-wrap">'+
         '<div class="ie-main">'+
@@ -2862,9 +3012,8 @@ function GENA_MAIN() {
     }
     var subRows="";
     if(k.subs&&k.subs.length){
-      var sdn=k.subs.filter(function(s){return s.done;}).length;
-      pills+=subsPill(k.id,k.subs);
-      subRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subkind="sub" data-subof="'+esc(k.id)+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-sid="'+esc(s.id)+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("");
+      pills+=subsPill(k.id,k.subs,k.day);
+      subRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+(subSkipped(s,k.day)?" sub-skip":"")+'" draggable="true" data-subkind="sub" data-subof="'+esc(k.id)+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-sid="'+esc(s.id)+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subRepeatBits(k,s)+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("");
     }
     if(ieOpensHere(k.id)) return inlineEditorLi(k);
     if(pendingSubAdd===k.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+esc(k.id)+'" value="'+esc(draftOf("sub:"+k.id))+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
@@ -2898,6 +3047,7 @@ function GENA_MAIN() {
         '<button type="button" class="chip" data-from="date" aria-pressed="'+(c.from==="date")+'">on a fixed rhythm</button></div>'+
         '<div class="sub" style="font-size:11px;margin-top:4px">Ticking it logs a completion and moves it to the next date — it never piles up.'+
         ((k.cycleN||0)?' Done '+k.cycleN+'×'+(k.lastDone?', last '+esc(niceDate(k.lastDone)):'')+'.':'')+((k.snoozes||0)?' Pushed '+k.snoozes+'× since.':'')+'</div>'+
+        (px==="ie"&&isC&&k.id?'<button type="button" class="chip" data-act="pause-cycle" data-id="'+esc(k.id)+'" style="margin-top:6px">💤 Pause it</button>':'')+
       '</div>'+
       '<div id="'+px+'-waitbox" class="waitbox"'+(isW?'':' hidden')+'>'+
         '<div class="ie-lbl">Waiting on</div>'+who+
@@ -2953,14 +3103,7 @@ function GENA_MAIN() {
     return '<li class="task inline-row"><span class="inline-plus">+</span><input class="inline-add" data-focus="1" placeholder="'+label+'" aria-label="'+label+'"/>'+AT_BTN+'</li>';
   }
   function focusRow(f){
-    if(f.habitId){
-      var fh=S.habits.find(function(x){return x.id===f.habitId;}); if(!fh) return "";
-      var hlog=habitLog(viewDay,fh.id), hgoal=fh.goal||1, hdone=hlog>=hgoal;
-      return '<li class="task habit-row'+(hdone?" done":"")+'" data-id="'+esc(f.id)+'" data-hid="'+esc(fh.id)+'" data-focus="1">'+
-        '<button class="chk '+(hdone?"done":"")+'" data-act="habit-tick" aria-label="'+esc(fh.name)+'" aria-pressed="'+hdone+'"></button>'+
-        '<div class="task-main" data-act="edithabit" data-hid="'+esc(fh.id)+'"><div class="task-title">'+esc(fh.name)+'</div><div class="task-meta"><span class="pill rec">🌱 habit</span>'+(hgoal>1?'<span class="pill block">'+Math.min(hlog,hgoal)+' / '+hgoal+'</span>':'')+'</div></div>'+
-        '<button class="task-x" data-act="focus-del" aria-label="Remove from focus" title="Remove from focus (keeps the habit)">✕</button></li>';
-    }
+    if(f.habitId){ var fh=habitById(f.habitId); return fh?habitLi(fh,viewDay,f):""; }
     if(f.taskId){
       var k=S.tasks.find(function(x){return x.id===f.taskId;});
       if(!k) return "";
@@ -2976,8 +3119,8 @@ function GENA_MAIN() {
         peoplePills(k);
       var lsubRows="";
       if(k.subs&&k.subs.length){
-        lpills+=subsPill(k.id,k.subs);
-        lsubRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subkind="sub" data-subof="'+esc(k.id)+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-tid="'+esc(k.id)+'" data-sid="'+esc(s.id)+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("");
+        lpills+=subsPill(k.id,k.subs,k.day);
+        lsubRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+(subSkipped(s,k.day)?" sub-skip":"")+'" draggable="true" data-subkind="sub" data-subof="'+esc(k.id)+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-tid="'+esc(k.id)+'" data-sid="'+esc(s.id)+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subRepeatBits(k,s)+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("");
       }
       if(pendingSubAdd===k.id) lsubRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+esc(k.id)+'" value="'+esc(draftOf("sub:"+k.id))+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
       var lsubsHtml=lsubRows?'<ul class="subs">'+lsubRows+'</ul>':'';
@@ -2993,7 +3136,6 @@ function GENA_MAIN() {
     var pills=(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"");
     var subRows="";
     if(f.subs&&f.subs.length){
-      var sdn=f.subs.filter(function(s){return s.done;}).length;
       pills+=subsPill(f.id,f.subs);
       subRows=subsCollapsed(f.id)?"":f.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+'" draggable="true" data-subkind="fsub" data-subof="'+esc(f.id)+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="fsub-toggle" data-sid="'+esc(s.id)+'" aria-label="Toggle subitem" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subMoveBtns(f.id,i,f.subs.length,"fsub")+'</li>';}).join("");
     }
@@ -3050,7 +3192,7 @@ function GENA_MAIN() {
   function focusItemToTask(f){
     var k={id:uid(),title:f.text||"",projectId:f.projectId||null,status:f.done?"done":"todo",
       day:viewDay,block:null,at:null,priority:false,rollover:0,personIds:[],created:today(),
-      subs:(f.subs||[]).map(function(s){return {id:s.id||uid(),text:s.text,done:!!s.done};})};
+      subs:(f.subs||[]).map(function(s){ var c=subCopy(s); if(!c.id) c.id=uid(); return c; })};
     if(f.done) k.completedOn=viewDay;
     S.tasks.push(k);
     delete f.text; delete f.projectId; delete f.done; delete f.subs;
@@ -3139,6 +3281,7 @@ function GENA_MAIN() {
     var t=today(), vd=viewDay;
     var isToday=vd===t, isPast=vd<t;
     var focusItems=(S.focus[vd]||[]).filter(function(f){
+      if(f.habitId){ var fh0=habitById(f.habitId); return !!fh0 && !isPaused(fh0,vd); }   // P3: a paused habit is out of Focus until it resumes
       if(f.taskId){ var lk=taskById(f.taskId); return lk && inScope(lk.projectId); }
       return !f.projectId||inScope(f.projectId); });
     var open=tasksOn(vd).filter(function(k){return isOpen(k) && inScope(k.projectId);});
@@ -3147,9 +3290,11 @@ function GENA_MAIN() {
     var skipV=tasksOn(vd).filter(function(k){return isSkipped(k) && inScope(k.projectId);});
     var blocks=["morning","afternoon","evening"];
     var sugg=isToday?computeSuggestions():[];
-    var dayHabits=S.habits.filter(function(h){return h.inDay;});
+    var dayHabits=S.habits.filter(function(h){return h.inDay && !isPaused(h,vd);});   // a paused habit leaves the day (P3)
     var habitsOpen=dayHabits.filter(function(h){return !habitDoneOn(h,vd);}), habitsDone=dayHabits.filter(function(h){return habitDoneOn(h,vd);});
-    var doneCount=doneV.length+habitsDone.length, total=open.length+doneV.length+dayHabits.length;
+    // the ring: a skipped habit is neutral (out of both counts); a week or month habit that met its goal counts as done
+    var habitsCounted=dayHabits.filter(function(h){ return !habitSkipped(h,vd); });
+    var doneCount=doneV.length+habitsCounted.filter(function(h){ return habitMet(h,vd); }).length, total=open.length+doneV.length+habitsCounted.length;
 
     var hr=new Date().getHours();
     var greet=(hr<12?"Good morning":(hr<17?"Good afternoon":"Good evening"))+(S.name?", "+esc(S.name):"");
@@ -3214,16 +3359,17 @@ function GENA_MAIN() {
     var somedayDone=S.tasks.filter(function(k){return !k.day && k.status==="done" && inScope(k.projectId);}).length;
     var hb='';
     S.habits.forEach(function(h){
-      var log=(S.habitLog[vd]||{})[h.id]||0; var st=habitStreak(h.id);
-      hb+='<div class="habit"><span class="hname" data-act="edithabit" data-hid="'+esc(h.id)+'" style="cursor:pointer" title="Tap to edit">'+esc(h.name)+'</span>'+
+      var st=habitStreak(h.id), sk=habitSkipped(h,vd), pz=isPaused(h,vd);
+      if(pz){ hb+='<div class="habit dim" data-hid="'+esc(h.id)+'"><span class="hname" data-act="edithabit" data-hid="'+esc(h.id)+'" style="cursor:pointer" title="Tap to edit">'+(h.emoji?esc(h.emoji)+" ":"")+esc(h.name)+'</span>'+
+        '<span class="hbar-n">'+esc(pauseLabel(h))+'</span><button class="chip" data-act="resume-habit">Resume</button></div>'; return; }
+      hb+='<div class="habit'+(sk?" dim":"")+'" data-hid="'+esc(h.id)+'"><span class="hname" data-act="edithabit" data-hid="'+esc(h.id)+'" style="cursor:pointer" title="Tap to edit">'+(h.emoji?esc(h.emoji)+" ":"")+esc(h.name)+'</span>'+
         (st>1?'<span class="streak">🔥 '+st+'</span>':'')+
-        '<div class="dots" data-hid="'+esc(h.id)+'">';
-      for(var i=0;i<h.goal;i++) hb+='<button class="dot '+(i<log?"on":"")+'" data-i="'+(i+1)+'" aria-label="'+esc(h.name)+' '+(i+1)+'" aria-pressed="'+(i<log)+'"></button>';
-      hb+='</div></div>';
+        '<div class="dots" data-hid="'+esc(h.id)+'">'+(sk?'<button class="chip" data-act="habit-skip" title="Skipped today: tap to undo">⏭ skipped</button>':habitUnitsHtml(h,vd,true))+'</div></div>';
     });
     hb+='<button class="chip" data-act="addhabit" style="margin-top:10px">+ habit</button>';
-    var habitDone=0, habitTotal=0;
-    S.habits.forEach(function(h){ habitTotal+=h.goal; habitDone+=Math.min((S.habitLog[vd]||{})[h.id]||0,h.goal); });
+    // per habit min(1, progress/goal), over the count of habits (H4): a 10,000-step goal cannot swamp it; a skip is neutral
+    var habitDone=0, habitTotal=0, habitFrac=0;
+    S.habits.forEach(function(h){ if(habitSkipped(h,vd)||isPaused(h,vd)) return; habitTotal++; habitFrac+=habitScore(h,vd); if(habitMet(h,vd)) habitDone++; });
     var fOpen=focusItems.filter(function(f){ return !focusItemDone(f); }), fDone=focusItems.filter(focusItemDone);
     curList="focus"; var focusHtml=fOpen.map(focusRow).join(""); curList=null;
     curList="done:focus"; var focusDoneHtml=doneStrip("focus", fDone.map(focusRow).join(""), fDone.length); curList=null;
@@ -3265,7 +3411,7 @@ function GENA_MAIN() {
       // S.todayOrder keep working. "task" remains the generic word for any item you enter.
       tasks: fold("tasks","To-do",masterHtml+masterDoneHtml,groupChips+foldProg(doneCount,total)),
       blocks: oneCard?undefined:blocksHtml,
-      habitsnotes: '<div class="grid2">'+fold("habits","Habits &amp; wellness",hb,foldProg(habitDone,habitTotal))+fold("notes","Notes",richTextHtml("daily",S.notes[vd]||"","Jot anything — ideas, blockers, wins… try [[a project name]]",110))+'</div>'+
+      habitsnotes: '<div class="grid2">'+fold("habits","Habits &amp; wellness",hb,foldProg(habitDone,habitTotal,habitTotal?habitFrac/habitTotal:0))+fold("notes","Notes",richTextHtml("daily",S.notes[vd]||"","Jot anything — ideas, blockers, wins… try [[a project name]]",110))+'</div>'+
         fold("sessions","Focus sessions"+(focusMinutes(vd)?" · "+focusMinutes(vd)+"m":""), focusLogHtml(vd))
     };
     var cd=isToday?comingDueTasks():[];
@@ -3337,7 +3483,7 @@ function GENA_MAIN() {
     // A carried task that's already been placed into a block on the day you're looking at is done being
     // triaged — showing it here too just duplicates the day list. Unplaced ones stay, since this card is
     // where you actually put them somewhere.
-    var carried=S.tasks.filter(function(k){return k.status==="todo" && (k.rollover||0)>=1 && !k.tplId && inScope(k.projectId) && !(taskOnDay(k,vd) && k.block);});
+    var carried=S.tasks.filter(function(k){return k.status==="todo" && (k.rollover||0)>=1 && !k.tplId && inScope(k.projectId) && !(taskOnDay(k,vd) && k.block) && !pausedCycle(k,today());});
     var doneV=S.tasks.filter(function(k){return k.status==="done" && k.completedOn===vd && inScope(k.projectId);});
     var MOVES=[["morning","☀️ Morning"],["afternoon","🌤 Afternoon"],["evening","🌙 Evening"],["anytime","⏳ Anytime"],["someday","💭 Someday"]];
     var blAdd='<ul class="tasks" data-list="someday" style="padding:0;margin:0 0 4px"><li class="task inline-row" style="padding:6px 4px"><span class="inline-plus">+</span><input class="inline-add" data-block="someday" placeholder="Add to backlog…" aria-label="Add to backlog"/></li></ul>';
@@ -3405,7 +3551,7 @@ function GENA_MAIN() {
   function comingDueTasks(){
     var t=today();
     return S.tasks.filter(function(k){
-      return isOpen(k) && k.due && inScope(k.projectId) &&
+      return isOpen(k) && k.due && inScope(k.projectId) && !pausedCycle(k,t) &&
         diffDays(k.due,t)<=DUE_HORIZON && !(k.day && k.day<=t);
     }).sort(function(a,b){ return a.due.localeCompare(b.due) || (a.day||"9999").localeCompare(b.day||"9999"); });
   }
@@ -3472,9 +3618,9 @@ function GENA_MAIN() {
   function agenda(day){
     var t=today(), isT=(day===t);
     var tasks=tasksOn(day).filter(function(k){ return isOpen(k) && inScope(k.projectId); });
-    var habits=S.habits.filter(function(h){ return h.inDay; });
+    var habits=S.habits.filter(function(h){ return h.inDay && !isPaused(h,day); });
     // a follow-up that is overdue keeps landing on today until it is logged or pushed
-    var followups=S.people.filter(function(p){ return p.next && (isT ? p.next<=day : p.next===day); });
+    var followups=S.people.filter(function(p){ return p.next && !isPaused(p,day) && (isT ? p.next<=day : p.next===day); });
     var checkbacks=S.tasks.filter(function(k){ return isWaiting(k) && k.nextAt && (isT ? k.nextAt<=day : k.nextAt===day) && inScope(k.projectId); });
     var due=S.tasks.filter(function(k){ return isOpen(k) && k.due===day && inScope(k.projectId); });
     var phaseEnds=S.phases.filter(function(ph){ return ph.end===day && inScope(ph.projectId); });
@@ -3521,28 +3667,157 @@ function GENA_MAIN() {
      so it cannot pile up, carry, or duplicate; the tick writes `habitLog[day][id]` and the streak is the
      record. Prayer and Check Emails were daily repeats because habits didn't appear where the user
      lives; this makes that unnecessary. */
-  function habitLog(day,hid){ return ((S.habitLog[day]||{})[hid])||0; }
-  function habitDoneOn(h,day){ return habitLog(day,h.id)>=(h.goal||1); }
+  function habitLog(day,hid){ return Math.max(0,+((S.habitLog[day]||{})[hid])||0); }
   function setHabitLog(day,hid,val){ S.habitLog[day]=S.habitLog[day]||{}; S.habitLog[day][hid]=Math.max(0,val); }
+  /* V5.2 (GD-027, GD-028): a habit has a period (`per`: day, week Monday to Sunday (GD-041), or calendar
+     month), a `goal` for that period, and optionally a `unit` with `box` per tap (water: 60 oz in 8 oz boxes).
+     Progress is the SUM of habitLog over the period, so the log format never changed and an old habit
+     (no fields) reads exactly as before. A skip lives ON THE HABIT (`skips[day]=1`), never in habitLog: that
+     is an IDMAPS day object where the newer whole day wins, so a -1 there could erase a real tick on merge
+     (design review finding 1). A positive count that day beats a skip, so a tick on either device wins. */
+  function habitPer(h){ return h&&(h.per==="week"||h.per==="month")?h.per:"day"; }
+  function habitGoal(h){ var g=+(h&&h.goal); return g>0?g:1; }
+  function habitBox(h){ var b=+(h&&h.box); return b>0?b:1; }
+  function periodStart(per,day){ return per==="week"?addDays(day,-((dow(day)+6)%7)):(per==="month"?day.slice(0,8)+"01":day); }
+  function periodDays(per,day){
+    var s=periodStart(per,day), out=[s];
+    if(per==="week") for(var i=1;i<7;i++) out.push(addDays(s,i));
+    else if(per==="month") for(var d=addDays(s,1); d.slice(0,7)===s.slice(0,7); d=addDays(d,1)) out.push(d);
+    return out;
+  }
+  // a row asks several times per render (done? met? circles? score?): one sum per habit and day per render
+  function habitProgress(h,day){ var per=habitPer(h); if(per==="day") return habitLog(day,h.id);
+    var m=ixOk()?(IX.prog||(IX.prog={})):null, k=h.id+"|"+day;
+    if(m&&(k in m)) return m[k];
+    var v=periodDays(per,day).reduce(function(a,d){ return a+habitLog(d,h.id); },0);
+    if(m) m[k]=v; return v; }
+  function habitMet(h,day){ return habitProgress(h,day)>=habitGoal(h); }
+  function habitSkipped(h,day){ return !!(h&&h.skips&&h.skips[day]) && !(habitLog(day,h.id)>0); }
+  // "done" moves a row to the done strip: day habits only. A week or month habit that met its goal stays
+  // in place, dimmed, "✓ achieved" (U3), so it is never done here; habitMet drives that label.
+  function habitDoneOn(h,day){ return habitPer(h)==="day" && habitMet(h,day); }
+  /* Pause (GD-022): `paused`, `pausedSince`, `pausedUntil` (inclusive) on a person, habit or cycle task. A
+     pure read: an expired `pausedUntil` reads as resumed with no write; days before `pausedSince` were not
+     paused, so history reads as it was. */
+  /* Pause and Resume, one pair for people, habits and cycle tasks (P1). Pausing a person retires the open
+     prep task made before the pause (P2). Resuming a habit writes its paused days as skips (H3), so the
+     past stays neutral with no history field; resume clears the dates. */
+  function pauseItem(x,kind,until){
+    x.paused=true; x.pausedSince=today(); if(until) x.pausedUntil=until; else delete x.pausedUntil;
+    if(kind==="person") S.tasks.forEach(function(k){ if(k.prepPerson===x.id&&isOpen(k)){ k.status="skipped"; k.skippedOn=today(); } });
+  }
+  function resumeItem(x,kind){
+    if(kind==="habit"&&x.pausedSince){ var last=addDays(today(),-1); if(x.pausedUntil&&x.pausedUntil<last) last=x.pausedUntil; habitPauseToSkips(x,last); }
+    x.paused=false; delete x.pausedSince; delete x.pausedUntil;
+  }
+  // P5: a habit whose "until" has passed reads as resumed already; once a day its paused days become skips
+  function endExpiredHabitPauses(day){
+    (S.habits||[]).forEach(function(h){ if(h.paused&&h.pausedUntil&&h.pausedUntil<day){ habitPauseToSkips(h,h.pausedUntil); h.paused=false; delete h.pausedSince; delete h.pausedUntil; } });
+  }
+  function pauseLabel(x){ return "💤 Paused"+(x.pausedSince?" since "+niceDate(x.pausedSince):"")+(x.pausedUntil?", until "+niceDate(x.pausedUntil):""); }
+  function isPaused(x,day){
+    if(!x||!x.paused) return false; day=day||today();
+    if(x.pausedSince&&day<x.pausedSince) return false;
+    return !(x.pausedUntil&&day>x.pausedUntil);
+  }
+  function habitById(hid){ for(var i=0;i<S.habits.length;i++) if(S.habits[i].id===hid) return S.habits[i]; return null; }
+  /* The check always logs one more unit (`box`) for the day: below the goal it counts toward it, past it
+     it is an extra (GD-028: "i can also click checked off if i am doing extra"). On a skipped day the
+     tap undoes the skip instead. Taking a unit back is its own action (habitRemoveOne): only that day's. */
   function habitTick(hid,day){
-    var h=S.habits.find(function(x){return x.id===hid;}); if(!h) return;
-    var cur=habitLog(day,hid), goal=h.goal||1;
-    setHabitLog(day,hid, cur>=goal?0:cur+1);     // at goal, a tap un-ticks; below it, one more
+    var h=habitById(hid); if(!h) return;
+    if(habitSkipped(h,day)) habitUnskip(h,day);
+    else setHabitLog(day,hid, habitLog(day,hid)+habitBox(h));
     save(); render();
   }
+  function habitRemoveOne(hid,day){
+    var h=habitById(hid); if(!h) return false;
+    var cur=habitLog(day,hid); if(!(cur>0)) return false;
+    setHabitLog(day,hid, Math.max(0,cur-habitBox(h)));
+    save(); render(); return true;
+  }
+  // A typed amount (steps) sets the day's total; Gena has no Health access (GD-027)
+  function habitSetAmount(hid,day,val){
+    var h=habitById(hid); if(!h) return; val=Math.max(0,Math.round(+val||0));
+    if(val>0&&h.skips&&h.skips[day]) habitUnskip(h,day);
+    setHabitLog(day,hid,val); save(); render();
+  }
+  function habitUnskip(h,day){ if(h.skips){ delete h.skips[day]; if(!Object.keys(h.skips).length) delete h.skips; } }
+  // ⏭ Skip today: neutral, adds nothing, breaks no streak; the same call undoes it. Returns the new state.
+  function habitSkipToggle(hid,day){
+    var h=habitById(hid); if(!h) return null;
+    if(h.skips&&h.skips[day]) habitUnskip(h,day); else { h.skips=h.skips||{}; h.skips[day]=1; }
+    save(); render(); return !!(h.skips&&h.skips[day]);
+  }
+  // A habit's share of the day's score: 0 to 1, so a 10,000-step goal weighs the same as one prayer (H4)
+  function habitScore(h,day){ return Math.min(1, habitProgress(h,day)/habitGoal(h)); }
+  /* Circles for up to 12 units, a bar above that (H4, U2): a 10,000-step goal never loops 10,000 dots.
+     Filled = logged this period; a gold ✦ = past the goal. Tapping an empty circle (or ＋) adds one unit;
+     a filled one logged on this day takes one back; one logged on an earlier day is that day's record. An
+     amount habit in bar form gets a typed entry that sets the day's total (`entry`). */
+  var HABIT_MAX_DOTS=12;
+  function habitUnitsHtml(h,day,entry){
+    var goal=habitGoal(h), box=habitBox(h), units=Math.ceil(goal/box), prog=habitProgress(h,day);
+    var filled=Math.floor(prog/box+1e-9), hid=esc(h.id), unit=h.unit?" "+esc(h.unit):"", out="";
+    if(units<=HABIT_MAX_DOTS){
+      for(var i=1;i<=units;i++) out+='<button class="dot'+(i<=filled?" on":"")+'" data-act="habit-unit" data-u="'+i+'" aria-label="'+esc(h.name)+' '+i+' of '+units+'" aria-pressed="'+(i<=filled)+'"></button>';
+      var ex=filled-units;
+      for(var j=1;j<=Math.min(ex,HABIT_MAX_DOTS);j++) out+='<button class="dot extra" data-act="habit-unit" data-u="'+(units+j)+'" aria-label="'+esc(h.name)+' extra '+j+'" title="Past the goal">✦</button>';
+      if(ex>HABIT_MAX_DOTS) out+='<span class="hx">✦ ×'+ex+'</span>';
+      return out;
+    }
+    var pct=Math.min(100,Math.round(100*prog/goal)), left=goal-prog;
+    return '<span class="hbar" title="'+esc(fmtNum(prog)+" / "+fmtNum(goal)+unit)+'"><span class="hbar-fill" style="width:'+pct+'%"></span></span>'+
+      '<span class="hbar-n">'+fmtNum(prog)+' / '+fmtNum(goal)+unit+'</span>'+
+      '<span class="hbar-left">'+(left>0?fmtNum(left)+" left":(left<0?'<span class="hx">✦ '+fmtNum(-left)+' over</span>':"✓"))+'</span>'+
+      (entry&&h.unit?'<input class="habit-amt" type="number" min="0" inputmode="numeric" data-hid="'+hid+'" value="'+(habitLog(day,h.id)||"")+'" placeholder="today" aria-label="'+esc(h.name)+' today"/>':
+        '<button class="dot plus" data-act="habit-unit" data-u="'+(filled+1)+'" aria-label="'+esc(h.name)+': one more" title="One more">＋</button>');
+  }
+  function fmtNum(n){ n=Math.round(n*100)/100; return Math.abs(n)>=1000?n.toLocaleString("en-US"):String(n); }
+  function habitUnitTap(hid,day,i){
+    var h=habitById(hid); if(!h) return;
+    var box=habitBox(h), filled=Math.floor(habitProgress(h,day)/box+1e-9), mine=Math.min(filled,Math.ceil(habitLog(day,hid)/box-1e-9));
+    if(i>filled){ if(habitSkipped(h,day)) habitUnskip(h,day); setHabitLog(day,hid,habitLog(day,hid)+box); save(); render(); return; }
+    if(i>filled-mine){ habitRemoveOne(hid,day); return; }
+    toast("Logged on an earlier day: open that day to change it");
+  }
+  // Resume, or a pausedUntil that has passed: the paused days become skips, so the past stays neutral
+  // with no separate history field (H3, P5). `upto` is the last paused day.
+  function habitPauseToSkips(h,upto){
+    if(!h.pausedSince||!upto||upto<h.pausedSince) return 0;
+    var from=h.pausedSince, cut=addDays(today(),-400), n=0; if(from<cut) from=cut;
+    for(var d=from; d<=upto; d=addDays(d,1)){ if(!(habitLog(d,h.id)>0)){ h.skips=h.skips||{}; if(!h.skips[d]){ h.skips[d]=1; n++; } } }
+    return n;
+  }
   function inFocusHabit(hid){ return (S.focus[viewDay]||[]).some(function(f){return f.habitId===hid;}); }
-  function habitRowHtml(h,day){
-    var log=habitLog(day,h.id), goal=h.goal||1, done=log>=goal, st=habitStreak(h.id);
-    return '<li class="task habit-row'+(done?" done":"")+'" data-hid="'+esc(h.id)+'">'+
-      '<button class="chk '+(done?"done":"")+'" data-act="habit-tick" aria-label="'+esc(h.name)+'" aria-pressed="'+done+'"></button>'+
-      '<div class="task-main" data-act="edithabit" data-hid="'+esc(h.id)+'" title="Tap to edit the habit"><div class="task-title">'+esc(h.name)+'</div>'+
-      '<div class="task-meta"><span class="pill rec">🌱 habit</span>'+
-        (goal>1?'<span class="pill block">'+Math.min(log,goal)+' / '+goal+'</span>':'')+
-        (st>1?'<span class="pill imp">🔥 '+st+'</span>':'')+'</div></div>'+
+  function habitPerLabel(h){ var per=habitPer(h), g=fmtNum(habitGoal(h)), u=h.unit?" "+h.unit:"";
+    return per==="day"?((habitGoal(h)>1||h.unit)?g+u+" a day":"habit"):g+u+" a "+per; }
+  // The meta line both habit rows share: period, circles or bar, ✓ achieved, ⏭ skipped, streak
+  function habitMetaHtml(h,day){
+    var per=habitPer(h), st=habitStreak(h.id), units=Math.ceil(habitGoal(h)/habitBox(h)), prog=habitProgress(h,day);
+    var m='<span class="pill rec">🌱 '+esc(habitPerLabel(h))+'</span>';
+    if(habitSkipped(h,day)) return m+'<span class="pill block">⏭ skipped today</span>';
+    if(per!=="day"&&prog>=habitGoal(h)) m+='<span class="pill good">✓ achieved this '+per+'</span>';
+    if(units>1||prog>0) m+='<span class="dots" data-hid="'+esc(h.id)+'">'+habitUnitsHtml(h,day,true)+'</span>';
+    return m+(st>1?'<span class="pill imp">🔥 '+st+'</span>':'');
+  }
+  /* One habit row for To-do and Focus (f = the Focus entry). A met day habit is done (the done strip); a met
+     week or month habit stays where it is, dimmed, "✓ achieved" (U3); a skipped one is dimmed with ⏭ and its
+     check undoes the skip (U4). The check otherwise always logs one more: past the goal that is an extra. */
+  function habitLi(h,day,f){
+    var sk=habitSkipped(h,day), done=habitDoneOn(h,day), met=habitMet(h,day), dim=sk||(!done&&met);
+    var lbl=esc(h.name)+(sk?": skipped today, tap to undo":(met?": log an extra":""));
+    return '<li class="task habit-row'+(done?" done":"")+(dim?" dim":"")+'"'+(f?' data-id="'+esc(f.id)+'" data-focus="1"':'')+' data-hid="'+esc(h.id)+'" draggable="true">'+
+      '<button class="chk '+(met&&!sk?"done":"")+'" data-act="habit-tick" aria-label="'+lbl+'" aria-pressed="'+(met&&!sk)+'"></button>'+
+      '<div class="task-main" data-act="edithabit" data-hid="'+esc(h.id)+'" title="Tap to edit the habit"><div class="task-title">'+(h.emoji?esc(h.emoji)+" ":"")+esc(h.name)+'</div>'+
+      '<div class="task-meta">'+habitMetaHtml(h,day)+'</div></div>'+
       '<span class="row-br"></span>'+
-      '<button class="task-focus'+(inFocusHabit(h.id)?" on":"")+'" data-act="habit-focus" aria-label="Add to Today’s Focus" title="Add to Today’s Focus">◎</button>'+
+      '<button class="task-bump habit-skip" data-act="habit-skip" aria-label="'+(sk?"Undo the skip":"Skip today")+'" title="'+(sk?"Skipped today: tap to undo":"Skip today: counts nothing, breaks no streak")+'">⏭</button>'+
+      (f?'<button class="task-x" data-act="focus-del" aria-label="Remove from focus" title="Remove from focus (keeps the habit)">✕</button>'
+        :'<button class="task-focus'+(inFocusHabit(h.id)?" on":"")+'" data-act="habit-focus" aria-label="Add to Today’s Focus" title="Add to Today’s Focus">◎</button>')+
       '<button class="task-more" data-act="rowmenu" aria-label="More actions">⋯</button></li>';
   }
+  function habitRowHtml(h,day){ return habitLi(h,day,null); }
   // ---- 40a: the Waiting card ----
   // Landed check-backs open on top with their three answers; the rest sit folded with a count.
   function waitingRow(k, landed){
@@ -3701,11 +3976,30 @@ function GENA_MAIN() {
     while(days[d]){ s++; d=addDays(d,-1); }
     return s;
   }
+  /* Periods met in a row (H3): days for a day habit, weeks or months for the others. The current period
+     not met yet does not break it (it is still running). A period that is all skipped or paused days
+     neither counts nor breaks; a skip does not lower a week's goal (H2). One walk back over at most 400
+     days with one Date (the habit looked up once, not once per day), memoised for one render. */
   function habitStreak(hid){
-    var s=0, d=today();
-    for(var i=0;i<400;i++){ var day=addDays(d,-i); var v=(S.habitLog[day]||{})[hid]||0; var h=S.habits.find(function(x){return x.id===hid;});
-      if(h && v>=h.goal) s++; else { if(i===0) continue; break; } }
-    return s;
+    var h=habitById(hid); if(!h) return 0;
+    if(!ixOk()) return habitStreakWalk(h);
+    var m=IX.streak||(IX.streak={}); return (hid in m)?m[hid]:(m[hid]=habitStreakWalk(h));
+  }
+  function habitStreakWalk(h){
+    var per=habitPer(h), goal=habitGoal(h), t=today(), log=S.habitLog, id=h.id, sk=h.skips||{}, cut=addDays(t,-400);
+    var pStart=periodStart(per,t), pDays=periodDays(per,t), d=parse(pDays[pDays.length-1]);
+    var s=0, idx=0, sum=0, neutral=true;
+    for(;;){
+      var day=fmt(d);
+      if(day<pStart||day<cut){                       // the period before `day` is complete
+        if(sum>=goal) s++; else if(idx>0&&!neutral) return s;
+        idx++; if(day<cut) return s;
+        pStart=per==="day"?day:periodStart(per,day); sum=0; neutral=true;
+      }
+      var v=+((log[day]||{})[id])||0; if(v>0) sum+=v;
+      if(neutral&&!(day>t||(sk[day]&&!(v>0))||isPaused(h,day))) neutral=false;
+      d.setDate(d.getDate()-1);
+    }
   }
 
   /* ---------- WEEK — the next seven days ---------- */
@@ -3735,7 +4029,7 @@ function GENA_MAIN() {
   function backlogRow(k){
     var p=proj(k.projectId);
     var pills=(k.priority?'<span class="pill imp">★</span>':"")+((k.rollover||0)>=1?'<span class="pill aged'+(k.rollover>=7?" hot":"")+'">carried '+k.rollover+'d</span>':"")+(p?'<span class="pill proj" style="--pc:'+esc(p.color)+'"><i class="pdot"></i>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+
-      (k.subs&&k.subs.length?'<span class="pill subs-n">☑ '+k.subs.filter(function(s){return s.done;}).length+'/'+k.subs.length+'</span>':"");
+      (k.subs&&k.subs.length?'<span class="pill subs-n">'+subCountText(k.subs,k.day)+'</span>':"");
     var chips='<button data-act="sched" data-id="'+esc(k.id)+'" data-d="'+today()+'">📅 Today</button>'+
       '<button data-act="sched" data-id="'+esc(k.id)+'" data-d="'+addDays(today(),1)+'">→ Tomorrow</button>';
     var nm=nextDow(1); chips+='<button data-act="sched" data-id="'+esc(k.id)+'" data-d="'+nm+'">⏭ Mon '+(+nm.slice(8))+'</button>';
@@ -3750,7 +4044,7 @@ function GENA_MAIN() {
   }
   function viewBacklog(){
     var undated=orderTasks(S.tasks.filter(function(k){return !k.day && isOpen(k) && inScope(k.projectId);}),false);
-    var carried=orderTasks(S.tasks.filter(function(k){return k.status==="todo" && (k.rollover||0)>=1 && !k.tplId && inScope(k.projectId);}),false);
+    var carried=orderTasks(S.tasks.filter(function(k){return k.status==="todo" && (k.rollover||0)>=1 && !k.tplId && inScope(k.projectId) && !pausedCycle(k,today());}),false);
     var html='<h2 class="view-h">Backlog</h2><p class="sub">Things to do <b>someday</b> — no set date. Add them here, then schedule each one for a day when you\'re ready.'+(scopeActive()?' <b>Filtered:</b> '+esc(scopeLabel())+' — <button class="chip" data-act="clearscope" style="padding:2px 9px">show all</button>':'')+'</p>';
     html+='<div class="card" style="margin-bottom:16px"><ul class="tasks" data-list="someday" style="padding:0"><li class="task inline-row"><span class="inline-plus">+</span><input class="inline-add" data-block="someday" placeholder="Add something to do someday — @project works too…" aria-label="Add backlog task"/></li></ul></div>';
     if(carried.length){
@@ -3815,7 +4109,7 @@ function GENA_MAIN() {
       html+='<ul class="tasks">'+(openTasks.length?openTasks.map(function(k){
         return '<li class="task" data-id="'+esc(k.id)+'"><button class="chk" data-act="toggle" aria-label="done" aria-pressed="false"></button>'+
           '<div class="task-main" data-act="edit"><div class="task-title">'+esc(k.title)+'</div>'+
-          '<div class="task-meta"><span class="pill block">'+(k.day?niceDate(k.day):"someday")+'</span>'+(k.subs&&k.subs.length?'<span class="pill subs-n">☑ '+k.subs.filter(function(s){return s.done;}).length+'/'+k.subs.length+'</span>':'')+'</div></div></li>';
+          '<div class="task-meta"><span class="pill block">'+(k.day?niceDate(k.day):"someday")+'</span>'+(k.subs&&k.subs.length?'<span class="pill subs-n">'+subCountText(k.subs,k.day)+'</span>':'')+'</div></div></li>';
       }).join(""):'<div class="empty">No open tasks 🎉</div>');
       if(ts.filter(function(k){return k.status==="todo";}).length>6) html+='<div class="cal-more">+'+(ts.filter(function(k){return k.status==="todo";}).length-6)+' more</div>';
       html+='</ul>';
@@ -3834,10 +4128,13 @@ function GENA_MAIN() {
       var shelf=function(key,label,cards){ if(!cards.length) return "";
         var inner=html; html=""; html+='<div class="board shelf-board">'; cards.forEach(renderCard); html+='</div>'; var body=html; html=inner;
         return '<div style="margin-top:16px">'+fold(key,label+' · '+cards.length,body)+'</div>'; };
-      html+=shelf("shelf-off","🛌 Off-season",offC)+shelf("shelf-ended","🏁 Ended",endC);
+      html+=shelf("shelf-off","💤 Paused",offC)+shelf("shelf-ended","🏁 Ended",endC);
     }
-    if(S.templates.length){
-      var tl='<ul class="tasks">'+S.templates.map(function(tp){ var p=proj(tp.projectId);
+    var pzCycles=S.tasks.filter(function(k){ return k.paused&&isCycle(k); });
+    if(S.templates.length||pzCycles.length){
+      var tl='<ul class="tasks">'+pzCycles.map(function(k){
+        return '<li class="task dim" data-id="'+esc(k.id)+'"><div class="task-main" data-act="edit"><div class="task-title">'+esc(k.title)+'</div><div class="task-meta"><span class="pill rec">↻ '+esc(cycleDesc(k.cycle))+'</span><span class="pill block">'+esc(pauseLabel(k))+'</span></div></div>'+
+          '<button class="chip" data-act="resume-cycle" data-id="'+esc(k.id)+'">Resume</button></li>'; }).join("")+S.templates.map(function(tp){ var p=proj(tp.projectId);
         return '<li class="task" data-id="'+esc(tp.id)+'"><div class="task-main" style="cursor:default"><div class="task-title">'+esc(tp.title)+'</div><div class="task-meta"><span class="pill rec">'+recDesc(tp)+'</span>'+(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+(tp.paused?'<span class="pill block">paused</span>':"")+'</div></div>'+
           '<button class="chip" data-act="tpl-pause" data-tid="'+esc(tp.id)+'">'+(tp.paused?"Resume":"Pause")+'</button>'+
           '<button class="task-x" data-act="tpl-del" data-tid="'+esc(tp.id)+'" style="opacity:1" aria-label="Stop repeating">✕</button></li>';
@@ -4141,7 +4438,8 @@ function GENA_MAIN() {
     var done=S.tasks.filter(function(k){ return k.status==="done" && k.completedOn===d; }).length;
     var mins=focusMinutes(d), bits=[];
     if(done) bits.push("✓ "+done+" done"); if(mins) bits.push("⏱ "+fmtMins(mins)+" focused");
-    var hl=S.habitLog[d]; if(hl){ var hv=Object.keys(hl).reduce(function(a,k){ return a+(hl[k]||0); },0); if(hv) bits.push("🌱 "+hv+" habit ticks"); }
+    var hl=S.habitLog[d]; if(hl){ var hv=Object.keys(hl).reduce(function(a,k){ var v=+hl[k]||0; if(!(v>0)) return a; var hh=habitById(k), bx=habitBox(hh);   // units; a bar habit (typed steps) is one a day, not 8,000
+      return a+(hh&&Math.ceil(habitGoal(hh)/bx)>HABIT_MAX_DOTS?1:Math.max(1,Math.floor(v/bx))); },0); if(hv) bits.push("🌱 "+hv+" habit tick"+(hv===1?"":"s")); }
     return bits.join(" · ");
   }
   function jrLinksHtml(d){
@@ -4423,13 +4721,14 @@ function GENA_MAIN() {
     if(ieRow){
       var ieId=ieRow.dataset.id, ieCarried=!!ieKeep&&ieKeep.id===ieId;
       if(!ieCarried){ var ieT=S.tasks.find(function(x){return x.id===ieId;});
-        ieKeep={id:ieId, subs:((ieT&&ieT.subs)||[]).map(function(sb){return {id:sb.id,text:sb.text,done:!!sb.done};}),
+        ieKeep={id:ieId, subs:((ieT&&ieT.subs)||[]).map(function(sb){return subCopy(sb);}),
           people:((ieT&&ieT.personIds)||[]).slice(), block:(ieT&&ieT.block)||"", prio:!!(ieT&&ieT.priority)}; }
       var ieSubs=ieKeep.subs, iePeople=ieKeep.people;
       // fi/which re-focus the arrow that was just pressed at its new index, so you can keep tapping;
       // at either end that arrow is disabled, so the focus falls to its partner.
       function ieRenderSubs(fi,which){
-        document.getElementById("ie-subs").innerHTML=ieSubs.map(function(sb,i){ return ieSubRow(sb,i,ieSubs.length); }).join("");
+        var ieK=S.tasks.find(function(x){return x.id===ieId;});
+        document.getElementById("ie-subs").innerHTML=ieSubs.map(function(sb,i){ return ieSubRow(sb,i,ieSubs.length,ieK); }).join("");
         if(fi===undefined) return;
         var pick=document.querySelector('#ie-subs [data-ie="'+which+'"][data-i="'+fi+'"]');
         if(!pick||pick.disabled) pick=document.querySelector('#ie-subs [data-ie="'+(which==="subup"?"subdown":"subup")+'"][data-i="'+fi+'"]');
@@ -4454,7 +4753,9 @@ function GENA_MAIN() {
         t.at=readTimeInput("ie-time",t.at);
         t.dur=+((document.getElementById("ie-dur")||{}).value)||null;
         t.priority=ieKeep.prio;
-        t.subs=ieSubs.filter(function(sb){return (sb.text||"").trim();});
+        var subsBefore=t.subs;
+        t.subs=ieSubs.filter(function(sb){return (sb.text||"").trim();}).map(function(sb){ return subCopy(sb); });
+        if(t.tplId) syncRuleFromCopy(t,null,subsBefore);   // R3: ↻ on a copy joins the rule ("Just this one" detached it first, so it stays local)
         var nv=(document.getElementById("ie-notes").value||"").trim();
         t.notes=nv?plainToHtml(nv):null;
         readTypeFields("ie",t);
@@ -4492,7 +4793,14 @@ function GENA_MAIN() {
         var b=e.target.closest("[data-ie],[data-pid],[data-b],[data-i]"); if(!b) return;
         var w=b.dataset.ie;
         if(w==="subtoggle"){ ieSubs[+b.dataset.i].done=!ieSubs[+b.dataset.i].done; ieRenderSubs(); return; }
-        if(w==="subdel"){ ieSubs.splice(+b.dataset.i,1); ieRenderSubs(); return; }
+        if(w==="subkind"){ var skb=ieSubs[+b.dataset.i]; skb.kind=skb.kind==="every"?"once":"every"; ieRenderSubs(); return; }
+        if(w==="subdel"){ var dI=+b.dataset.i, dT=S.tasks.find(function(x){return x.id===ieId;});
+          if(dT&&dT.tplId&&ieSubs[dI]&&ieSubs[dI].kind==="every"){ ieAskRm=dI; ieRenderSubs(); return; }   // R5: two choices
+          ieSubs.splice(dI,1); ieRenderSubs(); return; }
+        if(w==="subrm"){ var rI=ieAskRm, rS=ieSubs[rI], rT=S.tasks.find(function(x){return x.id===ieId;}); ieAskRm=-1;
+          if(rS&&rT&&b.dataset.v==="today") rS.skipDay=rT.day||today();
+          else if(rS&&rT&&b.dataset.v==="rule"){ ieSubs.splice(rI,1); removeFromRepeat(rT.id,rS.text); }
+          ieRenderSubs(); return; }
         if(w==="subup"||w==="subdown"){ var si0=+b.dataset.i, sj0=w==="subup"?si0-1:si0+1;
           if(sj0>=0&&sj0<ieSubs.length){ var smv=ieSubs.splice(si0,1)[0]; ieSubs.splice(sj0,0,smv); ieRenderSubs(sj0,w); }
           return; }
@@ -4546,11 +4854,10 @@ function GENA_MAIN() {
       var pid=pb.closest(".rte").dataset.rteId.slice(5);
       pb.oninput=function(){ var p=proj(pid); if(p){ p.notes=pb.innerHTML; save(); } };
     });
-    // habit dots
-    v.querySelectorAll(".dots").forEach(function(row){
-      row.onclick=function(e){ var b=e.target.closest(".dot"); if(!b)return; var hid=row.dataset.hid; var i=+b.dataset.i;
-        var t=viewDay; S.habitLog[t]=S.habitLog[t]||{}; var cur=S.habitLog[t][hid]||0;
-        S.habitLog[t][hid]= cur===i?i-1:i; save(); render(); };
+    // habit circles and the typed amount (steps): the circles go through the generic click (habit-unit)
+    v.querySelectorAll("input.habit-amt[data-hid]").forEach(function(inp){
+      inp.onchange=function(){ habitSetAmount(inp.dataset.hid, viewDay, inp.value); };
+      inp.onkeydown=function(e){ if(e.key==="Enter"){ e.preventDefault(); inp.blur(); } };
     });
     // drag & drop — tasks between today lists, job cards between stages
     function clearDrag(){ [].forEach.call(v.querySelectorAll(".drag-over,.nest-over,.unit-over"),function(x){ x.classList.remove("drag-over"); x.classList.remove("nest-over"); x.classList.remove("unit-over"); });
@@ -4592,6 +4899,9 @@ function GENA_MAIN() {
       if(ce){ if(e.stopPropagation) e.stopPropagation(); dragTaskId=ce.dataset.tid; e.dataTransfer.effectAllowed="move"; try{ e.dataTransfer.setData("text/plain",dragTaskId); }catch(err){} v.classList.add("dragging"); return; }
       var li=e.target.closest&&e.target.closest(".task[data-id]");
       var jc=e.target.closest&&e.target.closest(".job-card[data-id]");
+      // GD-025: a habit in the To-do block drags onto Focus (what ◎ does); it is not reordered in To-do
+      var hli=!li&&e.target.closest&&e.target.closest("li.task.habit-row[data-hid]");
+      if(hli){ dragHabitId=hli.dataset.hid; e.dataTransfer.effectAllowed="copyMove"; try{ e.dataTransfer.setData("text/plain",dragHabitId); }catch(err){} return; }
       if(li && li.dataset.focus){ dragFocusId=li.dataset.id; e.dataTransfer.effectAllowed="move"; try{ e.dataTransfer.setData("text/plain",li.dataset.id); }catch(err){} return; }
       if(li) dragTaskId=li.dataset.id;
       else if(jc) dragJobId=jc.dataset.id;
@@ -4611,7 +4921,7 @@ function GENA_MAIN() {
         }
         return; }
       if(dragUnitKey){ var u=e.target.closest(".today-unit[data-unit]"); if(u && u.dataset.unit!==dragUnitKey){ e.preventDefault(); e.dataTransfer.dropEffect="move"; clearDrag(); u.classList.add("unit-over"); } return; }
-      if(dragFocusId){ var ulf=e.target.closest('.tasks[data-list="focus"]'); if(ulf){ e.preventDefault(); e.dataTransfer.dropEffect="move"; clearDrag(); ulf.classList.add("drag-over"); } return; }
+      if(dragFocusId||dragHabitId){ var ulf=e.target.closest('.tasks[data-list="focus"]'); if(ulf){ e.preventDefault(); e.dataTransfer.dropEffect="move"; clearDrag(); ulf.classList.add("drag-over"); } return; }
       if(dragTaskId){
         var hs0=e.target.closest(".hourslot[data-hour], .day-tray[data-unsched]");
         if(hs0){ e.preventDefault(); e.dataTransfer.dropEffect="move"; clearDrag(); hs0.classList.add("drag-over");
@@ -4661,6 +4971,12 @@ function GENA_MAIN() {
           ord.splice(ord.indexOf(u.dataset.unit),0,dragUnitKey);
           S.todayOrder=ord; dragUnitKey=null; save(); render(); return; }
         dragUnitKey=null; clearDrag(); return; }
+      if(dragHabitId){ var ulh=e.target.closest('.tasks[data-list="focus"]'); if(ulh){ e.preventDefault();
+        var harr=S.focus[viewDay]=S.focus[viewDay]||[];
+        if(harr.some(function(x){return x.habitId===dragHabitId;})) toast("Already in Today’s Focus");
+        else { var htgt=e.target.closest(".task[data-id]"), hto=htgt?harr.findIndex(function(x){return x.id===htgt.dataset.id;}):-1;
+          harr.splice(hto<0?harr.length:hto,0,{id:uid(),habitId:dragHabitId}); save(); render(); toast("Promoted to Today’s Focus"); } }
+        dragHabitId=null; clearDrag(); return; }
       if(dragFocusId){ var ulf=e.target.closest('.tasks[data-list="focus"]'); if(ulf){ e.preventDefault();
         var arr=S.focus[viewDay]||[]; var fi=arr.findIndex(function(x){return x.id===dragFocusId;});
         if(fi>=0){ var item=arr.splice(fi,1)[0]; var ftgt=e.target.closest(".task[data-id]");
@@ -4696,9 +5012,9 @@ function GENA_MAIN() {
       else if(dragJobId){ var col=e.target.closest(".jobs-col[data-stage]"); if(col){ e.preventDefault();
         var j=S.jobs.find(function(x){return x.id===dragJobId;});
         if(j&&j.stage!==col.dataset.stage){ j.stage=col.dataset.stage; save(); render(); toast("Moved to "+col.dataset.stage); } } }
-      dragTaskId=null; dragJobId=null; dragNestTarget=null; dragFocusId=null; dragUnitKey=null; clearDrag(); hideDragDock();
+      dragTaskId=null; dragJobId=null; dragNestTarget=null; dragFocusId=null; dragUnitKey=null; dragHabitId=null; clearDrag(); hideDragDock();
     };
-    v.ondragend=function(){ v.classList.remove("dragging"); dragTaskId=null; dragJobId=null; dragNestTarget=null; dragFocusId=null; dragUnitKey=null; [].forEach.call(v.querySelectorAll(".unit-dragging"),function(x){x.classList.remove("unit-dragging");}); clearDrag(); hideDragDock(); };
+    v.ondragend=function(){ v.classList.remove("dragging"); dragTaskId=null; dragJobId=null; dragNestTarget=null; dragFocusId=null; dragUnitKey=null; dragHabitId=null; [].forEach.call(v.querySelectorAll(".unit-dragging"),function(x){x.classList.remove("unit-dragging");}); clearDrag(); hideDragDock(); };
     // ---- touch-drag (Phase 6): long-press to pick up, drag to move. Reuses the mouse drag/drop handlers via synthesized events. ----
     if(!v.__touchDragBound){ v.__touchDragBound=true; (function(){
       var tEl=null, tDragging=false, tTimer=null, tStartY=0, tStartX=0, tLastX=0, tLastY=0;
@@ -4713,7 +5029,7 @@ function GENA_MAIN() {
       }
       v.addEventListener("touchstart",function(e){
         if(e.touches.length!==1) return;
-        var el=e.target.closest&&e.target.closest("li.sub[data-subof], .task[data-id], .job-card[data-id], .today-unit[data-unit], .tblock[data-id], .cal-ev[data-tid]");
+        var el=e.target.closest&&e.target.closest("li.sub[data-subof], .task[data-id], li.task.habit-row[data-hid], .job-card[data-id], .today-unit[data-unit], .tblock[data-id], .cal-ev[data-tid]");
         if(!el || e.target.closest("input,textarea,select,[contenteditable=true],button,a,.tb-resize")) return;
         tEl=el; var t=e.touches[0]; tStartX=tLastX=t.clientX; tStartY=tLastY=t.clientY;
         tTimer=setTimeout(begin,240); // long-press so normal taps/scroll still work
@@ -4764,6 +5080,7 @@ function GENA_MAIN() {
     }
     // generic clicks
     v.onclick=function(e){
+      if(e.target.closest("input,textarea,select")) return;   // a field in a row (the steps entry) takes its own click, not the row's action
       var a=e.target.closest("[data-act]"); if(!a)return; var act=a.dataset.act;
       noteAnchor(e.target);
       var taskEl=e.target.closest(".task"); var id=taskEl&&taskEl.dataset.id;
@@ -4828,6 +5145,10 @@ function GENA_MAIN() {
       else if(act==="fu-snooze"){ var sp=S.people.find(function(x){return x.id===(a.closest("[data-pid]")||{}).dataset.pid;});
         if(sp){ sp.next=addDays(today(),7); save(); render(); toast("Follow-up moved to "+niceDate(sp.next)); } }
       else if(act==="habit-tick"){ var hrow=a.closest("[data-hid]"); if(hrow) habitTick(hrow.dataset.hid, viewDay); }
+      else if(act==="habit-unit"){ var hu=a.closest("[data-hid]"); if(hu) habitUnitTap(hu.dataset.hid, viewDay, +a.dataset.u); }
+      else if(act==="habit-less"){ var hl0=a.closest("[data-hid]"); if(hl0&&!habitRemoveOne(hl0.dataset.hid, viewDay)) toast("Nothing logged today to take back"); }
+      else if(act==="habit-skip"){ var hs1=a.closest("[data-hid]"); if(hs1){ var hsid=hs1.dataset.hid, hsday=viewDay, on=habitSkipToggle(hsid,hsday);
+        if(on) toastUndo("⏭ Skipped today: it counts nothing and breaks no streak",function(){ var hx=habitById(hsid); if(hx&&hx.skips&&hx.skips[hsday]){ habitUnskip(hx,hsday); save(); render(); } }); } }
       else if(act==="habit-focus"){ var hf=a.closest("[data-hid]"); if(hf){
           S.focus[viewDay]=S.focus[viewDay]||[];
           var hfi=S.focus[viewDay].findIndex(function(f){return f.habitId===hf.dataset.hid;});
@@ -4839,6 +5160,8 @@ function GENA_MAIN() {
         else { ieList=ieListOf(a); editingTaskId=lt.id; render(); var lti=document.getElementById("ie-title"); if(lti){ lti.focus(); lti.setSelectionRange(lti.value.length,lti.value.length); } } }
       else if(act==="sub-toggle"){ var pk=S.tasks.find(function(x){return x.id===(a.dataset.tid||id||anyId);}); if(pk){ var sb=(pk.subs||[]).find(function(x){return x.id===a.dataset.sid;}); if(sb){ sb.done=!sb.done; save(); render(); } } }
       else if(act==="sub-add"){ pendingSubAdd=(a.dataset.tid||id||anyId); render(); }
+      else if(act==="sub-skip"){ var stk=taskById(a.dataset.tid); var ssb=stk&&(stk.subs||[]).find(function(x){return x.id===a.dataset.sid;});
+        if(ssb){ var sday=stk.day||today(); if(ssb.skipDay===sday) delete ssb.skipDay; else ssb.skipDay=sday; save(); render(); } }
       else if(act==="fsub-add"){ pendingSubAdd=(id||anyId); render(); }
       else if(act==="fsub-toggle"){ var ff=(S.focus[viewDay]||[]).find(function(x){return x.id===(id||anyId);}); if(ff){ var fsb=(ff.subs||[]).find(function(x){return x.id===a.dataset.sid;}); if(fsb){ fsb.done=!fsb.done; save(); render(); } } }
       else if(act==="daynav"){ var dd0=+a.dataset.d; viewDay = dd0===0?today():addDays(viewDay,dd0); render(); }
@@ -4890,6 +5213,11 @@ function GENA_MAIN() {
           S.tasks=S.tasks.filter(function(k){ return !bulkIds[k.id]; }); bulkIds={}; save(); render();
           toastUndo(removed.length+" deleted",function(){ S.tasks=S.tasks.concat(removed); save(); render(); }); }); }
       else if(act==="newperson"){ openPersonModal(); }
+      else if(act==="pause-person"){ openPauseModal("person",anyId); }
+      else if(act==="resume-person"||act==="resume-habit"||act==="resume-cycle"){ var rk=act.slice(7), rid=rk==="habit"?(a.closest("[data-hid]")||{dataset:{}}).dataset.hid:(a.dataset.id||anyId);
+        var rx=rk==="person"?S.people.find(function(p){ return p.id===rid; }):(rk==="habit"?habitById(rid):taskById(rid));
+        if(rx){ resumeItem(rx,rk); save(); render(); toast("Resumed"); } }
+      else if(act==="pause-cycle"){ openPauseModal("cycle",a.dataset.id||anyId); }
       else if(act==="editperson"){ openPersonModal(S.people.find(function(x){return x.id===anyId;})); }
       else if(act==="logtouch"){ var pp=S.people.find(function(x){return x.id===anyId;}); if(pp){ retirePrep(pp); pp.last=today(); if(pp.cadence) pp.next=addDays(today(),pp.cadence); save(); render(); toast("Logged a touch"); openTouchCaptureModal(pp); } }
       else if(act==="person-task"){ var ptp=S.people.find(function(x){return x.id===anyId;}); if(ptp) openTaskModal({personIds:[ptp.id],day:today()}); }
@@ -5051,8 +5379,12 @@ function GENA_MAIN() {
      kind to it; openRowSheet drops whatever this row has no control for. */
   function rowSheetItems(kind,k,o){
     o=o||{};
-    if(kind==="habit") return [["habit-tick", o.done?"↩":"✓", o.done?"Untick":((o.goal||1)>1?"Log one":"Mark done")],
-      ["habit-focus", "◎", o.inFocus?"Remove from Focus":"Add to Today’s Focus"], ["edit", "✎", "Edit the habit"]];
+    // V5.2 (U4): the check logs one more (an extra once met); Remove one takes back one of today's; ⏭ skips
+    if(kind==="habit") return (o.skipped?[["habit-skip", "↩", "Undo the skip"]]:[
+        ["habit-tick", o.met?"＋":"✓", o.met?"Log an extra":((o.goal||1)>1?"Log one":"Mark done")],
+        o.today>0?["habit-less", "−", "Remove one"]:null,
+        ["habit-skip", "⏭", "Skip today"]]).concat([
+      o.focusRow?null:["habit-focus", "◎", o.inFocus?"Remove from Focus":"Add to Today’s Focus"], ["habit-pause", "💤", "Pause it"], ["edit", "✎", "Edit the habit"]]).filter(Boolean);
     if(kind==="followup") return [["fu-done", "✓", "Logged a touch"], ["fu-snooze", "→", "Push it a week"], ["edit", "👤", "Open "+k.name]];
     if(kind==="waiting") return (o.landed?[["wait-still", "⏸", "Still waiting"]]:[]).concat([["wait-live", "▶", "It’s live"]],
       o.landed?[["wait-letgo", "✕", "Let it go"]]:[], [["edit", "✎", "Edit"]]);
@@ -5060,6 +5392,7 @@ function GENA_MAIN() {
     return [
       ["toggle", done?"↩":"✓", done?"Reopen":"Mark done"],
       isCycle(k)&&!done?["cycle-skip", "⤼", "Skip this time"]:null,
+      isCycle(k)&&!done?["cycle-pause", "💤", "Pause it"]:null,
       ["focus", "◎", o.inFocus?"Remove from Focus":"Add to Today’s Focus"],
       ["bump", o.past?"↩":"→", o.past?"Move to today":"Move to tomorrow"],
       ["sub", "⤷", "Add a subtask"],
@@ -5073,13 +5406,13 @@ function GENA_MAIN() {
     if(!li) return;
     var kind=li.classList.contains("habit-row")?"habit":(li.classList.contains("fu-row")?"followup":(li.classList.contains("waiting")?"waiting":"task"));
     var isFocusRow=!!li.dataset.focus, k, title, o;
-    if(kind==="habit"){ k=S.habits.find(function(x){return x.id===li.dataset.hid;}); if(!k) return; title=k.name;
-      o={done:habitDoneOn(k,viewDay), goal:k.goal||1, inFocus:inFocusHabit(k.id)}; }
+    if(kind==="habit"){ k=habitById(li.dataset.hid); if(!k) return; title=k.name;
+      o={done:habitDoneOn(k,viewDay), met:habitMet(k,viewDay), skipped:habitSkipped(k,viewDay), today:habitLog(viewDay,k.id), goal:Math.ceil(habitGoal(k)/habitBox(k)), inFocus:inFocusHabit(k.id), focusRow:isFocusRow}; }
     else if(kind==="followup"){ k=S.people.find(function(x){return x.id===li.dataset.pid;}); if(!k) return; title="Follow up with "+k.name; }
     else { k=taskForRow(li); if(!k) return; title=k.title;
       o={past:viewDay<today(), inFocus:inFocus(k.id), focusRow:isFocusRow, landed:li.classList.contains("landed")}; }
     var where={toggle:":scope > .chk", focus:isFocusRow?".task-x":".task-focus", bump:".task-bump", sub:".task-addsub", star:".task-star", edit:":scope > .task-main", del:".task-x"};
-    var direct={pick:1,"cycle-skip":1};
+    var direct={pick:1,"cycle-skip":1,"habit-less":1,"cycle-pause":1,"habit-pause":1};
     var items=rowSheetItems(kind,k,o).map(function(it){ return it.concat([direct[it[0]]?null:li.querySelector(where[it[0]]||'[data-act="'+it[0]+'"]')]); })
       .filter(function(it){ return it[3]||direct[it[0]]; });
     var root=modal('<div class="sheet-grip"></div><div class="sheet-title">'+esc(title)+'</div>'+
@@ -5090,6 +5423,9 @@ function GENA_MAIN() {
       var it=items[+b.dataset.si]; close();
       if(it[0]==="pick"){ openDatePickModal(k); return; }
       if(it[0]==="cycle-skip"){ skipCycleOnce(k); return; }
+      if(it[0]==="habit-less"){ noteAnchor(li); habitRemoveOne(k.id,viewDay); return; }
+      if(it[0]==="cycle-pause"){ openPauseModal("cycle",k.id); return; }
+      if(it[0]==="habit-pause"){ openPauseModal("habit",k.id); return; }
       if(it[3]) it[3].click();
     };
   }
@@ -5427,20 +5763,30 @@ function GENA_MAIN() {
       b.setAttribute("aria-pressed",selPeople.indexOf(pid)>=0); };
     var mi=document.getElementById("m-imp");
     mi.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; priorityV=b.dataset.i==="1"; [].forEach.call(mi.children,function(c){c.setAttribute("aria-pressed",(c.dataset.i==="1")===priorityV);}); };
-    var subs=(base.subs||[]).map(function(s){return {id:s.id,text:s.text,done:!!s.done};});
+    var subs=(base.subs||[]).map(function(s){return subCopy(s);}), askRm=-1;
     var ms=document.getElementById("m-subs"), msn=document.getElementById("m-sub-new");
+    // repeat context (GD-029): the rule's editor (a new repeat, or a task being made one) or a day's copy
+    function subCtx(){ return etp?"copy":(freq!=="once"?"rule":null); }
     function renderSubs(fi,which){
-      ms.innerHTML=subs.map(function(s,i){return '<div class="msub"><button type="button" class="chk '+(s.done?"done":"")+'" data-si="'+i+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><input value="'+esc(s.text)+'" data-st="'+i+'"/>'+
+      var ctx=subCtx();
+      ms.innerHTML=subs.map(function(s,i){return '<div class="msub'+(ctx==="copy"&&subSkipped(s,ed&&ed.day)?" sub-skip":"")+'"><button type="button" class="chk '+(s.done?"done":"")+'" data-si="'+i+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><input value="'+esc(s.text)+'" data-st="'+i+'"/>'+
+        (ctx?subKindBtn(s,ctx,'data-sk="'+i+'"'):'')+
         '<span class="sub-move"><button type="button" class="sub-mv" data-sm="up" data-smi="'+i+'" '+(i===0?'disabled':'')+' aria-label="Move up" title="Move up">▴</button>'+
         '<button type="button" class="sub-mv" data-sm="down" data-smi="'+i+'" '+(i===subs.length-1?'disabled':'')+' aria-label="Move down" title="Move down">▾</button></span>'+
-        (ed?'<button type="button" class="chip" data-sp="'+i+'" title="Promote to its own task" style="padding:3px 8px;flex:none">⤴ task</button>':'')+'<button type="button" class="task-x" style="opacity:1" data-sx="'+i+'" aria-label="Remove subtask">✕</button></div>';}).join("");
+        (ed?'<button type="button" class="chip" data-sp="'+i+'" title="Promote to its own task" style="padding:3px 8px;flex:none">⤴ task</button>':'')+'<button type="button" class="task-x" style="opacity:1" data-sx="'+i+'" aria-label="Remove subtask">✕</button></div>'+
+        (i===askRm?subRmAsk('data-srm'):'');}).join("");
       if(fi===undefined) return;
       var pick=ms.querySelector('[data-sm="'+which+'"][data-smi="'+fi+'"]');
       if(!pick||pick.disabled) pick=ms.querySelector('[data-sm="'+(which==="up"?"down":"up")+'"][data-smi="'+fi+'"]');
       if(pick&&!pick.disabled) pick.focus();
     }
     renderSubs();
-    ms.onclick=function(e){ var b=e.target.closest("[data-si],[data-sx],[data-sp],[data-sm]"); if(!b)return;
+    ms.onclick=function(e){ var b=e.target.closest("[data-si],[data-sx],[data-sp],[data-sm],[data-sk],[data-srm]"); if(!b)return;
+      if(b.dataset.sk!==undefined){ var sk0=subs[+b.dataset.sk]; sk0.kind=subKindIsEvery(sk0,subCtx())?"once":"every"; renderSubs(); return; }
+      if(b.dataset.srm!==undefined){ var rs=subs[askRm]; askRm=-1;
+        if(rs&&b.dataset.srm==="today"){ rs.skipDay=(ed&&ed.day)||today(); }
+        else if(rs&&b.dataset.srm==="rule"){ subs=subs.filter(function(x){ return x!==rs; }); removeFromRepeat(ed.id,rs.text); }
+        renderSubs(); return; }
       if(b.dataset.sm!==undefined){ var mi1=+b.dataset.smi, mj1=b.dataset.sm==="up"?mi1-1:mi1+1;
         if(mj1>=0&&mj1<subs.length){ var mmv=subs.splice(mi1,1)[0]; subs.splice(mj1,0,mmv); renderSubs(mj1,b.dataset.sm); }
         return; }
@@ -5448,7 +5794,9 @@ function GENA_MAIN() {
         if(ps&&ps.text.trim()){ S.tasks.push({id:uid(),title:ps.text.trim(),projectId:ed.projectId||null,status:ps.done?"done":"todo",completedOn:ps.done?today():null,day:ed.day,block:ed.block,at:null,priority:false,rollover:0,subs:[],created:today()});
           ed.subs=subs.filter(function(s){return (s.text||"").trim();}); save(); render(); toast("Promoted to its own task"); }
         renderSubs(); }
-      else if(b.dataset.sx!==undefined){ subs.splice(+b.dataset.sx,1); renderSubs(); }
+      else if(b.dataset.sx!==undefined){ var sxi=+b.dataset.sx;
+        if(subCtx()==="copy"&&subKindIsEvery(subs[sxi],"copy")){ askRm=sxi; renderSubs(); return; }   // R5: two choices
+        subs.splice(sxi,1); renderSubs(); }
       else { var sbb=subs[+b.dataset.si]; sbb.done=!sbb.done; renderSubs(); } };
     ms.oninput=function(e){ var si=e.target.dataset.st; if(si!==undefined) subs[+si].text=e.target.value; };
     msn.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); var sv=msn.value.trim(); if(sv){ subs.push({id:uid(),text:sv,done:false}); msn.value=""; renderSubs(); } } });
@@ -5460,7 +5808,7 @@ function GENA_MAIN() {
         : "The repeat stops after this date. Leave empty to run indefinitely."; }
     untilHint();
     var mf=document.getElementById("m-freq"), ro=document.getElementById("m-ropts");
-    if(mf) mf.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; freq=b.dataset.f; [].forEach.call(mf.children,function(c){c.setAttribute("aria-pressed",c===b);}); renderRopts(); untilHint(); };
+    if(mf) mf.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; freq=b.dataset.f; [].forEach.call(mf.children,function(c){c.setAttribute("aria-pressed",c===b);}); renderRopts(); untilHint(); renderSubs(); };
     function renderRopts(){
       if(freq==="weekly"){ ro.innerHTML='<label>On</label><div class="wd" id="m-wd">'+DOWNAMES.map(function(d,i){return '<button data-w="'+i+'" aria-pressed="'+(weekdays.indexOf(i)>=0)+'">'+d[0]+'</button>';}).join("")+'</div>';
         document.getElementById("m-wd").onclick=function(e){ var b=e.target.closest("button"); if(!b)return; var w=+b.dataset.w; var on=b.getAttribute("aria-pressed")==="true"; b.setAttribute("aria-pressed",!on); if(on)weekdays=weekdays.filter(function(x){return x!==w;}); else weekdays.push(w); };
@@ -5487,7 +5835,7 @@ function GENA_MAIN() {
       document.getElementById("m-del").onclick=function(){
         if(etp){ close(); openRecurDeleteModal(ed); return; }
         var di=S.tasks.findIndex(function(x){return x.id===ed.id;}); var dt=di>=0?S.tasks[di]:null; if(di>=0) S.tasks.splice(di,1); save(); close(); render(); if(dt) toastUndo("Task deleted",function(){ if(S.tasks.some(function(x){return x.id===dt.id;})) return; S.tasks.splice(Math.min(di,S.tasks.length),0,dt); save(); render(); }); };
-      document.getElementById("m-dup").onclick=function(){ var c={}; for(var kk in ed) c[kk]=ed[kk]; c.id=uid(); c.status="todo"; c.completedOn=null; c.created=today(); delete c.tplId; c.subs=(ed.subs||[]).map(function(s){return {id:uid(),text:s.text,done:false};}); S.tasks.push(c); save(); close(); render(); toast("Task duplicated"); };
+      document.getElementById("m-dup").onclick=function(){ var c={}; for(var kk in ed) c[kk]=ed[kk]; c.id=uid(); c.status="todo"; c.completedOn=null; c.created=today(); delete c.tplId; c.subs=(ed.subs||[]).map(function(s){return subCopy(s,true);}); S.tasks.push(c); save(); close(); render(); toast("Task duplicated"); };
       document.getElementById("m-skip").onclick=function(){
         if(ed.status==="skipped"){ ed.status="todo"; delete ed.skippedOn; if(ed.tplId) ed.unskipped=1; save(); close(); render(); toast("Back on the list"); }
         else { ed.status="skipped"; ed.skippedOn=ed.day||today(); save(); close(); render(); toast("Skipped — it won’t carry"); }
@@ -5517,20 +5865,28 @@ function GENA_MAIN() {
       if(pt.at&&(!tv||tv===(base.at||null))) tv=pt.at;
       if(freq==="weekly"&&!weekdays.length){ if(dismiss){freq="once";} else {toast("Pick at least one weekday");return;} }
       if(msn&&msn.value.trim()) subs.push({id:uid(),text:msn.value.trim(),done:false});
-      var cleanSubs=subs.filter(function(s){return (s.text||"").trim();});
+      var ctx0=subCtx();
+      var cleanSubs=subs.filter(function(s){return (s.text||"").trim();}).map(function(s){ var c=subCopy(s);
+        if(ctx0==="rule") c.kind=subKindIsEvery(s,"rule")?"every":"once"; return c; });
+      // R1: the rule holds the Every-time items; Until-done ones typed in a new repeat ride on its first copy
+      var ruleSubs=cleanSubs.filter(function(s){ return s.kind==="every"; }).map(function(s){ return {id:uid(),text:s.text}; });
+      var firstSubs=cleanSubs.filter(function(s){ return s.kind!=="every"; }).map(function(s){ return {id:uid(),text:s.text}; });
       var ntv=rteValue("m-notes")||null;
       // the modal kept a reference from when it opened: write into the live task (a merge may have replaced
       // it), or put it back if a sync removed it under you
       if(ed){ var edLive=S.tasks.find(function(x){return x.id===ed.id;}); if(edLive) ed=edLive; else S.tasks.push(ed); }
-      if(ed){ ed.title=title; ed.projectId=pid; ed.day=day; ed.end=endD; ed.due=dueD; ed.dur=durV; ed.block=chosen[0]; ed.at=tv; ed.priority=priorityV; ed.subs=cleanSubs; ed.notes=ntv; ed.personIds=selPeople.slice();
+      if(ed){ var subsBefore=ed.subs; ed.title=title; ed.projectId=pid; ed.day=day; ed.end=endD; ed.due=dueD; ed.dur=durV; ed.block=chosen[0]; ed.at=tv; ed.priority=priorityV; ed.subs=cleanSubs; ed.notes=ntv; ed.personIds=selPeople.slice();
         readTypeFields("m",ed);
         if(etp){
           if(freq==="once"){ S.templates=S.templates.filter(function(x){return x.id!==etp.id;}); delete ed.tplId; }
-          else { etp.title=title; etp.projectId=pid; etp.block=chosen[0]; etp.freq=freq; etp.weekdays=weekdays; etp.interval=+(document.getElementById("m-int")||{}).value||intervalV; etp.priority=priorityV; }
-        } else if(freq!=="once"){ var ntp={id:uid(),title:title,projectId:pid,block:chosen[0],freq:freq,start:day||today(),weekdays:weekdays,interval:+(document.getElementById("m-int")||{}).value||2,priority:priorityV}; S.templates.push(ntp); ed.tplId=ntp.id; generateRecurring(today()); }
+          else { etp.title=title; etp.projectId=pid; etp.block=chosen[0]; etp.freq=freq; etp.weekdays=weekdays; etp.interval=+(document.getElementById("m-int")||{}).value||intervalV; etp.priority=priorityV;
+            syncRuleFromCopy(ed,null,subsBefore); }   // R3: an item flipped to ↻ here joins the rule; one flipped back leaves it
+        } else if(freq!=="once"){ var ntp={id:uid(),title:title,projectId:pid,block:chosen[0],freq:freq,start:day||today(),weekdays:weekdays,interval:+(document.getElementById("m-int")||{}).value||2,priority:priorityV,subs:ruleSubs};
+          S.templates.push(ntp); ed.tplId=ntp.id; generateRecurring(today()); }   // R1 path 2: ed.subs already carry kind "every", so they never carry as well
         save(); close(); render(); toast(etp?(freq==="once"?"Saved — repeat stopped":"Saved — series updated"):(freq!=="once"?"Saved — now repeats":"Saved")); return; }
-      if(freq==="once"){ chosen.forEach(function(bl){ S.tasks.push({id:uid(),title:title,projectId:pid,personIds:selPeople.slice(),status:"todo",day:day,end:endD,due:dueD,dur:durV,block:bl,at:tv,priority:priorityV,rollover:0,notes:ntv,subs:cleanSubs.map(function(s){return {id:uid(),text:s.text,done:s.done};}),created:today()}); }); }
-      else { var tp={id:uid(),title:title,projectId:pid,block:chosen[0],freq:freq,start:day||today(),weekdays:weekdays,interval:+(document.getElementById("m-int")||{}).value||2,priority:priorityV};
+      if(freq==="once"){ chosen.forEach(function(bl){ S.tasks.push({id:uid(),title:title,projectId:pid,personIds:selPeople.slice(),status:"todo",day:day,end:endD,due:dueD,dur:durV,block:bl,at:tv,priority:priorityV,rollover:0,notes:ntv,subs:cleanSubs.map(function(s){ var c=subCopy(s,true); c.done=!!s.done; return c; }),created:today()}); }); }
+      else { var tp={id:uid(),title:title,projectId:pid,block:chosen[0],freq:freq,start:day||today(),weekdays:weekdays,interval:+(document.getElementById("m-int")||{}).value||2,priority:priorityV,subs:ruleSubs};
+        if(firstSubs.length) tp.firstSubs=firstSubs;   // R1 path 1: Until-done items go onto the first copy only
         S.templates.push(tp); generateRecurring(today()); }
       save(); close(); render(); if(!dismiss) toast(freq==="once"&&chosen.length>1?chosen.length+" tasks added":"Task added");
     }
@@ -5572,9 +5928,9 @@ function GENA_MAIN() {
       '<div class="fld"><label>Color</label><div class="swatches" id="p-sw">'+COLORS.map(function(c){return '<button class="'+swClass(c)+'" style="background:'+c+'" data-c="'+c+'" aria-pressed="'+(c===p.color)+'"></button>';}).join("")+'<input type="color" class="sw-custom" id="p-sw-hex" value="'+esc(/^#/.test(p.color||"")?p.color:"#c99a3a")+'" title="Any colour you like" aria-label="Custom colour"/>'+'</div></div>'+
       '<div class="row"><div class="fld"><label>Area</label><select id="p-prof">'+profOpts+'</select></div>'+
       '<div class="fld"><label>Favorite</label><div class="chips"><button type="button" class="chip" id="p-fav" aria-pressed="'+!!p.fav+'">'+(p.fav?"★":"☆")+' Favorite</button></div></div></div>'+
-      '<div class="fld"><label>State</label><div class="chips" id="p-state">'+[["active","Active"],["off","Off-season"],["ended","Ended"]].map(function(st){
+      '<div class="fld"><label>State</label><div class="chips" id="p-state">'+[["active","Active"],["off","💤 Pause"],["ended","Ended"]].map(function(st){
         return '<button type="button" class="chip" data-st="'+st[0]+'" aria-pressed="'+((p.state||"active")===st[0])+'">'+st[1]+'</button>'; }).join("")+'</div>'+
-        '<div class="sub" style="font-size:11px;margin-top:6px">Ended: greyed and shelved, nothing deleted, dated tasks still show on their day. Off-season: shelved until its season.</div></div>'+
+        '<div class="sub" style="font-size:11px;margin-top:6px">Ended: greyed and shelved, nothing deleted, dated tasks still show on their day. Pause: shelved until you resume it, or until its season.</div></div>'+
       '<div class="fld"><label>Season <span style="text-transform:none;letter-spacing:0;font-weight:600">(optional — it sleeps and wakes on its own)</span></label><div class="cyc-row">'+
         '<select id="p-wfrom"><option value="">from…</option>'+MONTHS.map(function(m,i){return '<option value="'+(i+1)+'"'+((p.window||{}).from===i+1?" selected":"")+'>'+m+'</option>';}).join("")+'</select>'+
         '<select id="p-wto"><option value="">to…</option>'+MONTHS.map(function(m,i){return '<option value="'+(i+1)+'"'+((p.window||{}).to===i+1?" selected":"")+'>'+m+'</option>';}).join("")+'</select></div></div>'+
@@ -5891,18 +6247,56 @@ function GENA_MAIN() {
       var y=m.scrollTop; m.innerHTML=body(); wire(); m.scrollTop=y; }
     modal(body(),"wide"); wire();
   }
+  /* The habit editor (U1, GD-027): how often (per day, week or month), a goal with no cap (a 10,000-step
+     goal must survive a rename: the old max="12" and Math.min(12,…) are gone), an optional unit and the
+     amount one box or tap adds, emoji, project, note. Optional fields are written only when set, so an
+     old habit saved unchanged keeps its shape. */
+  // P1: one small dialog for every kind; the "until" date is optional (indefinite by default)
+  function openPauseModal(kind,id){
+    var x=kind==="person"?S.people.find(function(p){ return p.id===id; }):(kind==="habit"?habitById(id):taskById(id)); if(!x) return;
+    var name=kind==="person"?x.name:(kind==="habit"?x.name:x.title);
+    modal('<h3>💤 Pause '+esc(name)+'</h3><p class="sub">'+(kind==="person"?"No follow-ups or prep tasks while paused. Their card stays, dimmed, history untouched.":(kind==="habit"?"It leaves your day; the paused days break no streak.":"It leaves your days and does not move on until you resume it, from Projects → Repeating tasks."))+'</p>'+
+      '<div class="fld"><label>Until <span class="sub" style="font-weight:400">(optional: leave empty to pause until you resume)</span></label><input type="date" id="pz-until" data-pid="'+esc(id)+'" min="'+today()+'"/></div>'+
+      '<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="pz-go">💤 Pause</button></div>');
+    document.querySelector("[data-x]").onclick=close;
+    document.getElementById("pz-go").onclick=function(){ var u=document.getElementById("pz-until").value||null;
+      var y=kind==="person"?S.people.find(function(p){ return p.id===id; }):(kind==="habit"?habitById(id):taskById(id)); if(!y){ close(); return; }   // R6: by id
+      pauseItem(y,kind,u); save(); close(); render(); toast("💤 Paused"+(u?" until "+niceDate(u):"")+": Resume any time"); };
+  }
   function openHabitModal(h){
     var editing=!!h; var base=h||{name:"",goal:1};
+    var per=habitPer(base), PERS=[["day","Per day"],["week","Per week"],["month","Per month"]];
+    var projOpts=S.projects.map(function(p){ return '<option value="'+esc(p.id)+'"'+(p.id===base.projectId?" selected":"")+'>'+esc((p.emoji?p.emoji+" ":"")+p.name)+'</option>'; }).join("");
     modal('<h3>'+(editing?"Edit habit":"New habit")+'</h3>'+
-      '<div class="fld"><label>Name</label><input id="h-n" value="'+esc(base.name)+'" placeholder="e.g. Read"/></div>'+
-      '<div class="fld"><label>Daily goal (how many)</label><input id="h-g" type="number" min="1" max="12" value="'+base.goal+'"/></div>'+
+      '<div class="row"><div class="fld" style="flex:0 0 96px"><label>Icon</label><input id="h-emoji" value="'+esc(base.emoji||"")+'" maxlength="4" placeholder="🌱"/></div>'+
+      '<div class="fld"><label>Name</label><input id="h-n" value="'+esc(base.name)+'" placeholder="e.g. Read"/></div></div>'+emojiPickerHtml("h-emoji")+
+      '<div class="fld"><label>How often</label><div class="chips" id="h-per">'+PERS.map(function(x){ return '<button type="button" class="chip" data-per="'+x[0]+'" aria-pressed="'+(per===x[0])+'">'+x[1]+'</button>'; }).join("")+'</div></div>'+
+      '<div class="row"><div class="fld"><label id="h-g-hint">Goal</label><input id="h-g" type="number" min="1" step="any" inputmode="decimal" value="'+habitGoal(base)+'"/></div>'+
+      '<div class="fld"><label>Unit</label><input id="h-unit" value="'+esc(base.unit||"")+'" placeholder="optional: oz, steps"/></div>'+
+      '<div class="fld"><label>Each tap adds</label><input id="h-box" type="number" min="1" step="any" inputmode="decimal" value="'+habitBox(base)+'"/></div></div>'+
+      '<div class="sub" style="font-size:11px;margin:-4px 0 10px">Up to 12 taps a period show as circles; a bigger goal shows a bar'+'. Steps: set Unit to steps and type the day’s total on the bar.</div>'+
+      '<div class="fld"><label>Project</label><select id="h-proj"><option value="">None</option>'+projOpts+'</select></div>'+
+      '<div class="fld"><label>Note</label><input id="h-note" value="'+esc(base.note||"")+'" placeholder="Why it matters, or the cue that starts it"/></div>'+
       '<div class="fld"><label class="check-row"><input type="checkbox" id="h-inday"'+(base.inDay?" checked":"")+'/> Show it as a row in my day <span class="sub" style="display:block;font-weight:400;text-transform:none;letter-spacing:0">Ticks here or in the Habits card — same tick. Never piles up, never carries.</span></label></div>'+
-      '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="h-del" style="margin-right:auto">Delete</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">'+(editing?"Save":"Add")+'</button></div>');
+      '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="h-del" style="margin-right:auto">Delete</button><button class="btn" id="h-pause">'+(h.paused?"Resume":"💤 Pause")+'</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">'+(editing?"Save":"Add")+'</button></div>');
+    if(editing) document.getElementById("h-pause").onclick=function(){ var hp=habitById(h.id); if(!hp){ close(); return; }
+      if(hp.paused){ resumeItem(hp,"habit"); save(); close(); render(); toast("Resumed: back in your day"); } else openPauseModal("habit",hp.id); };
+    var perBox=document.getElementById("h-per"), hint=document.getElementById("h-g-hint");
+    function syncHint(){ hint.textContent=per==="day"?"Goal each day":(per==="week"?"Goal each week (Mon to Sun)":"Goal each month"); }
+    syncHint();
+    perBox.onclick=function(e){ var b=e.target.closest("[data-per]"); if(!b) return; per=b.dataset.per;
+      [].forEach.call(perBox.children,function(c){ c.setAttribute("aria-pressed",c===b); }); syncHint(); };
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("m-save").onclick=function(){ var n=document.getElementById("h-n").value.trim(); if(!n){toast("Name?");return;}
-      var g=Math.max(1,Math.min(12,+document.getElementById("h-g").value||1));
-      var inDay=!!(document.getElementById("h-inday")||{}).checked;
-      if(editing){ h.name=n; h.goal=g; h.inDay=inDay; } else { S.habits.push({id:uid(),name:n,goal:g,inDay:inDay}); }
+      var g=+document.getElementById("h-g").value; if(!(g>0)) g=1;
+      var bx=+document.getElementById("h-box").value; if(!(bx>0)) bx=1;
+      var data={name:n, goal:g, inDay:!!(document.getElementById("h-inday")||{}).checked, per:per==="day"?null:per,
+        unit:document.getElementById("h-unit").value.trim()||null, box:bx===1?null:bx, emoji:document.getElementById("h-emoji").value.trim()||null,
+        projectId:document.getElementById("h-proj").value||null, note:document.getElementById("h-note").value.trim()||null};
+      var tgt=editing?habitById(h.id):null;                      // the live habit: a merge may have replaced the object
+      if(editing&&!tgt){ toast("That habit is no longer here"); close(); return; }
+      if(!tgt){ tgt={id:uid()}; S.habits.push(tgt); }
+      Object.keys(data).forEach(function(k){ if(data[k]===null) delete tgt[k]; else tgt[k]=data[k]; });
       save(); close(); render(); };
     if(editing) document.getElementById("h-del").onclick=function(){ confirmModal("Delete habit?","Its past check-ins stay in your data but stop showing.","Delete",function(){ S.habits=S.habits.filter(function(x){return x.id!==h.id;}); save(); render(); }); };
   }
@@ -5998,11 +6392,11 @@ function GENA_MAIN() {
     var evs=S.events.filter(function(e){return evOnDay(e,ds) && sourceEnabled(e);});
     var body='<h3>'+niceDate(ds)+'</h3>';
     body+='<div class="fld"><label>Tasks</label><ul class="tasks">'+
-      (tasks.length?tasks.map(function(k){var p=proj(k.projectId);var mp=(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+(k.at?'<span class="pill block">🕒 '+fmtTime(k.at)+'</span>':"")+(k.subs&&k.subs.length?'<span class="pill subs-n">☑ '+k.subs.filter(function(s){return s.done;}).length+'/'+k.subs.length+'</span>':"");return '<li class="task '+(k.status==="done"?"done":"")+'" data-id="'+esc(k.id)+'"><button class="chk '+(k.status==="done"?"done":"")+'" data-dact="toggle" aria-label="done" aria-pressed="'+(k.status==="done")+'"></button><div class="task-main"><div class="task-title">'+esc(k.title)+'</div>'+(mp?'<div class="task-meta">'+mp+'</div>':"")+'</div><button class="task-x" data-dact="deltask" style="opacity:1" aria-label="delete">✕</button></li>';}).join(""):'<div class="empty">No tasks</div>')+'</ul></div>';
+      (tasks.length?tasks.map(function(k){var p=proj(k.projectId);var mp=(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+(k.at?'<span class="pill block">🕒 '+fmtTime(k.at)+'</span>':"")+(k.subs&&k.subs.length?'<span class="pill subs-n">'+subCountText(k.subs,k.day)+'</span>':"");return '<li class="task '+(k.status==="done"?"done":"")+'" data-id="'+esc(k.id)+'"><button class="chk '+(k.status==="done"?"done":"")+'" data-dact="toggle" aria-label="done" aria-pressed="'+(k.status==="done")+'"></button><div class="task-main"><div class="task-title">'+esc(k.title)+'</div>'+(mp?'<div class="task-meta">'+mp+'</div>':"")+'</div><button class="task-x" data-dact="deltask" style="opacity:1" aria-label="delete">✕</button></li>';}).join(""):'<div class="empty">No tasks</div>')+'</ul></div>';
     body+='<div class="fld"><label>Events &amp; milestones</label><ul class="tasks">'+
       (evs.length?evs.map(function(e){return '<li class="task" data-id="'+esc(e.id)+'"><span class="dot" style="background:'+(e.color||projColor(e.projectId))+';border-color:transparent;cursor:default"></span><div class="task-main"'+(e.sourceId?' style="cursor:default"':' data-dact="editev" title="Tap to edit"')+'><div class="task-title">'+esc(e.title)+'</div>'+(e.sourceId?'<div class="task-meta"><span class="pill block">subscribed</span></div>':"")+'</div>'+(e.sourceId?"":'<button class="task-x" data-dact="delev" style="opacity:1" aria-label="delete">✕</button>')+'</li>';}).join(""):'<div class="empty">No events</div>')+'</ul></div>';
     var fitems=S.focus[ds]||[];
-    if(fitems.length) body+='<div class="fld"><label>Focus that day</label><ul class="tasks">'+fitems.map(function(f){ var ftxt=f.text, fdone=f.done, fsubs=f.subs; if(f.taskId){ var lk=S.tasks.find(function(x){return x.id===f.taskId;}); if(!lk) return ""; ftxt=lk.title; fdone=lk.status==="done"; fsubs=lk.subs; } return '<li class="task '+(fdone?"done":"")+'"><span class="dot '+(fdone?"on":"")+'" style="cursor:default"></span><div class="task-main" style="cursor:default"><div class="task-title">'+esc(ftxt)+'</div>'+(fsubs&&fsubs.length?'<div class="task-meta"><span class="pill subs-n">☑ '+fsubs.filter(function(s){return s.done;}).length+'/'+fsubs.length+'</span></div>':"")+'</div></li>';}).join("")+'</ul></div>';
+    if(fitems.length) body+='<div class="fld"><label>Focus that day</label><ul class="tasks">'+fitems.map(function(f){ var ftxt=f.text, fdone=f.done, fsubs=f.subs; if(f.taskId){ var lk=S.tasks.find(function(x){return x.id===f.taskId;}); if(!lk) return ""; ftxt=lk.title; fdone=lk.status==="done"; fsubs=lk.subs; } return '<li class="task '+(fdone?"done":"")+'"><span class="dot '+(fdone?"on":"")+'" style="cursor:default"></span><div class="task-main" style="cursor:default"><div class="task-title">'+esc(ftxt)+'</div>'+(fsubs&&fsubs.length?'<div class="task-meta"><span class="pill subs-n">'+subCountText(fsubs,ds)+'</span></div>':"")+'</div></li>';}).join("")+'</ul></div>';
     var wlPrev=noteDisplayHtml(S.notes[ds]||"");
     if(/class="(wl|reflink)/.test(wlPrev)) body+='<div class="fld"><label>Links in this note</label><div class="jr-body">'+wlPrev+'</div></div>';
     body+='<div class="fld"><label>Notes</label>'+richTextHtml("day:"+ds,S.notes[ds]||"","Nothing written this day — add a note…",64,"d-note","rte-compact")+'</div>';
@@ -6606,16 +7000,17 @@ function GENA_MAIN() {
     var html='<h2 class="view-h">People</h2><p class="sub">Keep up with the people who matter — follow-ups, context, and your next touch.</p>';
     html+='<button class="btn primary" data-act="newperson" style="margin-bottom:16px">+ Add person</button>';
     var people=S.people.slice().sort(function(a,b){ return (a.next||"9999")<(b.next||"9999")?-1:1; });
-    var due=people.filter(function(p){return p.next&&p.next<=t;});
+    var due=people.filter(function(p){return p.next&&p.next<=t&&!isPaused(p,t);});
     if(due.length) html+='<div class="sugg" style="margin-bottom:16px"><div class="stxt"><b>'+due.length+'</b> follow-up'+(due.length===1?"":"s")+' due: '+due.map(function(p){return esc(p.name);}).join(", ")+'</div></div>';
     html+='<div class="board">';
     people.forEach(function(p){
-      var isDue=p.next&&p.next<=t;
+      var pz=isPaused(p,t), isDue=p.next&&p.next<=t&&!pz;
       var pekey="person-"+p.id;
-      html+='<details class="proj-card person-card pfold" style="--pc:'+esc(p.color||"var(--p5)")+'" data-fold="'+pekey+'"'+(S.collapsed[pekey]?"":" open")+'><summary class="proj-top person-top" style="--pc:'+esc(p.color||"var(--p5)")+'">'+
+      html+='<details class="proj-card person-card pfold'+(pz?" dim":"")+'" style="--pc:'+esc(p.color||"var(--p5)")+'" data-fold="'+pekey+'"'+(S.collapsed[pekey]?"":" open")+'><summary class="proj-top person-top" style="--pc:'+esc(p.color||"var(--p5)")+'">'+
         '<span class="ptop-main"><h3>'+(p.emoji?'<span class="person-emoji">'+esc(p.emoji)+'</span>':'<span class="person-emoji pdot-big"></span>')+esc(p.name)+'</h3><div class="pmeta">'+esc(p.relationship||"—")+(p.company?" · "+esc(p.company):"")+'</div></span><span class="fold-chev">▸</span></summary>'+
         '<div class="proj-body">';
-      if(p.next) html+='<div style="margin-bottom:8px"><span class="pill '+(isDue?"aged":"block")+'">'+(isDue?"⏰ Follow up due":"Next: "+niceDate(p.next))+'</span></div>';
+      if(pz) html+='<div style="margin-bottom:8px"><span class="pill block">'+esc(pauseLabel(p))+'</span></div>';
+      else if(p.next) html+='<div style="margin-bottom:8px"><span class="pill '+(isDue?"aged":"block")+'">'+(isDue?"⏰ Follow up due":"Next: "+niceDate(p.next))+'</span></div>';
       if(p.last||p.cadence||p.prepDays) html+='<div class="sub" style="font-size:12px">'+(p.last?'Last touch: '+niceDate(p.last):'No touch logged yet')+(p.cadence?" · every "+p.cadence+"d":"")+(p.prepDays?" · prep "+p.prepDays+"d before":"")+'</div>';
       (function(){
         var prep=S.tasks.find(function(k){ return k.prepPerson===p.id && k.prepFor===p.next && isOpen(k); });
@@ -6638,7 +7033,8 @@ function GENA_MAIN() {
       }).join("")+'</ul>'; }
       html+='<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="chip" data-act="editperson" data-id="'+esc(p.id)+'">edit</button>'+
         '<button class="chip" data-act="logtouch" data-id="'+esc(p.id)+'">✓ Logged a touch</button>'+
-        '<button class="chip" data-act="person-task" data-id="'+esc(p.id)+'">+ task</button></div>';
+        '<button class="chip" data-act="person-task" data-id="'+esc(p.id)+'">+ task</button>'+
+        '<button class="chip" data-act="'+(p.paused?"resume-person":"pause-person")+'" data-id="'+esc(p.id)+'">'+(p.paused?"Resume":"💤 Pause")+'</button></div>';
       html+='</div></details>';
     });
     if(!people.length) html+='<div class="card empty" style="padding:34px">No people yet. Add someone you want to stay in touch with — a recruiter, a mentor, a friend.</div>';
@@ -7218,6 +7614,8 @@ function GENA_MAIN() {
   function detachInstance(task){
     var tp=S.templates.find(function(x){return x.id===task.tplId;});
     if(tp){ tp.skip=(tp.skip||[]); if(tp.skip.indexOf(task.day)<0) tp.skip.push(task.day); }
+    if(task.tplId) task.fromTpl=task.tplId;   // still in the series for the carry (R2): its leftovers ride on
+    task.subs=(task.subs||[]).map(function(sb){ return subCopy(sb); });
     delete task.tplId;
   }
   // End the series the day before this instance, and re-point the rest at a fresh template.
@@ -7225,7 +7623,9 @@ function GENA_MAIN() {
     var tp=S.templates.find(function(x){return x.id===task.tplId;});
     if(!tp) return null;
     var fresh={}; for(var k in tp) fresh[k]=tp[k];
-    fresh.id=uid(); fresh.start=task.day; fresh.until=tp.until||null; fresh.skip=[];
+    fresh.id=uid(); fresh.start=task.day; fresh.until=tp.until||null; fresh.skip=[]; fresh.parent=tp.id;
+    // a deep copy: an edit to this and future ones must not reach back into the past series (review E5)
+    fresh.subs=(tp.subs||[]).map(function(sb){ return {id:sb.id,text:sb.text}; }); fresh.weekdays=(tp.weekdays||[]).slice(); delete fresh.firstSubs;
     tp.until=addDays(task.day,-1);
     S.templates.push(fresh);
     S.tasks.forEach(function(x){ if(x.tplId===tp.id && x.day>=task.day) x.tplId=fresh.id; });
@@ -7304,22 +7704,32 @@ function GENA_MAIN() {
     toast(collapse?"Collapsed "+n+" cards":"Expanded everything");
   }
   function anyFoldOpen(){ return [].some.call(document.querySelectorAll("details[data-fold]"),function(d){return d.open;}); }
-  var rvHabitSkip={};   // habits marked "skipped" in this review — session-only, a skip is just a non-tick
+  /* The review's habits (U7): a day habit not met that day; a week or month habit only on the last day of
+     its period and only if the period missed its goal (never "missed" mid-week); skipped and paused ones
+     are not asked about. Pure, so the harness holds it. */
+  function reviewMissedHabits(day){
+    return S.habits.filter(function(h){
+      if(!h.inDay||isPaused(h,day)||habitSkipped(h,day)||habitMet(h,day)) return false;
+      var per=habitPer(h); if(per==="day") return true;
+      var pd=periodDays(per,day); return pd[pd.length-1]===day;
+    });
+  }
   function openReviewModal(scope, fromDay, auto){
-    scope=scope||"week"; rvHabitSkip={};
+    scope=scope||"week";
     var isEve=scope==="evening", isDay=(scope==="morning"||isEve), t=today();
     function looseEnds(){
       // morning: what was left behind (a span isn't a loose end while it's still running)
       // evening:  what is still open on today itself
       // week:     anything that has been carried at all
-      if(isEve) return S.tasks.filter(function(k){ return k.status==="todo" && taskOnDay(k,t) && inScope(k.projectId); });
+      // a paused cycle (P4) is no loose end in any of the three: it waits in the repeat list
+      if(isEve) return S.tasks.filter(function(k){ return k.status==="todo" && taskOnDay(k,t) && inScope(k.projectId) && !pausedCycle(k,t); });
       // With carry-over on, yesterday's leftovers are already sitting on today — so a loose end is
       // anything still open that has been carried at all, wherever it now sits, plus anything that
       // never moved (carry-over off, or a day Gena wasn't opened).
       return scope==="morning"
-        ? S.tasks.filter(function(k){ return isOpen(k) && k.day && !k.tplId && inScope(k.projectId) &&
+        ? S.tasks.filter(function(k){ return isOpen(k) && k.day && !k.tplId && inScope(k.projectId) && !pausedCycle(k,t) &&
             (lastDay(k.day,k.end)<t || (k.rollover||0)>=1 || !!k.carriedFrom); })
-        : S.tasks.filter(function(k){ return k.status==="todo" && (k.rollover||0)>=1 && !k.tplId && inScope(k.projectId); });
+        : S.tasks.filter(function(k){ return k.status==="todo" && (k.rollover||0)>=1 && !k.tplId && inScope(k.projectId) && !pausedCycle(k,t); });
     }
     if(auto && !looseEnds().length) return false;   // nothing to review — don't interrupt the day
 
@@ -7440,11 +7850,13 @@ function GENA_MAIN() {
       if(isDay){
         // morning asks about yesterday; the evening close-out asks about today
         var yH=isEve?t:(fromDay||addDays(t,-1));
-        var missedH=S.habits.filter(function(h){ return h.inDay && !habitDoneOn(h,yH) && !(rvHabitSkip[h.id]); });
+        var missedH=reviewMissedHabits(yH);
         if(missedH.length){
           h+='<div class="fld"><label>🌱 Habits '+(isEve?"today":(yH===addDays(t,-1)?"yesterday":"on "+esc(niceDate(yH))))+' — did they happen?</label><ul class="tasks">'+
-            missedH.map(function(hb){ return '<li class="task habit-row" data-hid="'+esc(hb.id)+'"><span class="wait-ico">🌱</span><div class="task-main"><div class="task-title">'+esc(hb.name)+'</div></div>'+
-              '<span class="wait-acts"><button class="chip" data-rvh="did" data-hid="'+esc(hb.id)+'">✓ Did it</button><button class="chip" data-rvh="skip" data-hid="'+esc(hb.id)+'">⤬ Skipped</button></span></li>'; }).join("")+'</ul></div>';
+            missedH.map(function(hb){ var pr=habitProgress(hb,yH), g=habitGoal(hb);
+              return '<li class="task habit-row" data-hid="'+esc(hb.id)+'"><span class="wait-ico">'+(hb.emoji?esc(hb.emoji):"🌱")+'</span><div class="task-main"><div class="task-title">'+esc(hb.name)+'</div>'+
+                ((g>1||pr>0)?'<div class="task-meta"><span class="pill block">'+fmtNum(pr)+' / '+fmtNum(g)+(hb.unit?" "+esc(hb.unit):"")+(habitPer(hb)!=="day"?" this "+habitPer(hb):"")+'</span></div>':'')+'</div>'+
+              '<span class="wait-acts"><button class="chip" data-rvh="did" data-hid="'+esc(hb.id)+'">✓ Did it</button><button class="chip" data-rvh="skip" data-hid="'+esc(hb.id)+'">⏭ Skipped</button></span></li>'; }).join("")+'</ul></div>';
         }
       }
       // 41: follow-ups that landed — log the touch, or push a week
@@ -7568,8 +7980,10 @@ function GENA_MAIN() {
           save(); rebuild(); return; }
         var rh=e.target.closest("[data-rvh]");
         if(rh){ var yH2=isEve?t:(fromDay||addDays(t,-1));
-          if(rh.dataset.rvh==="did"){ var hh=S.habits.find(function(x){return x.id===rh.dataset.hid;}); if(hh) setHabitLog(yH2,hh.id,hh.goal||1); save(); }
-          else rvHabitSkip[rh.dataset.hid]=1;
+          var hh=habitById(rh.dataset.hid);
+          // "Did it" logs one unit (one box), not the whole goal: a weekly 3x habit is not met by one tap
+          if(hh&&rh.dataset.rvh==="did"){ habitUnskip(hh,yH2); setHabitLog(yH2,hh.id,habitLog(yH2,hh.id)+habitBox(hh)); save(); }
+          else if(hh){ hh.skips=hh.skips||{}; hh.skips[yH2]=1; save(); }   // the real skip (⏭), not a session-only mark
           rebuild(); return; }
         var wa=e.target.closest('[data-act="wait-still"],[data-act="wait-live"],[data-act="wait-letgo"]');
         if(wa){ var wrow=wa.closest("[data-id]"), wk=wrow&&S.tasks.find(function(x){return x.id===wrow.dataset.id;}); if(!wk) return;
