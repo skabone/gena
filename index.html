@@ -288,6 +288,17 @@
      "carried" earns red at a week; before that it's information, not an alarm. */
   .pill.aged{ background:transparent; color:var(--ink-faint); padding-left:0; padding-right:6px; }
   .pill.aged.hot{ background: var(--warn-bg); color: var(--warn); padding:2px 8px; }
+  .fold-label .prio-n{ font-size:12px; font-weight:600; margin-left:4px; vertical-align:1px; }
+  .tc-item{ border:1px solid var(--line); border-radius:10px; padding:8px; margin:0 0 8px; }
+  .tc-line{ display:flex; gap:6px; align-items:center; } .tc-line .tc-title{ flex:1 1 auto; min-width:0; }
+  .tc-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:6px 10px; margin-top:6px; font-size:12px; color:var(--ink-soft); }
+  .tc-grid label{ display:flex; flex-direction:column; gap:2px; } .tc-grid label.check-row{ flex-direction:row; align-items:center; gap:6px; }
+  .tc-sbw{ display:flex; align-items:center; gap:6px; }
+  .modal .tc-grid input, .modal .tc-grid select{ padding:6px 8px; font-size:13px; } .modal .tc-sbw input{ width:70px; flex:none; }
+  .modal .tc-grid input[type=checkbox]{ width:auto; margin:0; }   /* .modal input is 100% wide (the inline editor's trap, Known issues) */
+  .sb-days{ display:flex; align-items:center; gap:6px; margin:2px 0 6px; } .sb-days input{ width:70px !important; flex:none; }
+  .ie-row .sb-row input, .modal .sb-row input{ width:auto; }
+  .prio-nudge{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 8px; font-size:12.5px; }
   .pill.rec{ background:transparent; color:var(--terra-deep); padding-left:0; padding-right:6px; }
   .pill.block{ background:transparent; color:var(--ink-faint); padding-left:0; padding-right:6px; }
   .pill.due{ background:transparent; color:var(--slate-2,var(--ink-soft)); font-weight:800; padding-left:0; padding-right:6px; }
@@ -825,6 +836,8 @@
   .sheet-row:active{ background:var(--line-soft); }
   .sheet-row .si{ width:26px; text-align:center; font-size:17px; }
   .sheet-row.danger{ color:var(--warn); }
+  a.sheet-row, a.chip{ text-decoration:none; }
+  .toast .toast-act{ margin-left:6px; background:transparent; border:none; padding:0; color:var(--terra); font-weight:800; cursor:pointer; font-family:inherit; font-size:13.5px; text-decoration:none; }
   @media (min-width:761px){ .modal.sheet{ border-radius:var(--r-card); } .scrim.sheet-scrim{ align-items:center; padding:16px; } }
   .at-btn.q-at{ width:34px; height:34px; opacity:.8; align-self:center; }
   .inline-add{ flex:1; min-width:0; border:none; background:transparent; font-family:inherit; font-size:15px; color:var(--ink); padding:4px 0; }
@@ -919,13 +932,15 @@
   /* The fill starts at max(40%, 24 px before the icon column) and is strongest (0.3) across the icons, at most about
      0.16 under any title or meta (V5.3 review finding 1: a fixed 40% start put the strong end under the pills of a
      narrow row). Icons on a coloured row take the meta's ink, so the fill never washes them out (measured). */
-  :root{ --fill-icons:164px; --rowbg:var(--card); }
+  :root{ --fill-icons:220px; --rowbg:var(--card); }
   li.task:not(.ie-row){ padding-left:10px; }
   li.task.pc:not(.pp){ box-shadow:inset 6px 0 0 var(--pc);
     background-image:linear-gradient(90deg, transparent max(40%, calc(100% - var(--fill-icons) - 24px)), color-mix(in srgb, var(--pc) 16%, transparent) calc(100% - var(--fill-icons)), color-mix(in srgb, var(--pc) 30%, transparent) calc(100% - var(--fill-icons) + 12px)); }
   li.task.pc.done:not(.pp){ box-shadow:inset 6px 0 0 color-mix(in srgb, var(--pc) 45%, transparent);
     background-image:linear-gradient(90deg, transparent max(40%, calc(100% - var(--fill-icons) - 24px)), color-mix(in srgb, var(--pc) 8%, transparent) calc(100% - var(--fill-icons)), color-mix(in srgb, var(--pc) 15%, transparent) calc(100% - var(--fill-icons) + 12px)); }
   li.task.pc > .task-star:not(.on):not(:hover), li.task.pc > .task-bump:not(:hover), li.task.pc > .task-focus:not(.on):not(:hover), li.task.pc > .task-x:not(:hover), li.task.pc > .task-addsub:not(:hover), li.task.pc > .task-more{ color:var(--ink-soft); }
+  /* V6.1 (GD-062): the delete is red wherever it shows, a project row's muted tone included */
+  li.task > .task-x.rb-del, li.task.pc > .task-x.rb-del{ color:var(--terra-deep); }
   /* V7: a pattern's fill sits under the text (own stacking context, z-index -1) on the opposite end from the strip,
      with the same start and strengths as above. No mask (a mask costs WebKit a layer per row, measured): it fades
      under the row's own background, --rowbg, kept in step with hover and swipe. */
@@ -1140,6 +1155,9 @@
   .task-bump{ flex:none; background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:14px; padding:2px 5px; border-radius:6px; opacity:.5; transition:opacity .15s; line-height:1; }
   .task:hover .task-bump{ opacity:1; }
   .task-bump:hover{ color:var(--good); background:var(--good-bg); }
+  /* V6.1: +7d 📅 🧹 💤 appear with the row's hover set, like ◎ ★ ✕ (only → stays half-visible) */
+  .task-bump.rb-more{ opacity:0; font-size:12.5px; }
+  .task:hover .task-bump.rb-more{ opacity:1; }
   .task-focus{ flex:none; background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:14px; padding:2px 4px; border-radius:6px; opacity:0; transition:opacity .15s; line-height:1; }
   .task:hover .task-focus, .panel-task:hover .task-focus{ opacity:1; }
   .task-focus:hover{ color:var(--terra-deep); background:var(--terra-bg); }
@@ -1147,7 +1165,7 @@
   /* No hover on a touch screen, so the hover-revealed row buttons never appeared there at all.
      They already occupy their space at opacity 0, so showing them costs no layout. */
   @media (hover: none){
-    .task .task-x, .task .task-addsub, .task .task-focus, .task .task-bump{ opacity:1; }
+    .task .task-x, .task .task-addsub, .task .task-focus, .task .task-bump, .task .task-bump.rb-more{ opacity:1; }
     .sub-move{ opacity:1; }
     .sub-mv{ font-size:14px; padding:2px 7px; }
   }
@@ -1318,7 +1336,7 @@
     <div class="brand"><svg class="brand-mark" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="currentColor"><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z"/><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z" transform="rotate(90 32 32)"/><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z" transform="rotate(180 32 32)"/></g><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z" fill="#c0392b" transform="rotate(270 32 32)"/><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z" fill="currentColor" transform="rotate(270 32 32) translate(32 14.03) scale(0.72) translate(-32 -14.03)"/><line x1="24" y1="32" x2="32" y2="32" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="32" r="3" fill="currentColor"/></svg>Gena</div>
     <nav class="nav" id="nav" aria-label="Views">
       <button data-view="today" aria-current="true">Today</button>
-      <button data-view="plan" data-group="day calendar week">Plan</button>
+      <button data-view="plan" data-group="day calendar week">Events</button>
       <button data-view="lists" data-group="repeats projects efforts people backlog timeline">Lists</button>
       <button data-view="journal" data-group="journal learn">Journal</button>
       <button data-view="hub">Hub</button>
@@ -1354,7 +1372,7 @@
 <div id="modal-root"></div>
 <nav id="bottomnav" aria-label="Quick navigation">
   <button data-view="today"><span>☀️</span>Today</button>
-  <button data-view="plan" data-group="day calendar week"><span>🗓</span>Plan</button>
+  <button data-view="plan" data-group="day calendar week"><span>🗓</span>Events</button>
   <button data-view="lists" data-group="repeats projects efforts people backlog timeline"><span>☰</span>Lists</button>
   <button data-view="journal" data-group="journal learn"><span>📓</span>Journal</button>
   <button data-view="hub"><span>✨</span>Hub</button>
@@ -1434,7 +1452,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-10-15-V6";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-10-15-V6.1";   // set by ship.sh on every release — the footer is how you tell a surface is current
   // The day V5 shipped (tag gena-2026-10-05-V5): the closing-states cutoff, fixed, so a later build's stamp
   // never moves it (I-28). Above `var S = load()`, which reads it.
   var V5_SHIP_DAY = "2026-10-05";
@@ -1443,7 +1461,8 @@ function GENA_MAIN() {
   function appVersion(b){ var m=/-V(\d+(?:\.\d+){0,2})$/.exec(b||""); return m?"V"+m[1]:""; }
   var APP_VERSION=appVersion(APP_BUILD);
   function buildLine(){ return "Gena"+(APP_VERSION?" "+APP_VERSION:"")+" · "+APP_BUILD; }
-  var PROXY_DEFAULT = "https://api.allorigins.win/raw?url=";
+  var PROXY_DEFAULT = "";   // V6.2 C2: no relay until he sets his own (the public allorigins relay died, HTTP 522)
+  var PROXY_DEAD = "https://api.allorigins.win/raw?url=";
   var SPU_PROJECT_ID=null;
   var SPU_PLAN_REVISION=0;
   // Stable ids for seeded starter entities so a fresh browser/device can't create id-different duplicates that the merge-sync then unions. (Root-cause fix for profile/project/habit duplication.)
@@ -1704,7 +1723,7 @@ function GENA_MAIN() {
     var y=0.2126*L(o.r)+0.7152*L(o.g)+0.0722*L(o.b);
     return (y+0.05)/(0.0234+0.05)<1.5 ? shadeHex(b,45) : b;   // 0.0234: the dark card #2b2933
   }
-  function normalize(d){ d.projects=d.projects||[]; d.tasks=d.tasks||[]; d.templates=d.templates||[]; d.habits=d.habits||[]; d.habitLog=d.habitLog||{}; d.events=d.events||[]; d.phases=d.phases||[]; d.dismissed=d.dismissed||[]; d.notes=d.notes||{}; d.jlinks=d.jlinks||{}; d.learnRead=d.learnRead||{}; d.readlist=d.readlist||[]; d.calSources=d.calSources||[]; if(!d.proxy)d.proxy=PROXY_DEFAULT; d.emails=d.emails||[]; d.jobs=d.jobs||[]; d.improve=d.improve||[]; if(!d.calView)d.calView="month"; if(!d.calAnchor)d.calAnchor=(d.calMonth?d.calMonth+"-01":null); if(!d.skin)d.skin="paper"; delete d.apiKey; d.people=d.people||[]; d.collapsed=d.collapsed||{}; d.lastExport=d.lastExport||null; if(typeof d.name!=="string")d.name=""; d._sm=d._sm||{}; if(typeof d.autoCarry!=="boolean")d.autoCarry=false; if(typeof d.accent!=="string")d.accent=d.accent||null; d.tasks.forEach(function(k){ if(!Array.isArray(k.personIds)) k.personIds=[]; }); if(!d.density)d.density="cozy"; if(!d.font)d.font="rounded"; if(!d.l2rev){ d.font="system"; d.scene="off"; d.l2rev=1; } if(d.scene!=="on"&&d.scene!=="off") d.scene="off"; d.sessions=d.sessions||[]; d.subsHidden=d.subsHidden||{}; if(typeof d.expandOnAdd!=="boolean")d.expandOnAdd=true; if(!(typeof d.eveningHour==="number"||d.eveningHour===false))d.eveningHour=20; d.reviewDone=d.reviewDone||{};
+  function normalize(d){ d.projects=d.projects||[]; d.tasks=d.tasks||[]; d.templates=d.templates||[]; d.habits=d.habits||[]; d.habitLog=d.habitLog||{}; d.events=d.events||[]; d.phases=d.phases||[]; d.dismissed=d.dismissed||[]; d.notes=d.notes||{}; d.jlinks=d.jlinks||{}; d.learnRead=d.learnRead||{}; d.readlist=d.readlist||[]; d.calSources=d.calSources||[]; if(typeof d.proxy!=="string"||d.proxy===PROXY_DEAD)d.proxy=PROXY_DEFAULT; d.emails=d.emails||[]; d.jobs=d.jobs||[]; d.improve=d.improve||[]; if(!d.calView)d.calView="month"; if(!d.calAnchor)d.calAnchor=(d.calMonth?d.calMonth+"-01":null); if(!d.skin)d.skin="paper"; delete d.apiKey; d.people=d.people||[]; d.collapsed=d.collapsed||{}; d.lastExport=d.lastExport||null; if(typeof d.name!=="string")d.name=""; d._sm=d._sm||{}; if(typeof d.autoCarry!=="boolean")d.autoCarry=false; if(typeof d.accent!=="string")d.accent=d.accent||null; d.tasks.forEach(function(k){ if(!Array.isArray(k.personIds)) k.personIds=[]; }); if(!d.density)d.density="cozy"; if(!d.font)d.font="rounded"; if(!d.l2rev){ d.font="system"; d.scene="off"; d.l2rev=1; } if(d.scene!=="on"&&d.scene!=="off") d.scene="off"; d.sessions=d.sessions||[]; d.subsHidden=d.subsHidden||{}; if(typeof d.expandOnAdd!=="boolean")d.expandOnAdd=true; if(!(typeof d.eveningHour==="number"||d.eveningHour===false))d.eveningHour=20; d.reviewDone=d.reviewDone||{};
     // One-time: 7.5 shipped autoCarry defaulting to on, which left the Carried-over card empty whenever
     // everything had already been auto-placed. Off is the setting where the day list and that card are
     // both useful, so re-default once. Any later toggle is the user's and is left alone.
@@ -2339,14 +2358,15 @@ function GENA_MAIN() {
      scan otherwise. Results come back in S.tasks order, exactly as the scans they replace. */
   var IX=null;
   function buildIx(){
-    var byId={}, days={}, spans=[], open={}, t=S.tasks;
+    var byId={}, days={}, spans=[], open={}, sb=[], t=S.tasks;
     for(var i=0;i<t.length;i++){ var k=t[i];
       if(!(k.id in byId)) byId[k.id]=k;
+      if(k.showBefore!=null&&k.due) sb.push(i);
       if(k.status==="todo"&&k.projectId) open[k.projectId]=(open[k.projectId]||0)+1;
       if(!k.day) continue;
       if(k.end&&k.end>k.day) spans.push(i); else (days[k.day]||(days[k.day]=[])).push(i);
     }
-    return {src:t, n:t.length, byId:byId, days:days, spans:spans, open:open};
+    return {src:t, n:t.length, byId:byId, days:days, spans:spans, open:open, sb:sb};
   }
   function ixOk(){ return !!IX && IX.src===S.tasks && IX.n===S.tasks.length; }
   // a paused cycle (GD-022) is on no day until it resumes; it waits in the repeat list with its Resume chip
@@ -2358,9 +2378,26 @@ function GENA_MAIN() {
     var out=[]; for(var i=0;i<idx.length;i++){ var k=t[idx[i]]; if(!pausedCycle(k,d)) out.push(k); }
     return out;
   }
+  /* V6.1 D2 (GD-062): a task that opted in (showBefore, days) is in the To-do from due − showBefore through the
+     due day, and on today while overdue — read time only: its day is never changed and nothing is written at
+     day start (I-63/I-64). A task without the field is never touched here, so it reads exactly as before (D5). */
+  function showsBefore(k,d){
+    if(!k||k.showBefore==null||!k.due||!isOpen(k)) return false;
+    if(d>k.due) return d===today();
+    return addDays(k.due,-Math.max(0,Math.floor(+k.showBefore)||0))<=d;
+  }
+  function showBeforeOn(d){
+    var src=ixOk()?IX.sb.map(function(i){ return IX.src[i]; }):S.tasks;
+    return src.filter(function(k){ return showsBefore(k,d)&&!taskOnDay(k,d)&&!pausedCycle(k,d); });
+  }
+  // what the To-do list, agenda, the week and the day counts read: the day's tasks, then any that graduated
+  function dayTodo(d){ var a=tasksOn(d), b=showBeforeOn(d); return b.length?a.concat(b):a; }
   function taskById(id){ return ixOk()?IX.byId[id]:S.tasks.find(function(x){ return x.id===id; }); }
   function openCount(pid){ return ixOk()?(IX.open[pid]||0):S.tasks.filter(function(k){ return k.projectId===pid&&k.status==="todo"; }).length; }
   function evOnDay(e,d){ return onDay(e.date,e.end,d); }
+  // a subscribed timed event (V6.2 C7) shows its start time on its first day, all-day ones first
+  function evTime(e,d){ return e.at&&e.date===d?esc(fmtTime(e.at))+" · ":""; }
+  function evByTime(a,b){ var x=a.at||"", y=b.at||""; return x<y?-1:x>y?1:0; }
   function spanLen(start,end){ return (!start||!end||end<=start)?1:diffDays(end,start)+1; }
   function lastDay(start,end){ return (end&&start&&end>start)?end:start; }
   // Reference-free, so it reads the same in every view: how long it runs, exact dates on hover.
@@ -2482,16 +2519,24 @@ function GENA_MAIN() {
     return !!(k&&k.startPriority);
   }
   // Appends what qualifies on `day` to that day's Priority, habits first, each once (P3, P4)
-  function addToPriority(day,habits,tasks){
-    var arr=S.focus[day]||[], n=0;
+  function addToPriority(day,habits,tasks,people){
+    var arr=S.focus[day]||[], n=0, isT=day===today();
     (habits||[]).forEach(function(h){
       if(!h||!h.startPriority||!h.inDay||isPaused(h,day)||habitSkipped(h,day)) return;
       if(arr.some(function(f){ return f.habitId===h.id; })) return;
       arr.push({id:uid(),habitId:h.id}); n++; });
     (tasks||[]).forEach(function(k){
-      if(!k||k.status!=="todo"||!taskOnDay(k,day)||pausedCycle(k,day)||!startsInPriority(k)) return;
+      if(!k||!startsInPriority(k)) return;
+      // V6.1 P4: a check-back lands on its check-back day (and stays while it is due), like a follow-up
+      var lands=k.status==="todo"?((taskOnDay(k,day)||showsBefore(k,day))&&!pausedCycle(k,day)):(isWaiting(k)&&!!k.nextAt&&(isT?k.nextAt<=day:k.nextAt===day));
+      if(!lands) return;
       if(arr.some(function(f){ return f.taskId===k.id; })) return;
       arr.push({id:uid(),taskId:k.id}); n++; });
+    // V6.1 P1: a person who starts in Priority, on the day the follow-up is due (and each day it stays overdue)
+    (people||[]).forEach(function(p){
+      if(!p||!p.startPriority||!p.next||isPaused(p,day)||!(isT?p.next<=day:p.next===day)) return;
+      if(arr.some(function(f){ return f.personId===p.id; })) return;
+      arr.push({id:uid(),personId:p.id}); n++; });
     if(n) S.focus[day]=arr;   // never an empty list: on a merge it would replace the other device's day
     return n;
   }
@@ -2501,7 +2546,7 @@ function GENA_MAIN() {
     S.reviewDone=S.reviewDone||{};
     if(S.reviewDone[day+":priority"]) return -1;
     S.reviewDone[day+":priority"]=1;
-    return addToPriority(day,S.habits,S.tasks);
+    return addToPriority(day,S.habits,S.tasks,S.people);
   }
   // The daily pass is not an edit of yours. focus merges per day (the newest list wins), and each device runs
   // the pass on its first open before it has pulled, so its stamp ranks just above the list it extended (1 for
@@ -2522,6 +2567,8 @@ function GENA_MAIN() {
   }
   function onOpen(){
     var t=today();
+    var sugF=suggestPersonFocus();
+    if(sugF.length){ save(); sugF.forEach(function(x){ x.p._m=x.was+1; }); suppressUndo=true; save(); suppressUndo=false; }   // F6: never "now", so a real edit wins
     var tidied=tidyCarriedSubs(t);
     if(tidied.length){ save();
       setTimeout(function(){ toastUndo(tidied.length+" carried task"+(tidied.length===1?"":"s")+" tidied",
@@ -2625,7 +2672,7 @@ function GENA_MAIN() {
      reads as empty and would come back (N2). Only today's and yesterday's copies (GD-046): an older pair
      is history, not this race. Returns how many rows went. Not deterministic ids: a new copy is stamped
      now and would beat the other device's checked one. */
-  var COPY_FILL=["at","notes","personIds","dur","effortId","cols"];   // V6: a copy made a step, or put in a Collection, keeps it through the collapse
+  var COPY_FILL=["at","notes","personIds","dur","effortId","cols","showBefore"];   // V6: a copy made a step, or put in a Collection, keeps it through the collapse (D1: and its showBefore)
   function copyEmpty(v){ return isBlankVal(v)||v===false||(Array.isArray(v)&&!v.length); }
   function collapseRank(k){ return k.status==="done"?3:(k.status==="skipped"?(k.skippedOn===k.day?2.5:1):2); }
   function collapseRepeatCopies(){
@@ -2645,6 +2692,10 @@ function GENA_MAIN() {
         drop[o.id]=1; remap[o.id]=keep.id; gone++; });
       keep.subs.forEach(function(sb){ if(rule[subKey(sb.text)]) sb.kind="every"; else if(sb.kind==="every") sb.kind="once"; });
     });
+    // a copy the rule's skip list says is cleared or moved away (🧹, → +7d, 📅) must not live on: the other
+    // device may have made its own copy for that day before it pulled (review finding 2)
+    var skipOf={}; S.templates.forEach(function(t){ if(t.skip&&t.skip.length) skipOf[t.id]=t.skip; });
+    S.tasks.forEach(function(k){ if(k.tplId&&k.status==="todo"&&k.day&&!drop[k.id]&&skipOf[k.tplId]&&skipOf[k.tplId].indexOf(k.day)>=0&&k.day>=from){ drop[k.id]=1; gone++; } });
     if(!gone) return 0;
     S.tasks=S.tasks.filter(function(k){ return !drop[k.id]; });
     Object.keys(S.focus||{}).forEach(function(d){ var seen={}; S.focus[d]=(S.focus[d]||[]).filter(function(f){ if(f.taskId&&remap[f.taskId]) f.taskId=remap[f.taskId]; if(!f.taskId) return true; if(seen[f.taskId]) return false; seen[f.taskId]=1; return true; }); });
@@ -2983,6 +3034,7 @@ function GENA_MAIN() {
   function carryTo(k,to){
     var from=k&&lastDay(k.day,k.end);
     if(from&&to&&from<today()&&to>from) foldDoneSubs(k,from);
+    keepCopyMoved(k,to);
     rescheduleTask(k,to);
   }
   // One click to reschedule from the row. Looking at a past day, the move you want is "bring it to
@@ -2993,6 +3045,34 @@ function GENA_MAIN() {
     var to=past?today():addDays(k.day||viewDay,1);
     var lbl=past?"Move to today":"Move to "+niceDate(to);
     return '<button class="task-bump" data-act="bump" data-id="'+esc(k.id)+'" data-d="'+to+'" aria-label="'+esc(lbl)+'" title="'+esc(lbl)+'">'+(past?"↩":"→")+'</button>';
+  }
+  // V6.1 (B1, B2): a repeat's copy for a day, while its rule exists (an orphan copy is a plain task)
+  function isRepeatCopy(k){ return !!(k&&k.tplId&&S.templates.some(function(x){ return x.id===k.tplId; })); }
+  function rowBtn(cls,act,ico,lbl,extra){ return '<button class="'+cls+'" data-act="'+act+'"'+(extra||"")+' aria-label="'+esc(lbl)+'" title="'+esc(lbl)+'">'+ico+'</button>'; }
+  /* V6.1 (B1, B2, GD-062): one set of right-side buttons for every task row, in one order: ⤷ → +7d 📅 ◎ ★,
+     then a red ✕ delete, or on a repeat's copy 🧹 clear this one and 💤 pause the repeat (nothing that comes
+     back gets a delete). `fe` is the Priority entry when the row is in the Priority list: its ◎ is on and
+     takes it out of Priority. Each button names its task (data-tid), since a Priority row's id is the entry's. */
+  function taskBtns(k,fe){
+    var on=fe?true:inFocus(k.id), tid=' data-tid="'+esc(k.id)+'"', rep=isRepeatCopy(k);
+    return rowBtn("task-addsub","sub-add","⤷+","Add a subtask",tid)+
+      bumpBtn(k)+
+      rowBtn("task-bump rb-more","week","+7d","Move it a week on",tid)+
+      rowBtn("task-bump rb-more","pick","📅","Pick a day",tid)+
+      '<span class="row-br"></span>'+   /* phone: forces ◎ ★ ✕ onto their own right-aligned line together */
+      '<button class="task-focus'+(on?" on":"")+'" data-act="'+(fe?"focus-del":"tofocus")+'"'+tid+' '+prioLbl(on)+'>◎</button>'+
+      '<button class="task-star '+(k.priority?"on":"")+'" data-act="star"'+tid+' aria-label="Toggle important" aria-pressed="'+!!k.priority+'">'+(k.priority?"★":"☆")+'</button>'+
+      (rep?rowBtn("task-bump rb-more","rep-clear","🧹","Clear this one (the repeat goes on)",tid)+rowBtn("task-bump rb-more","rep-pause","💤","Pause the repeat",tid)
+        :isCycle(k)?rowBtn("task-bump rb-more","cycle-pause","💤","Pause it",tid)   // A1: a cycle comes back too; deleting it stays in its editor
+        :rowBtn("task-x rb-del","del","✕","Delete",tid))+
+      '<button class="task-more" data-act="rowmenu" aria-label="More actions">⋯</button>';
+  }
+  // A move from a row's →, +7d or 📅 (and the other carries): today's or a later copy of a repeat leaves its
+  // day marked in the rule, or the next open would make that day's copy again (as "Just this one" does)
+  function keepCopyMoved(k,to){
+    if(!k||!k.tplId||!k.day||k.day===to||k.day<today()) return;
+    var tp=S.templates.find(function(x){ return x.id===k.tplId; });
+    if(tp){ tp.skip=tp.skip||[]; if(tp.skip.indexOf(k.day)<0) tp.skip.push(k.day); }
   }
   // Every place that builds or copies a sub-item keeps its V5.2 `kind` ("every" / "once"; missing = once)
   // and `skipDay` (D6). One save that dropped them would turn a repeat's Every-time items into Until-done
@@ -3054,7 +3134,7 @@ function GENA_MAIN() {
   var lastRenderedView=null;
   var IN_CLAUDE=(function(){ try{ return window.self!==window.top || /claude|anthropic|usercontent/i.test(location.hostname); }catch(e){ return true; } })();
   var nav=document.getElementById("nav");
-  /* Five tabs. "Plan" and "Lists" are groups: Plan = Day · Week · Month · Agenda, Lists = Repeats ·
+  /* Five tabs. "Events" (id plan) and "Lists" are groups: Events = Day · Week · Month · Week ahead, Lists = Repeats ·
      Focuses · Projects · People · Backlog · Timeline (V6, his order), each with a segmented control at the top of the view. goView is the
      one way to change view — it resolves a group to the sub-view you last used and remembers it. */
   var GROUPS={plan:["day","calendar","week"], lists:["repeats","projects","efforts","people","backlog","timeline"], journal:["journal","learn"]};
@@ -3080,7 +3160,7 @@ function GENA_MAIN() {
       ? [["day","Day",view==="day"],["wk","Week",planSeg()==="wk"],["month","Month",planSeg()==="month"],["agenda","Week ahead",view==="week"]]
       : g==="journal" ? [["journal","Journal",view==="journal"],["learn","Learn",view==="learn"]]
       : [["repeats","Repeats",view==="repeats"],["projects","Focuses",view==="projects"],["efforts","Projects",view==="efforts"],["people","People",view==="people"],["backlog","Backlog",view==="backlog"],["timeline","Timeline",view==="timeline"]];
-    return '<div class="seg" role="tablist" aria-label="'+(g==="plan"?"Plan":(g==="journal"?"Journal":"Lists"))+'">'+items.map(function(it){
+    return '<div class="seg" role="tablist" aria-label="'+(g==="plan"?"Events":(g==="journal"?"Journal":"Lists"))+'">'+items.map(function(it){
       return '<button role="tab" data-act="seg" data-seg="'+it[0]+'" aria-selected="'+!!it[2]+'">'+it[1]+'</button>'; }).join("")+'</div>';
   }
   function segGo(k){
@@ -3220,7 +3300,10 @@ function GENA_MAIN() {
     if(sc){
       (S.projects||[]).forEach(function(p){ if(sc.dom[p.profileId]) sc.foc[p.id]=1; });
       efs.forEach(function(e){ if(sc.dom[e.profileId]) sc.eff[e.id]=1; });
-      (S.people||[]).forEach(function(pe){ if(sc.dom[pe.profileId]||(pe.profileIds||[]).some(function(d){ return sc.dom[d]; })) sc.person[pe.id]=1; });
+      var dp={}, anyDp=false;
+      (S.people||[]).forEach(function(pe){ if(sc.dom[pe.profileId]||(pe.profileIds||[]).some(function(d){ return sc.dom[d]; })){ sc.person[pe.id]=1; dp[pe.id]=1; anyDp=true; } });
+      // V6.1 F7: a Domain pulls the tasks linked to its people too (sidebarStats counts the same way)
+      if(anyDp) (S.tasks||[]).forEach(function(t){ if((t.personIds||[]).some(function(id){ return dp[id]; })) sc.item[t.id]=1; });
     }
     var f=(S.filterProjects||[]).filter(function(i){ return proj(i); });
     if(f.length){ var only={}; f.forEach(function(i){ if(!sc||sc.foc[i]) only[i]=1; }); sc={foc:only,eff:{},item:{},person:{},dom:{}}; }
@@ -3261,6 +3344,7 @@ function GENA_MAIN() {
     var fDom={}, fCol={}, eDom={}, eCol={}, dCol={}, efs=S.efforts||[], st={dom:{},col:{},eff:{},allEff:0,prog:{}};
     S.profiles.forEach(function(d){ (d.cols||[]).forEach(function(c){ (dCol[d.id]=dCol[d.id]||[]).push(c); }); });
     S.projects.forEach(function(p){ fDom[p.id]=p.profileId; fCol[p.id]=(p.cols||[]).concat(dCol[p.profileId]||[]); });
+    var pDom={}; (S.people||[]).forEach(function(pe){ var a=[pe.profileId].concat(pe.profileIds||[]).filter(Boolean); if(a.length) pDom[pe.id]=a; });
     efs.forEach(function(e){ eDom[e.id]=e.profileId; eCol[e.id]=(e.cols||[]).concat(dCol[e.profileId]||[]); st.prog[e.id]={done:0,all:0}; });
     var add=function(m,key){ m[key]=(m[key]||0)+1; };
     var count=function(k,open){ var g=k.effortId&&st.prog[k.effortId]; if(g){ g.all++; if(!open) g.done++; } };
@@ -3269,6 +3353,7 @@ function GENA_MAIN() {
       var ds={}, cs={};
       if(k.projectId&&fDom[k.projectId]) ds[fDom[k.projectId]]=1;
       if(k.effortId&&eDom[k.effortId]) ds[eDom[k.effortId]]=1;
+      (k.personIds||[]).forEach(function(id){ (pDom[id]||[]).forEach(function(d){ ds[d]=1; (dCol[d]||[]).forEach(function(c){ cs[c]=1; }); }); });   // F7: once each, like the pull
       (fCol[k.projectId]||[]).concat(eCol[k.effortId]||[],k.cols||[]).forEach(function(c){ cs[c]=1; });
       Object.keys(ds).forEach(function(d){ add(st.dom,d); }); Object.keys(cs).forEach(function(c){ add(st.col,c); });
       if(k.effortId&&eDom[k.effortId]){ add(st.eff,k.effortId); st.allEff++; }
@@ -3479,6 +3564,7 @@ function GENA_MAIN() {
           '<div class="ie-lbl">Day</div><input type="date" id="ie-day" value="'+esc(k.day||"")+'" aria-label="First day"/>'+
           '<div class="ie-lbl">Ends <span class="ie-hint">(leave blank for one day)</span></div><input type="date" id="ie-end" value="'+esc(k.end||"")+'" aria-label="Last day"/>'+
           '<div class="ie-lbl">Due <span class="ie-hint">(deadline — separate from the day you plan it)</span></div><input type="date" id="ie-due" value="'+esc(k.due||"")+'" aria-label="Due date"/>'+
+          showBeforeFieldHtml("ie",k)+
           '<div class="ie-lbl">Block</div><div class="chips" id="ie-block">'+
             BLKS.map(function(b){return '<button type="button" class="chip" data-b="'+b[0]+'" aria-pressed="'+((k.block||"")===b[0])+'">'+b[1]+'</button>';}).join("")+'</div>'+
           '<div class="ie-lbl">Time</div>'+timeInputHtml("ie-time",k.at)+
@@ -3514,7 +3600,7 @@ function GENA_MAIN() {
     if(k.tplId) pl.push('<span class="pill rec">↻ repeats</span>');
     if(k.rollover>=1) pl.push('<span class="pill aged'+(k.rollover>=7?" hot":"")+'">carried '+k.rollover+'d</span>');
     if(k.dueLabel) pl.push('<span class="pill block">'+esc(k.dueLabel)+'</span>');
-    var dpl=duePill(k); if(dpl) pl.push(dpl);
+    var dpl=k.showBefore!=null?dueSoonPill(k):duePill(k); if(dpl) pl.push(dpl);
     var spn=spanPill(k.day,k.end); if(spn) pl.push(spn);
     if(k.block) pl.push('<span class="pill block">'+k.block+'</span>');
     if(k.at) pl.push('<span class="pill block">🕒 '+fmtTime(k.at)+'</span>');
@@ -3544,13 +3630,7 @@ function GENA_MAIN() {
       '<button class="chk '+(k.status==="done"?"done":"")+'" data-act="toggle" aria-label="Toggle done" aria-pressed="'+(k.status==="done")+'"></button>'+
       '<div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title">'+subsCaret(k.id,(k.subs||[]).length)+esc(k.title)+'</div>'+
       (pills?'<div class="task-meta">'+pills+'</div>':'')+subsHtml+rowSubsDone(k)+'</div>'+
-      '<button class="task-addsub" data-act="sub-add" aria-label="Add a subtask" title="Add a subtask">⤷+</button>'+
-      bumpBtn(k)+
-      '<span class="row-br"></span>'+   /* phone: forces ◎ ★ ✕ onto their own right-aligned line together */
-      '<button class="task-focus'+(inFocus(k.id)?" on":"")+'" data-act="tofocus" '+prioLbl(inFocus(k.id))+'>◎</button>'+
-      '<button class="task-star '+(k.priority?"on":"")+'" data-act="star" aria-label="Toggle important" aria-pressed="'+!!k.priority+'">'+(k.priority?"★":"☆")+'</button>'+
-      '<button class="task-x" data-act="del" aria-label="Delete">✕</button>'+
-      '<button class="task-more" data-act="rowmenu" aria-label="More actions">⋯</button></li>';
+      taskBtns(k)+'</li>';
   }
   // The Type row both editors share. A task, a Waiting item and (40c) a cycle are one object with
   // different fields set, so changing type is a chip, not a migration.
@@ -3621,12 +3701,26 @@ function GENA_MAIN() {
   function inlineAddRow(key,label){
     return '<li class="task inline-row"><span class="inline-plus">+</span><input class="inline-add" data-block="'+key+'" placeholder="'+label+'" aria-label="'+label+'"/>'+AT_BTN+'</li>';
   }
+  // V6.1 P6: a quiet count on the Priority card; past PRIO_NUDGE the count takes the aged tone and one line
+  // suggests moving some on, with Review (opens the card where its rows reorder). Never blocks adding.
+  var PRIO_NUDGE=10;
+  function prioCountHtml(n){ return n?' <span class="pill aged prio-n'+(n>PRIO_NUDGE?" hot":"")+'" title="'+n+' in Priority">'+n+'</span>':""; }
+  function prioNudgeHtml(n){ return n>PRIO_NUDGE?'<div class="prio-nudge sub">That’s a lot for one day — move some to tomorrow? <button class="chip" data-act="prio-review">Review</button></div>':""; }
+  // D1: "Show in my To-do before it's due" and the days (3 when first ticked; 0 = on the due day). Read back
+  // only when the box is there, so an editor without it never drops the field.
+  function showBeforeFieldHtml(px,k){ var on=k.showBefore!=null;
+    return '<label class="check-row ie-sp sb-row"><input type="checkbox" id="'+px+'-sb-on"'+(on?" checked":"")+'/> Show in my To-do before it’s due</label>'+
+      '<div class="sb-days"><input type="number" min="0" max="60" id="'+px+'-sb" value="'+(on?Math.max(0,Math.floor(+k.showBefore)||0):3)+'" aria-label="Days before it is due"/> <span class="ie-hint">days before (0 = on the due day)</span></div>'; }
+  function readShowBefore(px,k){ var on=document.getElementById(px+"-sb-on"); if(!on||!k) return;
+    if(!on.checked){ delete k.showBefore; return; }
+    var v=String((document.getElementById(px+"-sb")||{}).value||"").trim(); k.showBefore=v===""?3:Math.max(0,Math.floor(+v)||0); }
   function prioLbl(on){ var t=on?"Remove from Priority":"Add to Priority"; return 'aria-label="'+t+'" title="'+t+'"'; }
   function inlineAddRowFocus(label){
     return '<li class="task inline-row"><span class="inline-plus">+</span><input class="inline-add" data-focus="1" placeholder="'+label+'" aria-label="'+label+'"/>'+AT_BTN+'</li>';
   }
   function focusRow(f){
     if(f.habitId){ var fh=habitById(f.habitId); return fh?habitLi(fh,viewDay,f):""; }
+    if(f.personId){ var fp=S.people.find(function(x){ return x.id===f.personId; }); return fp?followupRowHtml(fp,viewDay,false,f):""; }
     if(f.taskId){
       var k=S.tasks.find(function(x){return x.id===f.taskId;});
       if(!k) return "";
@@ -3650,11 +3744,10 @@ function GENA_MAIN() {
       return '<li class="task '+(done?"done":"")+(kp?" pc"+pk(kp):"")+'" data-id="'+esc(f.id)+'" data-focus="1" draggable="true"'+(kp?' style="'+pcVars(kp)+'"':'')+'>'+
         '<button class="chk '+(done?"done":"")+'" data-act="focus-tasktoggle" data-tid="'+esc(k.id)+'" aria-label="Complete task" aria-pressed="'+done+'"></button>'+
         '<div class="task-main" data-act="focus-editlinked" data-tid="'+esc(k.id)+'" title="Tap to edit the task"><div class="task-title">'+subsCaret(k.id,(k.subs||[]).length)+esc(k.title)+'</div><div class="task-meta">'+lpills+'</div>'+lsubsHtml+rowSubsDone(k)+'</div>'+
-        '<button class="task-addsub" data-act="sub-add" data-tid="'+esc(k.id)+'" aria-label="Add a subtask" title="Add a subtask">⤷+</button>'+
-        bumpBtn(k)+
-        '<button class="task-x" data-act="focus-del" aria-label="Remove from Priority" title="Remove from Priority (keeps the task)">✕</button>'+
-        '<button class="task-more" data-act="rowmenu" aria-label="More actions">⋯</button></li>';
+        taskBtns(k,f)+'</li>';
     }
+    // P3: a free-text entry always has its text; any other shape (a kind from a newer version) draws nothing
+    if(typeof f.text!=="string") return "";
     var p=f.projectId?proj(f.projectId):null;
     var pills=(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"");
     var subRows="";
@@ -3669,7 +3762,8 @@ function GENA_MAIN() {
       '<div class="task-main" data-act="focus-edit" title="Tap to edit"><div class="task-title">'+subsCaret(f.id,(f.subs||[]).length)+esc(f.text)+'</div>'+
       (pills?'<div class="task-meta">'+pills+'</div>':"")+subsHtml+'</div>'+
       '<button class="task-addsub" data-act="fsub-add" aria-label="Add a subitem" title="Add a subitem">⤷+</button>'+
-      '<button class="task-x" data-act="focus-del" aria-label="Delete">✕</button></li>';
+      '<button class="task-x rb-del" data-act="focus-del" aria-label="Delete" title="Delete">✕</button>'+
+      '<button class="task-more" data-act="rowmenu" aria-label="More actions">⋯</button></li>';
   }
   // is this task already promoted into the focus list for the day being viewed?
   // the task behind a row — a focus row's data-id is the focus item, whose taskId is the task
@@ -3705,7 +3799,7 @@ function GENA_MAIN() {
       priority:false,rollover:0,subs:[],personIds:p.personIds||[],created:today()});
     var nk=applyParsed(S.tasks[S.tasks.length-1],p);
     S.focus[viewDay]=S.focus[viewDay]||[];
-    S.focus[viewDay].push({id:uid(),taskId:nk.id});
+    if(!S.focus[viewDay].some(function(f){ return f.taskId===nk.id; })) S.focus[viewDay].push({id:uid(),taskId:nk.id});
     if(S.expandOnAdd!==false){ ieList="focus"; pendingFocus=null; editingTaskId=nk.id; save(); render();
       var ti=document.getElementById("ie-title"); if(ti){ ti.focus(); ti.setSelectionRange(ti.value.length,ti.value.length); } }
     else { pendingFocus="focus"; save(); render(); }
@@ -3783,7 +3877,7 @@ function GENA_MAIN() {
     var timed=all.filter(isTimed), unsched=all.filter(function(k){ return !isTimed(k) && isOpen(k); });
     var hr=hourRange(timed), lo=hr.lo, hi=hr.hi;
     var layer=dayBlocksLayer(timed, lo);
-    var evs=S.events.filter(function(e){ return evOnDay(e,d); });
+    var evs=S.events.filter(function(e){ return evOnDay(e,d)&&sourceEnabled(e); }).sort(evByTime);
     var head='<div class="day-head">'+
       '<button class="icon-btn" data-act="daynav" data-d="-1" aria-label="Previous day" title="Previous day">‹</button>'+
       '<h2 class="day-title">'+esc(niceDate(d))+(isToday?' · today':'')+'</h2>'+
@@ -3792,7 +3886,7 @@ function GENA_MAIN() {
       '<label class="chip day-jump" title="Jump to a date">📅<input type="date" id="day-jump" value="'+d+'" aria-label="Jump to a date"/></label>'+
       (unsched.length?'<button class="chip" data-act="planday" style="margin-left:auto" title="Slot every unscheduled task into the day’s free gaps">✨ Plan my day</button>':'')+
       '</div>'+capacityHtml(d);
-    var evBanner=evs.length?'<div class="day-events">'+evs.map(function(e){ return '<span class="pill block">📅 '+esc(e.title)+'</span>'; }).join("")+'</div>':'';
+    var evBanner=evs.length?'<div class="day-events">'+evs.map(function(e){ return '<span class="pill block">📅 '+evTime(e,d)+esc(e.title)+'</span>'; }).join("")+'</div>':'';
     var unschedOpen=unsched.filter(function(k){ return isOpen(k); }).length;
     var tray='<div class="day-unsched"><div class="day-unsched-h">Unscheduled ('+unschedOpen+')<span class="hint"> — drag onto an hour to time-block</span></div>'+
       (unsched.length?'<ul class="tasks day-tray" data-unsched="1">'+unsched.map(taskLi).join("")+'</ul>'
@@ -3807,8 +3901,10 @@ function GENA_MAIN() {
     var focusItems=(S.focus[vd]||[]).filter(function(f){
       if(f.habitId){ var fh0=habitById(f.habitId); return !!fh0 && !isPaused(fh0,vd); }   // P3: a paused habit is out of Focus until it resumes
       if(f.taskId){ var lk=taskById(f.taskId); return lk && inScope(lk); }
+      if(f.personId){ var fpe=S.people.find(function(x){ return x.id===f.personId; }); return !!fpe && !isPaused(fpe,vd) && personInScope(fpe); }   // V6.1 P2
+      if(typeof f.text!=="string") return false;   // P3: a kind this version does not know is not counted either
       return !f.projectId||inScope(f); });
-    var open=tasksOn(vd).filter(function(k){return isOpen(k) && inScope(k);});
+    var open=dayTodo(vd).filter(function(k){return isOpen(k) && inScope(k);});
     var doneV=S.tasks.filter(function(k){return k.status==="done" && k.completedOn===vd && inScope(k);});
     // a repeat that lapsed on this day — resolved, so not in `open`, but the day still shows it
     var skipV=tasksOn(vd).filter(function(k){return isSkipped(k) && inScope(k);});
@@ -3861,7 +3957,9 @@ function GENA_MAIN() {
     }
     if(isToday) extras+=captureCardHtml(true);
     // a focus item is done when its task is (task-backed) or when it is ticked itself (legacy free-text)
-    function focusItemDone(f){ if(f.habitId){ var fh=S.habits.find(function(x){return x.id===f.habitId;}); return !!(fh&&habitDoneOn(fh,vd)); } if(!f.taskId) return !!f.done; var lk=taskById(f.taskId); return !!(lk&&lk.status==="done"); }
+    function focusItemDone(f){ if(f.habitId){ var fh=S.habits.find(function(x){return x.id===f.habitId;}); return !!(fh&&habitDoneOn(fh,vd)); }
+      if(f.personId){ var fpd=S.people.find(function(x){return x.id===f.personId;}); return !!(fpd&&fpd.last===vd); }   // the touch logged that day
+      if(!f.taskId) return !!f.done; var lk=taskById(f.taskId); return !!(lk&&lk.status==="done"); }
     var focusDone=focusItems.filter(focusItemDone).length;
     var master=orderTasks(open,false);
     var BLOCK_ICONS={morning:"☀️",afternoon:"🌤",evening:"🌙"};
@@ -3907,7 +4005,7 @@ function GENA_MAIN() {
       // one card, four lists — each keeps its own data-list so a drop still sets the block
       var loose=orderTasks(open.filter(function(k){return !k.block;}),true);
       curList="loose";
-      masterHtml='<ul class="tasks" data-list="loose">'+headRows+loose.map(taskLi).join("")+inlineAddRow("loose","Add a task — try @focus @morning, or “tomorrow”…")+'</ul>';
+      masterHtml='<ul class="tasks" data-list="loose">'+headRows+loose.map(taskLi).join("")+inlineAddRow("loose","Add a task — try @priority @morning, or “tomorrow”…")+'</ul>';
       blocks.forEach(function(b){
         var items=orderTasks(open.filter(function(k){return k.block===b;}),true);
         curList=b;
@@ -3917,7 +4015,7 @@ function GENA_MAIN() {
       curList=null;
     } else if(oneCard && grp==="project"){
       curList="master";
-      masterHtml='<ul class="tasks" data-list="master">'+headRows+inlineAddRow("master","Add a task — try @focus @morning, or “tomorrow”…")+'</ul>';
+      masterHtml='<ul class="tasks" data-list="master">'+headRows+inlineAddRow("master","Add a task — try @priority @morning, or “tomorrow”…")+'</ul>';
       var dgs=domainOrder(groupByProject(master),function(g){ var p=proj(g.id); return p?p.profileId:null; });
       dgs.forEach(function(dg){
         if(dgs.length>1||dg.d) masterHtml+='<div class="grp-dom">'+(dg.d?esc(dg.d.emoji||"")+" "+esc(dg.d.name):"No Domain")+'</div>';
@@ -3928,14 +4026,14 @@ function GENA_MAIN() {
       });
       curList=null;
     } else {
-      curList="master"; masterHtml='<ul class="tasks" data-list="master">'+(total?'':emptyLi(isToday?"A clear day. Add a task, or pull one in from the Backlog in the panel":"Nothing here yet"))+headRows+master.map(taskLi).join("")+inlineAddRow("master","Add a task — try @focus @morning, or “tomorrow”…")+'</ul>'; curList=null;
+      curList="master"; masterHtml='<ul class="tasks" data-list="master">'+(total?'':emptyLi(isToday?"A clear day. Add a task, or pull one in from the Backlog in the panel":"Nothing here yet"))+headRows+master.map(taskLi).join("")+inlineAddRow("master","Add a task — try @priority @morning, or “tomorrow”…")+'</ul>'; curList=null;
     }
     var groupChips=oneCard&&scopeKind()!=="col"?'<span class="chips grp-chips" data-act-group>'+[["flat","Flat"],["block","Time"],["project","Focus"]].map(function(g){
       return '<button class="chip" data-act="todaygroup" data-g="'+g[0]+'" aria-pressed="'+(grp===g[0])+'" style="padding:3px 9px">'+g[1]+'</button>'; }).join("")+'</span>':'';
     var skipA=skipV.filter(function(k){return !k.block;});
     curList="done:master"; var masterDoneHtml=doneStrip("master", habitsDone.map(function(h){return habitRowHtml(h,vd);}).join("")+doneV.map(taskLi).join("")+skipA.map(taskLi).join(""), doneV.length+habitsDone.length, skipA.length); curList=null;
     var units={
-      focus: fold("focus",(isToday?"Priority":"Priority — "+niceDate(vd)),'<ul class="tasks" data-list="focus">'+(focusItems.length?'':emptyLi("Pick the one to three things that matter most — tap ◎ on any task, or type one below"))+focusHtml+inlineAddRowFocus("What matters most "+(isToday?"today":"that day")+"…")+'</ul>'+focusDoneHtml,foldProg(focusDone,focusItems.length)),
+      focus: fold("focus",(isToday?"Priority":"Priority — "+niceDate(vd))+prioCountHtml(focusItems.length),prioNudgeHtml(focusItems.length)+'<ul class="tasks" data-list="focus">'+(focusItems.length?'':emptyLi("Pick the one to three things that matter most — tap ◎ on any task, or type one below"))+focusHtml+inlineAddRowFocus("What matters most "+(isToday?"today":"that day")+"…")+'</ul>'+focusDoneHtml,foldProg(focusDone,focusItems.length)),
       // card label is "To-do" (the master list); the fold key stays "tasks" so saved collapse state and
       // S.todayOrder keep working. "task" remains the generic word for any item you enter.
       tasks: fold("tasks","To-do",masterHtml+masterDoneHtml,groupChips+foldProg(doneCount,total)),
@@ -4081,7 +4179,7 @@ function GENA_MAIN() {
     var t=today();
     return S.tasks.filter(function(k){
       return isOpen(k) && k.due && inScope(k) && !pausedCycle(k,t) &&
-        diffDays(k.due,t)<=DUE_HORIZON && !(k.day && k.day<=t);
+        diffDays(k.due,t)<=DUE_HORIZON && !(k.day && k.day<=t) && !showsBefore(k,t);   // D3: graduated into the To-do
     }).sort(function(a,b){ return a.due.localeCompare(b.due) || (a.day||"9999").localeCompare(b.day||"9999"); });
   }
   // ---- 43: the week's landing rail ----
@@ -4146,7 +4244,7 @@ function GENA_MAIN() {
      the 40-series added lands here, so no surface can show a thing another surface doesn't know about. */
   function agenda(day){
     var t=today(), isT=(day===t);
-    var tasks=tasksOn(day).filter(function(k){ return isOpen(k) && inScope(k); });
+    var tasks=dayTodo(day).filter(function(k){ return isOpen(k) && inScope(k); });
     var habits=S.habits.filter(function(h){ return h.inDay && !isPaused(h,day) && inScope(h); });
     // a follow-up that is overdue keeps landing on today until it is logged or pushed
     var followups=S.people.filter(function(p){ return p.next && !isPaused(p,day) && (isT ? p.next<=day : p.next===day) && personInScope(p); });
@@ -4160,37 +4258,123 @@ function GENA_MAIN() {
             count: tasks.length+habits.length+followups.length+checkbacks.length};
   }
   // ---- people follow-ups as rows in the day ----
-  function openTouchCaptureModal(p){
-    modal('<h3>👤 '+esc(p.name)+' — what came out of it?</h3>'+
-      '<p class="sub">One task per line. @focus, @tomorrow, a time — the usual shorthand works. Each one is linked to '+esc(p.name)+'.</p>'+
-      '<div class="fld"><textarea id="tc-in" rows="5" placeholder="e.g. Send Chris the write-up @Growth\nBook the next session @tomorrow"></textarea></div>'+
-      '<div class="modal-actions"><button class="btn ghost" data-x>Nothing to add</button><button class="btn primary" id="tc-go">Add tasks</button></div>');
-    document.querySelector("[data-x]").onclick=close;
-    var ta=document.getElementById("tc-in"); if(ta) ta.focus();
+  /* V6.1 (F1 to F4): ticking a follow-up logs the touch first (with Undo, as before), then this one window:
+     dated Notes and an Items form (title, day — blank is the Backlog —, due, show N days before due, Start in
+     Priority, Focus: the person's usual one by default), plus the old one-per-line quick entry (A8: kept, and
+     those lines still land today unless they name a day). o.items: ＋ Item alone (no notes, no touch);
+     o.after runs when it closes (the day review reopens). */
+  function openTouchCaptureModal(p,o){
+    o=o||{}; var touch=!o.items;
+    modal('<h3>'+(touch?'👤 '+esc(p.name)+' — what came out of it?':'＋ Item for '+esc(p.name))+'</h3>'+
+      (touch?'<div class="fld"><label>Notes</label><textarea id="tc-notes" rows="3" placeholder="What you talked about, what to remember…"></textarea>'+
+        '<div class="sub" style="font-size:11px;margin-top:3px">Saved to '+esc(p.name)+'’s notes with today’s date, newest first.</div></div>':'')+
+      '<div class="fld"><label>Items</label><div id="tc-items"></div><button type="button" class="chip" id="tc-add">＋ Item</button></div>'+
+      '<div class="fld"><label>Quick add <span class="sub" style="font-weight:400;text-transform:none;letter-spacing:0">one per line · @priority, @tomorrow, a time · lands today unless it names a day</span></label>'+
+        '<textarea id="tc-in" rows="2" placeholder="e.g. Send Chris the write-up @priority\nBook the next session @tomorrow"></textarea></div>'+
+      '<div class="modal-actions"><button class="btn ghost" id="tc-none">'+(touch?"Nothing to add":"Cancel")+'</button><button class="btn primary" id="tc-go">Save</button></div>');
+    var box=document.getElementById("tc-items");
+    function addRow(){ var d=document.createElement("div"); d.className="tc-item"; d.innerHTML=captureItemHtml(p); box.appendChild(d); var t=d.querySelector(".tc-title"); if(t) t.focus(); }
+    box.onclick=function(e){ var x=e.target.closest("[data-tcx]"); if(x){ x.closest(".tc-item").remove(); } };
+    document.getElementById("tc-add").onclick=addRow;
+    if(!touch) addRow(); else { var tn=document.getElementById("tc-notes"); if(tn) tn.focus(); }
+    function done(){ close(); render(); if(o.after) o.after(); }
+    document.getElementById("tc-none").onclick=done;
     document.getElementById("tc-go").onclick=function(){
-      var lines=(ta.value||"").split(/\n/).map(function(l){return l.trim();}).filter(Boolean), n=0;
-      lines.forEach(function(line){
-        var pt=nlParse(line); var title=(pt.title||line).trim(); if(!title) return;
-        S.tasks.push({id:uid(),title:title,projectId:pt.projectId||null,personIds:[p.id].concat((pt.personIds||[]).filter(function(x){return x!==p.id;})),
-          status:"todo",day:pt.day==="someday"?null:(pt.day||today()),block:pt.block||null,at:pt.at||null,priority:false,rollover:0,subs:[],created:today(),fromTouch:p.id});
-        applyParsed(S.tasks[S.tasks.length-1],pt);
-        n++;
-      });
-      save(); close(); render(); toast(n?n+" task"+(n===1?"":"s")+" added, linked to "+p.name:"Nothing added");
+      var pp=S.people.find(function(x){ return x.id===p.id; })||p;   // by id: a sync may have replaced it
+      var items=[].map.call(box.querySelectorAll(".tc-item"),function(r){ var q=function(c){ return r.querySelector(c)||{}; };
+        return {title:q(".tc-title").value, day:q(".tc-day").value, due:q(".tc-due").value, sb:q(".tc-sb").value, sp:!!q(".tc-sp").checked, focusId:q(".tc-foc").value}; });
+      var n=captureTouch(pp,touch?(document.getElementById("tc-notes")||{}).value:"",items,(document.getElementById("tc-in")||{}).value);
+      save(); done(); toast((n.note?"Note saved":"")+(n.note&&n.tasks?" · ":"")+(n.tasks?n.tasks+" item"+(n.tasks===1?"":"s")+" added, linked to "+pp.name:"")||"Nothing added");
     };
   }
-  function followupRowHtml(p,day){
-    var t=today(), late=p.next&&p.next<t?diffDays(t,p.next):0;
-    return '<li class="task fu-row" data-pid="'+esc(p.id)+'">'+
-      '<button class="chk" data-act="fu-done" aria-label="Logged a touch with '+esc(p.name)+'" aria-pressed="false"></button>'+
+  // One row of the Items form; the Focus select starts on the person's usual Focus
+  function captureItemHtml(p){
+    return '<div class="tc-line"><input class="tc-title" placeholder="What to do" aria-label="Item"/><button type="button" class="task-x" style="opacity:1" data-tcx aria-label="Remove this item">✕</button></div>'+
+      '<div class="tc-grid"><label>Day (blank: Backlog)<input type="date" class="tc-day" aria-label="Day (blank: Backlog)"/></label>'+
+      '<label>Due<input type="date" class="tc-due" aria-label="Due"/></label>'+
+      '<label>Show in To-do<span class="tc-sbw"><input type="number" min="0" max="60" class="tc-sb" placeholder="off" aria-label="Days before due"/> days before due</span></label>'+
+      '<label>Focus<select class="tc-foc" aria-label="Focus"><option value="">None</option>'+focusSelectOpts(p.focusId)+'</select></label>'+
+      '<label class="check-row"><input type="checkbox" class="tc-sp"/> Start in Priority</label></div>';
+  }
+  // F2, F3: what Save writes. Notes go on top of person.notes as a dated line (existing text kept exactly);
+  // each item becomes an ordinary task linked to the person. Returns {note, tasks}.
+  function captureTouch(p,notes,items,lines){
+    var out={note:0,tasks:0}, t=today();
+    if(notes&&notes.trim()){ p.notes=personNoteEntry(notes.trim())+(p.notes||""); out.note=1; }
+    function mk(k){ k.id=uid(); k.personIds=[p.id].concat((k.personIds||[]).filter(function(x){ return x!==p.id; })); k.status="todo"; k.rollover=0; k.subs=[]; k.created=t; k.fromTouch=p.id;
+      if(!k.projectId&&p.focusId&&proj(p.focusId)) k.projectId=p.focusId;
+      S.tasks.push(k); out.tasks++; return k; }
+    (items||[]).forEach(function(it){ var title=String(it.title||"").trim(); if(!title) return;
+      var k=mk({title:title, projectId:(it.focusId&&proj(it.focusId))?it.focusId:null, day:it.day||null, block:null, at:null, priority:false});
+      if(it.due) k.due=it.due;
+      var sb=String(it.sb==null?"":it.sb).trim(); if(it.due&&sb!==""&&+sb>=0) k.showBefore=Math.floor(+sb);
+      if(it.sp){ k.startPriority=true; if(k.day) addToPriority(k.day,null,[k]); } });
+    String(lines||"").split(/\n/).map(function(l){ return l.trim(); }).filter(Boolean).forEach(function(line){
+      var pt=nlParse(line), title=(pt.title||line).trim(); if(!title) return;
+      applyParsed(mk({title:title, projectId:pt.projectId||null, personIds:pt.personIds||[], day:pt.day==="someday"?null:(pt.day||t), block:pt.block||null, at:pt.at||null, priority:false}),pt); });
+    return out;
+  }
+  // F2: "<date>: text" as its own line; person.notes is rich text, so the line is a <div>
+  function personNoteEntry(text){ return '<div>'+esc(niceDate(today())+": "+text).replace(/\r?\n/g,"<br>")+'</div>'; }
+  // F5: the open tasks linked to a person (repeat copies not counted)
+  function personOpenCount(pid){ var n=0; S.tasks.forEach(function(k){ if(isOpen(k)&&!k.tplId&&(k.personIds||[]).indexOf(pid)>=0) n++; }); return n; }
+  function personOpenPill(p){ var n=personOpenCount(p.id); return n?'<span class="pill block tap" data-act="person-open" data-id="'+esc(p.id)+'" title="Open '+esc(p.name)+'’s card">'+n+' open</span>':""; }
+  // F6: a Focus select grouped by Domain
+  function focusSelectOpts(sel){
+    return domainOrder(S.projects.slice(),function(f){ return f.profileId; }).map(function(g){
+      var o=g.items.map(function(f){ return '<option value="'+esc(f.id)+'"'+(f.id===sel?" selected":"")+'>'+esc((f.emoji?f.emoji+" ":"")+f.name)+'</option>'; }).join("");
+      return '<optgroup label="'+esc(g.d?g.d.name:"No Domain")+'">'+o+'</optgroup>'; }).join("");
+  }
+  /* F6: a person's usual Focus, suggested once (keyed on the person: focusId undefined is the marker; the
+     editor writes it, so after that it is his). Evidence is every task linked to them by the People card's
+     own rule (tagged, or untagged and naming them), open, done and archived: at least 3 in one Focus and more
+     than half of all of them. Their main Domain follows only when they have none. No today(); onOpen backdates
+     the stamp to the person's old _m + 1. */
+  function personLinkTest(person){
+    var terms=[norm(person.name)];
+    norm(person.name).split(/\s+/).forEach(function(w){ w=w.replace(/[^\w]/g,""); if(w.length>=4) terms.push(w); });
+    terms=terms.filter(Boolean);
+    return function(k){ if((k.personIds||[]).length) return k.personIds.indexOf(person.id)>=0;
+      var t=norm(k.title+" "+htmlToText(k.notes)); return terms.some(function(tm){ return t.indexOf(tm)>=0; }); };
+  }
+  function suggestPersonFocus(){
+    var out=[];
+    (S.people||[]).forEach(function(p){
+      if(p.focusId!==undefined) return;
+      var linked=personLinkTest(p), by={}, n=0, best=null;
+      S.tasks.concat(S.archive||[]).forEach(function(k){ if(!linked(k)) return; n++; if(k.projectId&&proj(k.projectId)) by[k.projectId]=(by[k.projectId]||0)+1; });
+      Object.keys(by).forEach(function(f){ if(!best||by[f]>by[best]||(by[f]===by[best]&&f<best)) best=f; });
+      if(!best||by[best]<3||by[best]*2<=n) return;
+      out.push({p:p,was:p._m||0}); p.focusId=best;
+      if(!p.profileId){ var fp=proj(best); if(fp&&fp.profileId) p.profileId=fp.profileId; }
+    });
+    return out;
+  }
+  // V6.1 (B4): +7d 📅 ◎ 🧹 💤 and ⋯; never a ✕ (a person comes back). `inReview`: the day review's panel
+  // keeps its two answers (log the touch, push a week); its dialog has its own handler and no sheet.
+  // V6.1 (P2): `f` = the Priority entry {id, personId} when the row is in the Priority list (done once the
+  // touch is logged that day; its ◎ is on and takes it out, and it drags like the other Priority rows)
+  function followupRowHtml(p,day,inReview,f){
+    var t=today(), late=p.next&&p.next<t?diffDays(t,p.next):0, done=!!(f&&p.last===day), on=f?true:inFocusPerson(p.id);
+    return '<li class="task fu-row'+(done?" done":"")+'" data-pid="'+esc(p.id)+'"'+(f?' data-id="'+esc(f.id)+'" data-focus="1" draggable="true"':'')+'>'+
+      '<button class="chk'+(done?" done":"")+'" data-act="fu-done" aria-label="Logged a touch with '+esc(p.name)+'" aria-pressed="'+done+'"></button>'+
       '<div class="task-main" data-act="editperson" data-id="'+esc(p.id)+'" title="Open '+esc(p.name)+'"><div class="task-title">Follow up with '+esc(p.name)+'</div>'+
       '<div class="task-meta"><span class="pill imp">👤 '+esc(p.relationship||"person")+'</span>'+
         (late?'<span class="pill aged'+(late>=7?" hot":"")+'">'+late+'d overdue</span>':'')+
         (p.cadence?'<span class="pill rec">↻ every '+p.cadence+'d</span>':'')+
-        (p.last?'<span class="pill block">last '+esc(niceDate(p.last))+'</span>':'')+'</div></div>'+
-      '<button class="chip" data-act="fu-snooze" title="Push it a week">+7d</button>'+
-      '<button class="task-more" data-act="rowmenu" aria-label="More actions">⋯</button></li>';
+        (p.last?'<span class="pill block">last '+esc(niceDate(p.last))+'</span>':'')+personOpenPill(p)+'</div></div>'+
+      (inReview?'<button class="chip" data-act="fu-snooze" title="Push it a week">+7d</button>':
+      rowBtn("task-bump","fu-snooze","+7d","Push it a week")+
+      rowBtn("task-bump rb-more","fu-pick","📅","Pick the next follow-up day")+
+      '<span class="row-br"></span>'+
+      '<button class="task-focus'+(on?" on":"")+'" data-act="'+(f?"focus-del":"fu-focus")+'" '+prioLbl(on)+'>◎</button>'+
+      rowBtn("task-bump rb-more","fu-clear","🧹","Clear this one (no touch logged)")+
+      rowBtn("task-bump rb-more","fu-pause","💤","Pause "+p.name)+
+      '<button class="task-more" data-act="rowmenu" aria-label="More actions">⋯</button>')+'</li>';
   }
+  function inFocusPerson(pid){ return (S.focus[viewDay]||[]).some(function(f){ return f.personId===pid; }); }
+  // B4: clear drops this due follow-up without logging a touch: next = the next cadence date from today, or none
+  function clearFollowup(p){ p.next=p.cadence?addDays(today(),p.cadence):null; }
   /* ---------- 40b: habits in the day ----------
      A habit with `inDay` renders as a row in the day list. It is a VIRTUAL row — never a stored task —
      so it cannot pile up, carry, or duplicate; the tick writes `habitLog[day][id]` and the streak is the
@@ -4342,8 +4526,10 @@ function GENA_MAIN() {
       '<div class="task-meta">'+habitMetaHtml(h,day)+'</div></div>'+
       '<span class="row-br"></span>'+
       '<button class="task-bump habit-skip" data-act="habit-skip" aria-label="'+(sk?"Undo the skip":"Skip today")+'" title="'+(sk?"Skipped today: tap to undo":"Skip today: counts nothing, breaks no streak")+'">⏭</button>'+
-      (f?'<button class="task-x" data-act="focus-del" aria-label="Remove from Priority" title="Remove from Priority (keeps the habit)">✕</button>'
+      // V6.1 (B3): ⏭ ◎ 💤, no ✕ (a habit comes back; deleting it stays in its editor). In Priority the ◎ is on and takes it out
+      (f?'<button class="task-focus on" data-act="focus-del" '+prioLbl(true)+'>◎</button>'
         :'<button class="task-focus'+(inFocusHabit(h.id)?" on":"")+'" data-act="habit-focus" '+prioLbl(inFocusHabit(h.id))+'>◎</button>')+
+      rowBtn("task-bump rb-more","habit-pause","💤","Pause it")+
       '<button class="task-more" data-act="rowmenu" aria-label="More actions">⋯</button></li>';
   }
   function habitRowHtml(h,day){ return habitLi(h,day,null); }
@@ -4369,8 +4555,13 @@ function GENA_MAIN() {
         '<button class="chip" data-act="wait-live" title="Back onto today’s list">▶ It’s live</button>'+
         '<button class="chip" data-act="wait-letgo" title="Close it — no response, not carrying">✕ Let it go</button></span>':
         '<button class="chip" data-act="wait-live" title="Back onto today’s list">▶ It’s live</button>')+
+      rowBtn("task-bump rb-more","wait-week","+7d","Check back a week later")+
+      rowBtn("task-bump rb-more","wait-pick","📅","Pick the check-back day")+
+      '<button class="task-focus'+(inFocus(k.id)?" on":"")+'" data-act="tofocus" '+prioLbl(inFocus(k.id))+'>◎</button>'+
       '<button class="task-more" data-act="rowmenu" aria-label="More actions">⋯</button></li>';
   }
+  // A2: +7d on a check-back moves its check-back date a week on (from today when it has already landed)
+  function waitWeek(k){ var t=today(); k.nextAt=addDays(k.nextAt&&k.nextAt>t?k.nextAt:t,7); }
   function waitingCardHtml(){
     var t=today();
     var all=S.tasks.filter(function(k){ return isWaiting(k) && inScope(k); })
@@ -4541,7 +4732,7 @@ function GENA_MAIN() {
     html+='<div class="stack">';
     for(var i=0;i<7;i++){
       var d=addDays(t,i);
-      var open=orderTasks(tasksOn(d).filter(function(k){return isOpen(k)&&inScope(k);}),false);
+      var open=orderTasks(dayTodo(d).filter(function(k){return isOpen(k)&&inScope(k);}),false);
       var load=dayLoad(d);
       var done=S.tasks.filter(function(k){return k.status==="done"&&k.completedOn===d&&inScope(k);}).length;
       var evs=S.events.filter(function(e){return evOnDay(e,d)&&sourceEnabled(e)&&!(e.projectId&&!inScope(e));});
@@ -4906,6 +5097,12 @@ function GENA_MAIN() {
     var lbl = d<0 ? "overdue "+(-d)+"d" : d===0 ? "due today" : d===1 ? "due tomorrow" : "due "+niceDate(k.due);
     return '<span class="pill due'+(d<=1?" hot":"")+'" title="Due '+esc(niceDate(k.due))+'">⚑ '+lbl+'</span>';
   }
+  // D4: an item that opted in counts down, so a row that graduated says why it is there
+  function dueSoonPill(k){
+    if(!k.due) return "";
+    var d=diffDays(k.due,today()), lbl=d<0?"overdue "+(-d)+"d":d===0?"due today":d===1?"due tomorrow":"due in "+d+" days";
+    return '<span class="pill due'+(d<=1?" hot":"")+'" title="Due '+esc(niceDate(k.due))+' · shows in your To-do '+(+k.showBefore)+' day'+(+k.showBefore===1?"":"s")+' before">⚑ '+lbl+'</span>';
+  }
   // sort helper: real deadlines first (earliest), then most-carried — the review and briefs share it
   function byUrgency(a,b){
     return (a.due||"9999").localeCompare(b.due||"9999") || (b.rollover||0)-(a.rollover||0) || (a.day||"9999").localeCompare(b.day||"9999");
@@ -4945,6 +5142,7 @@ function GENA_MAIN() {
       '<button class="icon-btn" style="background:var(--slate)" data-act="cal" data-d="1" aria-label="Forward">›</button>'+
       '<button class="chip" data-act="cal" data-d="0" style="margin-left:6px">Today</button>'+
       '<button class="chip" data-act="calendars" style="margin-left:auto">🗓 Calendars</button>'+
+      (S.calSources.length?'<button class="chip" data-act="calrefresh" title="Read your subscribed calendars again">↻ Refresh</button>':'')+
       '<button class="chip" data-act="import-ics">⤓ Import file</button></div>';
     html+='<div class="chips" style="margin-bottom:14px">'+[["week","7 days"],["workweek","Work week"],["3day","3 days"],["year","Year"]].map(function(v){return '<button class="chip" data-act="calview" data-v="'+v[0]+'" aria-pressed="'+(cv===v[0])+'">'+v[1]+'</button>';}).join("")+'</div>';
     if(S.calSources.length) html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+S.calSources.map(function(s){return '<span class="pill" style="'+(s.enabled&&/^#/.test(s.color||"")?esc(cbg(s.color)):"background:"+(s.enabled?esc(s.color):"var(--line)")+";color:#fff")+'">'+esc(s.name)+(s.error?" ⚠":"")+'</span>';}).join("")+'</div>';
@@ -4978,7 +5176,7 @@ function GENA_MAIN() {
     var t=today(), perDay=days.map(function(ds){
       var all=tasksOn(ds).filter(function(k){ return inScope(k); });
       return {ds:ds, timed:all.filter(isTimed), loose:all.filter(function(k){ return !isTimed(k) && isOpen(k); }),
-              evs:S.events.filter(function(e){ return evOnDay(e,ds)&&sourceEnabled(e)&&!(e.projectId&&!inScope(e)); })};
+              evs:S.events.filter(function(e){ return evOnDay(e,ds)&&sourceEnabled(e)&&!(e.projectId&&!inScope(e)); }).sort(evByTime)};
     });
     var hr=hourRange([].concat.apply([],perDay.map(function(x){return x.timed;}))), lo=hr.lo, hi=hr.hi;
     var BI={morning:"☀︎ ",afternoon:"🌤 ",evening:"🌙 "};
@@ -4988,7 +5186,7 @@ function GENA_MAIN() {
       return '<div class="wk-tg-head'+(x.ds===t?" today":"")+'" data-act="calday" data-d="'+x.ds+'" title="Open this day">'+DOWNAMES[d.getDay()]+' <b>'+d.getDate()+'</b></div>'; }).join("");
     h+='<div class="wk-tg-corner"></div>'+perDay.map(function(x){
       return '<ul class="tasks wk-allday" data-list="day:'+x.ds+'" title="Anything without a time — drop a block here to clear its time">'+
-        x.evs.map(function(e){ var c=e.color||(e.projectId?projColor(e.projectId):null), bd=evBand(e.color?null:proj(e.projectId)); return '<div class="cal-ev '+(c?"":"evt")+bd[0]+'" style="'+(c?cbg(c)+bd[1]:"")+'">📅 '+esc(e.title)+'</div>'; }).join("")+
+        x.evs.map(function(e){ var c=e.color||(e.projectId?projColor(e.projectId):null), bd=evBand(e.color?null:proj(e.projectId)); return '<div class="cal-ev '+(c?"":"evt")+bd[0]+'" style="'+(c?cbg(c)+bd[1]:"")+'">📅 '+evTime(e,x.ds)+esc(e.title)+'</div>'; }).join("")+
         orderTasks(x.loose,false).map(function(k){ var c=projColor(k.projectId), bd=evBand(proj(k.projectId));
           return '<div class="cal-ev'+(c?"":" plain")+bd[0]+'" draggable="true" data-tid="'+esc(k.id)+'" data-act="tb-edit" data-id="'+esc(k.id)+'" style="'+(c?cbg(c)+bd[1]:"")+'">'+(k.priority?"★ ":"")+(k.block?BI[k.block]:"")+esc(k.title)+'</div>'; }).join("")+'</ul>'; }).join("");
     h+='<div class="wk-tg-labels">';
@@ -5137,7 +5335,7 @@ function GENA_MAIN() {
            "That is what a time block is. Giving a task a start time is not bureaucracy; it is pre-deciding. And the cue does not have to be a clock: “when I finish lunch”, “when I sit down at the desk” work just as well.",
            "Untimed tasks on the Day view are goals. Timed ones are plans."],
      tryFn:function(){ var n=S.tasks.filter(function(x){return x.status==="todo"&&taskOnDay(x,today())&&!x.at;}).length;
-       return n?{text:"You have "+n+" untimed task"+(n===1?"":"s")+" today. Open Plan → Day and give the most important one a start time — or tap ✨ Plan my day.",go:"day"}
+       return n?{text:"You have "+n+" untimed task"+(n===1?"":"s")+" today. Open Events → Day and give the most important one a start time — or tap ✨ Plan my day.",go:"day"}
                :{text:"Every task today has a time. Notice tonight which if–then you actually kept, and which cue was too vague."}; }},
     {id:"efficacy",emoji:"💪",title:"Where confidence actually comes from",min:2,
      body:["Self-efficacy — the belief that you can do a specific thing — is not a personality trait. Albert Bandura traced it to four sources, and the strongest by a wide margin is mastery experience: having done a version of it before. Second is watching someone like you do it; third is being told you can; last, and weakest, is how you feel in the moment.",
@@ -5154,7 +5352,7 @@ function GENA_MAIN() {
     {id:"planning",emoji:"📐",title:"Why everything takes longer",min:2,
      body:["The planning fallacy is the reliable tendency to underestimate how long things take, even when we know we did last time. Kahneman and Tversky’s explanation: we plan from the inside — imagining the steps going well — instead of from the outside, asking how long this kind of thing usually takes.",
            "The correction is boring and works: give tasks a length, then compare the plan to the day you actually have. A day with nine hours of tasks and five hours of time is not a productivity problem; it is an arithmetic problem, and it is better to see it at 9 am than at 9 pm.",
-           "That is what the capacity line under Today and Plan is for."],
+           "That is what the capacity line under Today and Events is for."],
      tryFn:function(){ var L=dayLoad(today()); return {text:"Today: <b>"+fmtMins(L.planned)+"</b> planned"+(L.unsized?", "+L.unsized+" task"+(L.unsized===1?"":"s")+" without a length":"")+(L.left!==null?", "+fmtMins(L.left)+" left":"")+". Give every unsized task a length, then decide what to move.",go:"day"}; }},
     {id:"loops",emoji:"🧠",title:"Open loops and why capture works",min:2,
      body:["Unfinished things stay active in memory — the Zeigarnik effect — which is why an un-captured task nags all day while a captured one goes quiet. Later research refined this: the mind settles not when the task is done, but when there is a specific plan for it.",
@@ -5186,7 +5384,7 @@ function GENA_MAIN() {
         '<div class="learn-body">'+l.body.map(function(pp){ return '<p>'+pp+'</p>'; }).join("")+
         '<div class="learn-try"><div class="learn-try-h">Try this today</div><p>'+tr.text+'</p><div class="chips">'+
           (tr.task?'<button class="chip" data-act="learn-task" data-title="'+esc(tr.task)+'"'+(tr.at?' data-at="'+tr.at+'"':'')+(tr.dur?' data-dur="'+tr.dur+'"':'')+'>+ Add as a task today</button>':'')+
-          (tr.go?'<button class="chip" data-act="goview" data-v="'+tr.go+'">Open '+({day:"Plan",today:"Today",backlog:"Backlog"}[tr.go]||tr.go)+' →</button>':'')+
+          (tr.go?'<button class="chip" data-act="goview" data-v="'+tr.go+'">Open '+({day:"Events",today:"Today",backlog:"Backlog"}[tr.go]||tr.go)+' →</button>':'')+
           '<button class="chip" data-act="learn-read" data-lid="'+esc(l.id)+'" aria-pressed="'+read+'">'+(read?"Read ✓":"Mark as read")+'</button></div></div></div></details>';
     }).join("")+'</div>';
     // reading list
@@ -5428,6 +5626,7 @@ function GENA_MAIN() {
         t.day=dv; if(!dv) t.block=null; else t.block=ieKeep.block||null;
         t.end=(dv&&evv&&evv>dv)?evv:null;   // no start, or an end that isn't later, means a single day
         t.due=(document.getElementById("ie-due")||{}).value||null;
+        readShowBefore("ie",t);
         t.at=readTimeInput("ie-time",t.at);
         t.dur=+((document.getElementById("ie-dur")||{}).value)||null;
         t.priority=ieKeep.prio;
@@ -5806,7 +6005,7 @@ function GENA_MAIN() {
       else if(act==="fsub-up"||act==="fsub-down"){ var mf=(S.focus[viewDay]||[]).find(function(x){return x.id===(id||anyId);});
         if(mf&&mf.subs){ var fi=+a.dataset.i, fj=act==="fsub-up"?fi-1:fi+1;
           if(fj>=0&&fj<mf.subs.length){ var fv=mf.subs.splice(fi,1)[0]; mf.subs.splice(fj,0,fv); save(); render(); } } }
-      else if(act==="star"){ var tk2=S.tasks.find(function(x){return x.id===(id||anyId);}); if(tk2){ tk2.priority=!tk2.priority; save(); render(); } }
+      else if(act==="star"){ var tk2=S.tasks.find(function(x){return x.id===(a.dataset.tid||id||anyId);}); if(tk2){ tk2.priority=!tk2.priority; save(); render(); } }
       // promote / un-promote into Priority straight from a collapsed row — no need to open the task
       else if(act==="tofocus"){ var tf=(id||anyId);
         if(inFocus(tf)){ var fa=S.focus[viewDay]||[], fx2=fa.findIndex(function(x){return x.taskId===tf;});
@@ -5831,6 +6030,22 @@ function GENA_MAIN() {
       else if(act==="bump"){ var bk=S.tasks.find(function(x){return x.id===a.dataset.id;});
         if(bk){ var bto=a.dataset.d; carryTo(bk,bto); save(); render();
           toast(bto===today()?"Moved to today":"Moved to "+niceDate(bto)); } }
+      // V6.1 (B1 to B4): +7d, 📅, 🧹 and 💤 on the rows
+      else if(act==="week"){ var wk7=taskById(a.dataset.tid||id||anyId);
+        if(wk7){ var w7=addDays(wk7.day||today(),7); carryTo(wk7,w7); save(); render(); toast("Moved to "+niceDate(w7)); } }
+      else if(act==="pick"){ var pk7=taskById(a.dataset.tid||id||anyId); if(pk7) openDatePickModal(pk7); }
+      else if(act==="rep-clear"){ var rc=taskById(a.dataset.tid||id||anyId); if(rc) clearRepeatCopy(rc); }
+      else if(act==="rep-pause"){ var rpk=taskById(a.dataset.tid||id||anyId), rpt=rpk&&S.templates.find(function(x){return x.id===rpk.tplId;});
+        if(rpt&&!rpt.paused){ rpt.paused=true; save(); render(); toastUndo("💤 Repeat paused: no new copies. Resume in Lists → Repeats",function(){ rpt.paused=false; save(); render(); }); } }
+      else if(act==="habit-pause"){ var hpz=a.closest("[data-hid]"); if(hpz) openPauseModal("habit",hpz.dataset.hid); }
+      else if(act==="cycle-pause"){ var cpz=taskById(a.dataset.tid||id||anyId); if(cpz) openPauseModal("cycle",cpz.id); }
+      else if(act==="fu-pick"||act==="fu-clear"||act==="fu-pause"){ var fq=S.people.find(function(x){return x.id===(a.closest("[data-pid]")||{}).dataset.pid;});
+        if(!fq){}
+        else if(act==="fu-pause") openPauseModal("person",fq.id);
+        else if(act==="fu-pick") openPickDayModal("Follow up with "+fq.name,fq.next,null,function(dv){ var fq2=S.people.find(function(x){return x.id===fq.id;}); if(!fq2) return;
+          fq2.next=dv; save(); render(); toast("Follow-up moved to "+niceDate(dv)); });
+        else { var fqb=fq.next; clearFollowup(fq); save(); render();
+          toastUndo("🧹 Cleared, no touch logged"+(fq.next?" — next "+niceDate(fq.next):""),function(){ fq.next=fqb; save(); render(); }); } }
       else if(act==="review"){ openReviewModal(new Date().getHours()>=14?"evening":"morning", S.lastOpen); }
       else if(act==="calview"){ S.calView=a.dataset.v; save(); render(); }
       else if(act==="focus-toggle"){ var fx=(S.focus[viewDay]||[]).find(function(x){return x.id===anyId;}); if(fx){ fx.done=!fx.done; save(); render(); } }
@@ -5845,6 +6060,9 @@ function GENA_MAIN() {
         if(fp){ var fb={last:fp.last,next:fp.next}; retirePrep(fp); fp.last=today(); fp.next=fp.cadence?addDays(today(),fp.cadence):null; save(); render();
           toastUndo("Logged a touch with "+fp.name+(fp.next?" — next "+niceDate(fp.next):""),function(){ fp.last=fb.last; fp.next=fb.next; save(); render(); });
           openTouchCaptureModal(fp); } }
+      else if(act==="fu-item"||act==="person-item"){ var fip=S.people.find(function(x){return x.id===(act==="fu-item"?(a.closest("[data-pid]")||{}).dataset.pid:anyId);}); if(fip) openTouchCaptureModal(fip,{items:true}); }
+      else if(act==="person-open"){ var pop=a.dataset.id; S.collapsed["person-"+pop]=false; goView("people");
+        setTimeout(function(){ var c=document.querySelector('#view [data-fold="person-'+pop+'"]'); if(c&&c.scrollIntoView) c.scrollIntoView({block:"start",behavior:"smooth"}); },60); }
       else if(act==="fu-snooze"){ var sp=S.people.find(function(x){return x.id===(a.closest("[data-pid]")||{}).dataset.pid;});
         if(sp){ sp.next=addDays(today(),7); save(); render(); toast("Follow-up moved to "+niceDate(sp.next)); } }
       else if(act==="habit-tick"){ var hrow=a.closest("[data-hid]"); if(hrow) habitTick(hrow.dataset.hid, viewDay); }
@@ -5852,6 +6070,14 @@ function GENA_MAIN() {
       else if(act==="habit-less"){ var hl0=a.closest("[data-hid]"); if(hl0&&!habitRemoveOne(hl0.dataset.hid, viewDay)) toast("Nothing logged today to take back"); }
       else if(act==="habit-skip"){ var hs1=a.closest("[data-hid]"); if(hs1){ var hsid=hs1.dataset.hid, hsday=viewDay, on=habitSkipToggle(hsid,hsday);
         if(on) toastUndo("⏭ Skipped today: it counts nothing and breaks no streak",function(){ var hx=habitById(hsid); if(hx&&hx.skips&&hx.skips[hsday]){ habitUnskip(hx,hsday); save(); render(); } }); } }
+      else if(act==="prio-review"){ S.collapsed.focus=false; save(); render();   // P6: the card's own rows reorder by drag; → moves one on
+        var pc=document.querySelector('#view [data-fold="focus"]'); if(pc&&pc.scrollIntoView) pc.scrollIntoView({block:"start",behavior:"smooth"});
+        toast("Drag to reorder · → moves one to tomorrow"); }
+      else if(act==="fu-focus"){ var ffp=(a.closest("[data-pid]")||{}).dataset; if(ffp&&ffp.pid){   // V6.1 P2: ◎ on a follow-up row
+          S.focus[viewDay]=S.focus[viewDay]||[];
+          var ffi=S.focus[viewDay].findIndex(function(f){return f.personId===ffp.pid;});
+          if(ffi>=0){ S.focus[viewDay].splice(ffi,1); toast("Removed from Priority"); } else { S.focus[viewDay].unshift({id:uid(),personId:ffp.pid}); toast("Promoted to Priority"); }
+          save(); render(); } }
       else if(act==="habit-focus"){ var hf=a.closest("[data-hid]"); if(hf){
           S.focus[viewDay]=S.focus[viewDay]||[];
           var hfi=S.focus[viewDay].findIndex(function(f){return f.habitId===hf.dataset.hid;});
@@ -5927,7 +6153,7 @@ function GENA_MAIN() {
       else if(act==="logtouch"){ var pp=S.people.find(function(x){return x.id===anyId;}); if(pp){ retirePrep(pp); pp.last=today(); if(pp.cadence) pp.next=addDays(today(),pp.cadence); save(); render(); toast("Logged a touch"); openTouchCaptureModal(pp); } }
       else if(act==="person-task"){ var ptp=S.people.find(function(x){return x.id===anyId;}); if(ptp) openTaskModal({personIds:[ptp.id],day:today()}); }
       else if(act==="goMonth"){ S.calAnchor=a.dataset.m+"-01"; S.calView="month"; save(); render(); }
-      else if(act==="del"){ var delId=id||anyId; var di=S.tasks.findIndex(function(x){return x.id===delId;}); if(di>=0){ var dt=S.tasks[di];
+      else if(act==="del"){ var delId=a.dataset.tid||id||anyId; var di=S.tasks.findIndex(function(x){return x.id===delId;}); if(di>=0){ var dt=S.tasks[di];
         if(dt.tplId && S.templates.some(function(x){return x.id===dt.tplId;})){ openRecurDeleteModal(dt); return; }
         S.tasks.splice(di,1); save(); render(); toastUndo("Task deleted",function(){ if(S.tasks.some(function(x){return x.id===dt.id;})) return; S.tasks.splice(Math.min(di,S.tasks.length),0,dt); save(); render(); }); } }
       else if(act==="addblock"){ openTaskModal({block:a.dataset.block}); }
@@ -5947,6 +6173,9 @@ function GENA_MAIN() {
         toast(pp0.pinned?"Pinned to Today — its brief shows at the top":"Unpinned"); } }
       else if(act==="newproj"){ openProjModal(); }
       else if(act==="editproj"){ openProjModal(proj(a.dataset.pid)); }
+      else if(act==="wait-week"||act==="wait-pick"){ var wq=taskById(a.dataset.tid||id||anyId); if(!wq){}
+        else if(act==="wait-pick") openPickDayModal("Check back on “"+wq.title+"”",wq.nextAt,null,function(dv){ var wq2=taskById(wq.id); if(!wq2) return; wq2.nextAt=dv; save(); render(); toast("Check back "+niceDate(dv)); });
+        else { var wqb=wq.nextAt; waitWeek(wq); save(); render(); toastUndo("Check back "+niceDate(wq.nextAt),function(){ wq.nextAt=wqb; save(); render(); }); } }
       else if(act==="wait-still"||act==="wait-live"||act==="wait-letgo"){
         var wk=S.tasks.find(function(x){return x.id===(id||anyId);}); if(!wk) return;
         var wb={status:wk.status,rounds:wk.rounds,nextAt:wk.nextAt,day:wk.day,skippedOn:wk.skippedOn,letGo:wk.letGo,woke:wk.woke};
@@ -5977,6 +6206,7 @@ function GENA_MAIN() {
       else if(act==="calday"){ openDayModal(a.dataset.d); }
       else if(act==="import-ics"){ importICS(); }
       else if(act==="calendars"){ openCalendarsModal(); }
+      else if(act==="calrefresh"){ toast("Syncing…"); refreshCalendars(function(){ render(); var bad=S.calSources.filter(function(s){ return s.enabled&&s.error; }).length; if(bad) toast(bad+" calendar"+(bad===1?"":"s")+" couldn’t sync — see 🗓 Calendars"); }); }
       else if(act==="delphase"){ var phid=a.dataset.id; confirmModal("Remove this phase?","It disappears from the Timeline. The Project keeps its steps.","Remove",function(){ S.phases=S.phases.filter(function(x){return x.id!==phid;}); save(); render(); }); }
       else if(act==="email-toggle"){ var em=S.emails.find(function(x){return x.id===anyId;}); if(em){ em.done=!em.done; save(); render(); } }
       else if(act==="email-del"){ S.emails=S.emails.filter(function(x){return x.id!==anyId;}); save(); render(); }
@@ -6098,35 +6328,46 @@ function GENA_MAIN() {
         ["habit-tick", o.met?"＋":"✓", o.met?"Log an extra":((o.goal||1)>1?"Log one":"Mark done")],
         o.today>0?["habit-less", "−", "Remove one"]:null,
         ["habit-skip", "⏭", "Skip today"]]).concat([
-      o.focusRow?null:["habit-focus", "◎", o.inFocus?"Remove from Priority":"Add to Priority"], ["habit-pause", "💤", "Pause it"], ["edit", "✎", "Edit the habit"]]).filter(Boolean);
-    if(kind==="followup") return [["fu-done", "✓", "Logged a touch"], ["fu-snooze", "→", "Push it a week"], ["edit", "👤", "Open "+k.name]];
+      o.focusRow?["focus-del", "◎", "Remove from Priority"]:["habit-focus", "◎", o.inFocus?"Remove from Priority":"Add to Priority"], ["habit-pause", "💤", "Pause it"], ["edit", "✎", "Edit the habit"]]).filter(Boolean);
+    // V6.1 (B6): the sheet carries the row's own buttons, in the row's order
+    if(kind==="followup") return [["fu-done", "✓", "Logged a touch"], ["fu-snooze", "+7", "Push it a week"], ["fu-pick", "📅", "Pick a day…"],
+      o.focusRow?["focus-del", "◎", "Remove from Priority"]:["fu-focus", "◎", o.inFocus?"Remove from Priority":"Add to Priority"], ["fu-clear", "🧹", "Clear this one"], ["fu-item", "＋", "＋ Item"], ["fu-pause", "💤", "Pause "+k.name], ["edit", "👤", "Open "+k.name]];
     if(kind==="waiting") return (o.landed?[["wait-still", "⏸", "Still waiting"]]:[]).concat([["wait-live", "▶", "It’s live"]],
-      o.landed?[["wait-letgo", "✕", "Let it go"]]:[], [["edit", "✎", "Edit"]]);
+      o.landed?[["wait-letgo", "✕", "Let it go"]]:[], [["wait-week", "+7", "Check back a week later"], ["wait-pick", "📅", "Pick a day…"],
+      ["focus", "◎", o.inFocus?"Remove from Priority":"Add to Priority"], ["edit", "✎", "Edit"]]);   // A2
+    // A3: a free-text Priority entry (older data, the Claude import): its own check, sub-items, edit, remove
+    if(kind==="ftext") return [["focus-toggle", k.done?"↩":"✓", k.done?"Reopen":"Mark done"], ["fsub-add", "⤷", "Add a subitem"], ["focus-edit", "✎", "Edit (makes it a task)"], ["focus-del", "✕", "Delete"]];
     var done=k.status==="done";
     return [
       ["toggle", done?"↩":"✓", done?"Reopen":"Mark done"],
       isCycle(k)&&!done?["cycle-skip", "⤼", "Skip this time"]:null,
-      isCycle(k)&&!done?["cycle-pause", "💤", "Pause it"]:null,
+      isCycle(k)&&!done?["cycle-pause", "💤", "Pause it"]:null,   // the row's last button too (A1)
       ["focus", "◎", o.inFocus?"Remove from Priority":"Add to Priority"],
       ["bump", o.past?"↩":"→", o.past?"Move to today":"Move to tomorrow"],
+      ["week", "+7", "+7 days"],
+      ["pick", "📅", "Pick a day…"],
       ["sub", "⤷", "Add a subtask"],
       ["star", k.priority?"☆":"★", k.priority?"Not important":"Important"],
-      ["pick", "📅", "Move to a date…"],
+      k.day&&k.at?["addcal", "🗓", "Add to a calendar"]:null,
       ["edit", "✎", "Edit"],
-      o.focusRow?null:["del", "✕", "Delete"]
+      o.repeat?["rep-clear", "🧹", "Clear this one"]:null,
+      o.repeat?["rep-pause", "💤", "Pause the repeat"]:(isCycle(k)?null:["del", "✕", "Delete"])
     ].filter(Boolean);
   }
   function openRowSheet(li){
     if(!li) return;
     var kind=li.classList.contains("habit-row")?"habit":(li.classList.contains("fu-row")?"followup":(li.classList.contains("waiting")?"waiting":"task"));
     var isFocusRow=!!li.dataset.focus, k, title, o;
+    var fe=isFocusRow&&kind==="task"&&(S.focus[viewDay]||[]).find(function(x){ return x.id===li.dataset.id; });
+    if(fe&&!fe.taskId&&!fe.habitId&&!fe.personId){ kind="ftext"; k=fe; title=fe.text||""; o={}; }   // A3
     if(kind==="habit"){ k=habitById(li.dataset.hid); if(!k) return; title=k.name;
       o={done:habitDoneOn(k,viewDay), met:habitMet(k,viewDay), skipped:habitSkipped(k,viewDay), today:habitLog(viewDay,k.id), goal:Math.ceil(habitGoal(k)/habitBox(k)), inFocus:inFocusHabit(k.id), focusRow:isFocusRow}; }
-    else if(kind==="followup"){ k=S.people.find(function(x){return x.id===li.dataset.pid;}); if(!k) return; title="Follow up with "+k.name; }
+    else if(kind==="followup"){ k=S.people.find(function(x){return x.id===li.dataset.pid;}); if(!k) return; title="Follow up with "+k.name; o={inFocus:isFocusRow||inFocusPerson(k.id), focusRow:isFocusRow}; }
+    else if(kind==="ftext"){}
     else { k=taskForRow(li); if(!k) return; title=k.title;
-      o={past:viewDay<today(), inFocus:inFocus(k.id), focusRow:isFocusRow, landed:li.classList.contains("landed")}; }
-    var where={toggle:":scope > .chk", focus:isFocusRow?".task-x":".task-focus", bump:".task-bump", sub:".task-addsub", star:".task-star", edit:":scope > .task-main", del:".task-x"};
-    var direct={pick:1,"cycle-skip":1,"habit-less":1,"cycle-pause":1,"habit-pause":1};
+      o={past:viewDay<today(), inFocus:isFocusRow||inFocus(k.id), focusRow:isFocusRow, landed:li.classList.contains("landed"), repeat:isRepeatCopy(k)}; }
+    var where={toggle:":scope > .chk", focus:".task-focus", bump:".task-bump", sub:".task-addsub", star:".task-star", edit:":scope > .task-main", del:".task-x"};
+    var direct={pick:1,"cycle-skip":1,"habit-less":1,"cycle-pause":1,"habit-pause":1,"fu-item":1,addcal:1};
     var items=rowSheetItems(kind,k,o).map(function(it){ return it.concat([direct[it[0]]?null:li.querySelector(where[it[0]]||'[data-act="'+it[0]+'"]')]); })
       .filter(function(it){ return it[3]||direct[it[0]]; });
     var root=modal('<div class="sheet-grip"></div><div class="sheet-title">'+esc(title)+'</div>'+
@@ -6136,10 +6377,12 @@ function GENA_MAIN() {
       var b=e.target.closest("[data-si]"); if(!b) return;
       var it=items[+b.dataset.si]; close();
       if(it[0]==="pick"){ openDatePickModal(k); return; }
+      if(it[0]==="addcal"){ openAddToSheet(k); return; }
       if(it[0]==="cycle-skip"){ skipCycleOnce(k); return; }
       if(it[0]==="habit-less"){ noteAnchor(li); habitRemoveOne(k.id,viewDay); return; }
       if(it[0]==="cycle-pause"){ openPauseModal("cycle",k.id); return; }
       if(it[0]==="habit-pause"){ openPauseModal("habit",k.id); return; }
+      if(it[0]==="fu-item"){ openTouchCaptureModal(k,{items:true}); return; }
       if(it[3]) it[3].click();
     };
   }
@@ -6150,13 +6393,21 @@ function GENA_MAIN() {
       if(b.carriedFrom===undefined) delete k.carriedFrom; else k.carriedFrom=b.carriedFrom;
       if(b.cycleSkips===undefined) delete k.cycleSkips; else k.cycleSkips=b.cycleSkips; save(); render(); });
   }
-  function openDatePickModal(k){
-    modal('<h3>Move to a date</h3><p class="sub">“'+esc(k.title)+'”</p>'+
-      '<div class="fld"><label>Day <span style="text-transform:none;letter-spacing:0;font-weight:600">(empty = someday)</span></label><input id="mv-d" type="date" value="'+(k.day||today())+'"/></div>'+
+  // V6.1: the one 📅 dialog (a task's day, a follow-up's or a check-back's next date). `empty`: the hint
+  // when an empty day is allowed (fn gets null); without it an empty day does nothing.
+  function openPickDayModal(what,val,empty,fn){
+    modal('<h3>📅 Pick a day</h3><p class="sub">'+esc(what)+'</p>'+
+      '<div class="fld"><label>Day'+(empty?' <span style="text-transform:none;letter-spacing:0;font-weight:600">('+esc(empty)+')</span>':'')+'</label><input id="mv-d" type="date" value="'+esc(val||today())+'"/></div>'+
       '<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="mv-ok">Move</button></div>');
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("mv-ok").onclick=function(){ var dv=document.getElementById("mv-d").value||null;
-      k.day=dv; if(!dv) k.block=null; save(); close(); render(); toast(dv?"Moved to "+niceDate(dv):"Moved to Someday"); };
+      if(!dv&&!empty) return; close(); fn(dv); };
+  }
+  function openDatePickModal(k){
+    openPickDayModal("“"+k.title+"”",k.day,"empty = someday",function(dv){
+      var kk=taskById(k.id)||k;   // by id: a sync may have replaced the object while the dialog was open
+      if(dv) carryTo(kk,dv); else { kk.day=null; kk.end=null; kk.block=null; }
+      save(); render(); toast(dv?"Moved to "+niceDate(dv):"Moved to Someday"); });
   }
 
   /* ---------- natural-language dates ---------- */
@@ -6172,7 +6423,7 @@ function GENA_MAIN() {
   var BLOCK_WIN={morning:[6*60,12*60], afternoon:[12*60,17*60], evening:[17*60,DAY_END]};
   function toMins(at){ return +at.slice(0,2)*60 + +at.slice(3,5); }
   function dayLoad(d){
-    var open=tasksOn(d).filter(function(k){ return isOpen(k) && inScope(k); });
+    var open=dayTodo(d).filter(function(k){ return isOpen(k) && inScope(k); });
     var planned=0, unsized=0;
     open.forEach(function(k){ if(k.at) planned+=(k.dur||60); else if(k.dur) planned+=k.dur; else unsized++; });
     var left=null;
@@ -6219,7 +6470,7 @@ function GENA_MAIN() {
   }
   function minsToAt(m){ return String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); }
   function parseAtTokens(input, projOnly){
-    var title=input||"", day=null, block=null, projectId=null, at=null, personIds=[];
+    var title=input||"", day=null, block=null, projectId=null, at=null, personIds=[], prio=false;
     var WD=/^(sun(day)?|mon(day)?|tue(s|sday)?|wed(nesday)?|thu(r|rs|rsday)?|fri(day)?|sat(urday)?)$/;
     title=title.replace(/@([A-Za-z0-9][\w:&/-]*)/g,function(full,tok){
       var lt=tok.toLowerCase();
@@ -6234,6 +6485,7 @@ function GENA_MAIN() {
       if(lt==="tonight"){ day=today(); block=block||"evening"; return " "; }
       if(lt==="tomorrow"){ day=addDays(today(),1); return " "; }
       if(lt==="someday"){ day="someday"; return " "; }
+      if(lt==="priority"||lt==="focus"){ prio=true; return " "; }   // V6.1 P5: Start in Priority (@focus is the old word)
       // @430p, @4:30, @1630, @noon — the same loose reading as the time field
       if(/^\d/.test(lt)||lt==="noon"||lt==="midnight"){ var lt2=parseLooseTime(lt); if(lt2){ at=lt2; return " "; } }
       if(WD.test(lt)){ var w=NLDOW[lt.slice(0,3)]; day=addDays(today(),(w-dow(today())+7)%7); return " "; }
@@ -6246,7 +6498,9 @@ function GENA_MAIN() {
       return full;
     }).replace(/\s{2,}/g," ").trim();
     if(at&&!block) block=blockForTime(at);
-    return { title:title, day:day, block:block, projectId:projectId, at:at, personIds:personIds };
+    var out={ title:title, day:day, block:block, projectId:projectId, at:at, personIds:personIds };
+    if(prio) out.prio=true;
+    return out;
   }
   /* 51: a date phrase on its own — what may follow "by". nlDate answers null for a date that does not exist
      (Feb 30, 13/40), and then the words stay in the title. Numeric dates read month/day. */
@@ -6265,7 +6519,9 @@ function GENA_MAIN() {
     return null;
   }
   // what the parser found beyond title/day/block/time goes onto the new task here, in one place
-  function applyParsed(k,p){ if(p.due) k.due=p.due; if(p.dur) k.dur=p.dur; if(p.priority) k.priority=true; return k; }
+  // @priority (P5): Start in Priority, and on its day's Priority list now (once; addToPriority checks)
+  function applyParsed(k,p){ if(p.due) k.due=p.due; if(p.dur) k.dur=p.dur; if(p.priority) k.priority=true;
+    if(p.startPriority){ k.startPriority=true; if(k.day&&S.focus) addToPriority(k.day,null,[k]); } return k; }
   function nlParse(input){
     var at=parseAtTokens(input);
     var title=at.title, day=at.day, block=at.block, atTime=at.at, due=null, dur=null, priority=false;
@@ -6299,7 +6555,9 @@ function GENA_MAIN() {
     take(/\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i,function(mm){ if(!atTime){ var h=+mm[1]%12; if(mm[3].toLowerCase()==="pm")h+=12; atTime=String(h).padStart(2,"0")+":"+(mm[2]||"00"); } });
     if(atTime&&!block) block=blockForTime(atTime);
     title=title.replace(/\s{2,}/g," ").replace(/\s+([,.;])/g,"$1").trim().replace(/[,\-–—]+$/,"").trim();
-    return { title: title||(input||"").trim(), day:day, block:block, projectId:at.projectId, at:atTime, personIds:at.personIds||[], due:due, dur:dur, priority:priority };
+    var r={ title: title||(input||"").trim(), day:day, block:block, projectId:at.projectId, at:atTime, personIds:at.personIds||[], due:due, dur:dur, priority:priority };
+    if(at.prio) r.startPriority=true;
+    return r;
   }
 
   /* ---------- quick capture ---------- */
@@ -6564,7 +6822,7 @@ function GENA_MAIN() {
         (S.people.length?'<div class="fld"><label>People</label><div class="chips" id="m-people">'+S.people.map(function(pp){return '<button type="button" class="chip" data-pid="'+esc(pp.id)+'" aria-pressed="'+(selPeople.indexOf(pp.id)>=0)+'">'+esc(pp.name)+'</button>';}).join("")+'</div><div class="sub" style="font-size:11px;margin-top:6px">Tagged people see this task on their card in People.</div></div>':'')+
         '<div class="fld"><label>Day <span style="text-transform:none;letter-spacing:0;font-weight:600">(empty = someday)</span></label><input id="m-day" type="date" value="'+(ed?(base.day||""):(base.day||today()))+'"/></div>'+
         '<div class="fld"><label>Ends <span style="text-transform:none;letter-spacing:0;font-weight:600">(blank = one day)</span></label><input id="m-end" type="date" value="'+esc(base.end||"")+'"/></div>'+
-        '<div class="fld"><label>Due <span style="text-transform:none;letter-spacing:0;font-weight:600">(deadline — separate from the planned day)</span></label><input id="m-due" type="date" value="'+esc(base.due||"")+'"/></div>'+
+        '<div class="fld"><label>Due <span style="text-transform:none;letter-spacing:0;font-weight:600">(deadline — separate from the planned day)</span></label><input id="m-due" type="date" value="'+esc(base.due||"")+'"/>'+showBeforeFieldHtml("m",base)+'</div>'+
         '<div class="fld"><label>Length <span style="text-transform:none;letter-spacing:0;font-weight:600">(with a time set — how much of the day it blocks)</span></label><select id="m-dur">'+DUR_OPTS.map(function(o){
           return '<option value="'+o[0]+'"'+((base.dur||"")==o[0]?" selected":"")+'>'+o[1]+'</option>'; }).join("")+'</select></div>'+
         '<div class="fld"><label>'+(ed?"Schedule":"Schedule — pick one or several")+'</label><div class="chips" id="m-block">'+
@@ -6717,7 +6975,7 @@ function GENA_MAIN() {
       // it), or put it back if a sync removed it under you
       if(ed){ var edLive=S.tasks.find(function(x){return x.id===ed.id;}); if(edLive) ed=edLive; else S.tasks.push(ed); }
       if(ed){ var subsBefore=ed.subs; ed.title=title; ed.projectId=pid; if(eid) ed.effortId=eid; else delete ed.effortId; setCols(ed,colsV); ed.day=day; ed.end=endD; ed.due=dueD; ed.dur=durV; ed.block=chosen[0]; ed.at=tv; ed.priority=priorityV; ed.subs=cleanSubs; if(sdW) ed.subsDone=sdW.slice(); ed.notes=ntv; ed.personIds=selPeople.slice();
-        readTypeFields("m",ed);
+        readTypeFields("m",ed); readShowBefore("m",ed);
         if(!(etp&&freq!=="once")){ if(spV) ed.startPriority=true; else delete ed.startPriority; }   // P2: a plain task's own option
         if(etp){
           if(freq==="once"){ S.templates=S.templates.filter(function(x){return x.id!==etp.id;}); delete ed.tplId; }
@@ -6728,6 +6986,7 @@ function GENA_MAIN() {
         if(spV&&!spWas) addToPriority(today(),null,spRule?S.tasks.filter(function(x){ return x.tplId===spRule.id; }):[ed]);   // P4
         save(); close(); render(); toast(etp?(freq==="once"?"Saved — repeat stopped":"Saved — series updated"):(freq!=="once"?"Saved — now repeats":"Saved")); return; }
       if(freq==="once"){ chosen.forEach(function(bl){ S.tasks.push({id:uid(),title:title,projectId:pid,effortId:eid||undefined,cols:colsV.length?colsV.slice():undefined,personIds:selPeople.slice(),status:"todo",day:day,end:endD,due:dueD,dur:durV,block:bl,at:tv,priority:priorityV,rollover:0,notes:ntv,subs:cleanSubs.map(function(s){ var c=subCopy(s,true); c.done=!!s.done; return c; }),created:today()});
+        readShowBefore("m",S.tasks[S.tasks.length-1]);
         if(spV){ S.tasks[S.tasks.length-1].startPriority=true; addToPriority(today(),null,[S.tasks[S.tasks.length-1]]); } }); }
       else { var tp={id:uid(),title:title,projectId:pid,block:chosen[0],freq:freq,start:day||today(),weekdays:weekdays,interval:+(document.getElementById("m-int")||{}).value||2,priority:priorityV,startPriority:spV,subs:ruleSubs};
         if(firstSubs.length) tp.firstSubs=firstSubs;   // R1 path 1: Until-done items go onto the first copy only
@@ -6744,17 +7003,24 @@ function GENA_MAIN() {
     var s=document.getElementById("m-save"); if(s) s.onclick=onSave;
   }
 
+  // V6.1 (B2): 🧹 removes only this day's copy and marks the day cleared in the rule, so it is not made again
+  // that day; the rule, its other copies and its history are untouched. Undo puts both back.
+  function clearRepeatCopy(k,msg){
+    var tp=S.templates.find(function(x){return x.id===k.tplId;}), di=S.tasks.indexOf(k), day=k.day;
+    if(di>=0) S.tasks.splice(di,1);
+    var had=!!(tp&&(tp.skip||[]).indexOf(day)>=0);
+    if(tp&&day&&!had){ tp.skip=tp.skip||[]; tp.skip.push(day); }
+    save(); render();
+    toastUndo(msg||"🧹 Cleared for "+(day===today()?"today":niceDate(day))+" — the repeat goes on",function(){
+      if(di>=0&&!S.tasks.some(function(x){return x.id===k.id;})) S.tasks.splice(Math.min(di,S.tasks.length),0,k);
+      if(tp&&!had) tp.skip=(tp.skip||[]).filter(function(x){return x!==day;}); save(); render(); });
+  }
   function openRecurDeleteModal(k){
     var tp=S.templates.find(function(x){return x.id===k.tplId;});
     modal('<h3>Delete repeating task</h3><p class="sub">“'+esc(k.title)+'” repeats ('+recDesc(tp).replace("↻ ","")+'). Delete just this one, or stop the repeat entirely?</p>'+
       '<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn" id="rd-one">Just this one</button><button class="btn primary" id="rd-all">Stop repeating</button></div>');
     document.querySelector("[data-x]").onclick=close;
-    document.getElementById("rd-one").onclick=function(){
-      var di=S.tasks.findIndex(function(x){return x.id===k.id;}); if(di>=0) S.tasks.splice(di,1);
-      tp.skip=tp.skip||[]; tp.skip.push(k.day);
-      save(); close(); render();
-      toastUndo("Deleted — the repeat continues",function(){ if(di>=0) S.tasks.splice(Math.min(di,S.tasks.length),0,k); tp.skip=(tp.skip||[]).filter(function(x){return x!==k.day;}); save(); render(); });
-    };
+    document.getElementById("rd-one").onclick=function(){ close(); clearRepeatCopy(k,"Deleted — the repeat continues"); };
     document.getElementById("rd-all").onclick=function(){
       var di=S.tasks.findIndex(function(x){return x.id===k.id;}); if(di>=0) S.tasks.splice(di,1);
       var ti=S.templates.indexOf(tp); if(ti>=0) S.templates.splice(ti,1);
@@ -7290,71 +7556,221 @@ function GENA_MAIN() {
         save(); toast(n+" event"+(n===1?"":"s")+" imported"); render(); };
       r.readAsText(f); });
   }
+  /* ---------- calendar feeds (V6.2 C7) ----------
+     What Google, Outlook and iCloud send: folded lines, escaped text, all-day days (VALUE=DATE; DTEND is
+     exclusive), times in UTC (Z), in a TZID (IANA, or a Windows name from Outlook) or floating, RRULE with
+     EXDATE, a RECURRENCE-ID instance that moves or cancels one occurrence, STATUS:CANCELLED. Alarms and
+     other nested parts are skipped. A timed event is shown on this device's clock. */
+  // (US/Pacific, not its canonical name: the public build's leak check refuses his home zone's name)
+  var WIN_TZ={"Pacific Standard Time":"US/Pacific","Mountain Standard Time":"America/Denver","US Mountain Standard Time":"America/Phoenix","Central Standard Time":"America/Chicago","Eastern Standard Time":"America/New_York","US Eastern Standard Time":"America/Indiana/Indianapolis","Alaskan Standard Time":"America/Anchorage","Hawaiian Standard Time":"Pacific/Honolulu","Atlantic Standard Time":"America/Halifax","GMT Standard Time":"Europe/London","Greenwich Standard Time":"Atlantic/Reykjavik","W. Europe Standard Time":"Europe/Berlin","Romance Standard Time":"Europe/Paris","Central Europe Standard Time":"Europe/Budapest","Central European Standard Time":"Europe/Warsaw","E. Europe Standard Time":"Europe/Chisinau","FLE Standard Time":"Europe/Kiev","E. Africa Standard Time":"Africa/Nairobi","South Africa Standard Time":"Africa/Johannesburg","Arabian Standard Time":"Asia/Dubai","India Standard Time":"Asia/Kolkata","China Standard Time":"Asia/Shanghai","Tokyo Standard Time":"Asia/Tokyo","AUS Eastern Standard Time":"Australia/Sydney","UTC":"UTC","Coordinated Universal Time":"UTC"};
+  var tzFmts={};
+  // an IANA zone the browser knows, or null (an unknown zone is read as this device's own clock)
+  function tzName(t){ t=String(t||"").replace(/^"|"$/g,"").replace(/^\//,""); t=WIN_TZ[t]||t; if(!t) return null;
+    if(tzFmts[t]) return t;
+    try{ tzFmts[t]=new Intl.DateTimeFormat("en-US",{timeZone:t,hourCycle:"h23",year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric"}); return t; }catch(e){ return null; } }
+  // minutes zone tz is ahead of UTC at the instant ms
+  function tzOffset(tz,ms){ var p={}; tzFmts[tz].formatToParts(new Date(ms)).forEach(function(x){ p[x.type]=x.value; });
+    return Math.round((Date.UTC(+p.year,+p.month-1,+p.day,+p.hour%24,+p.minute)-ms)/60000); }
+  // DTSTART/DTEND/EXDATE/RECURRENCE-ID value → {day, hm, zone}: the wall clock it was written in
+  function icsTime(v,params){
+    var m=/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})\d{0,2}(Z?))?/.exec(String(v||"").trim()); if(!m) return null;
+    var t={day:m[1]+"-"+m[2]+"-"+m[3], hm:null, zone:null};
+    if(m[4]&&params.VALUE!=="DATE"){ t.hm=m[4]+":"+m[5]; t.zone=m[6]?"UTC":(params.TZID?tzName(params.TZID):null); if(t.zone) tzName(t.zone); }
+    return t;
+  }
+  // a wall-clock day and time in zone → this device's {date, at}
+  function icsLocal(day,hm,zone){
+    if(!hm) return {date:day, at:null};
+    var y=+day.slice(0,4), mo=+day.slice(5,7)-1, d=+day.slice(8,10), h=+hm.slice(0,2), mi=+hm.slice(3,5), dt;
+    if(zone){ var g=Date.UTC(y,mo,d,h,mi), u=g-tzOffset(zone,g)*60000; dt=new Date(g-tzOffset(zone,u)*60000); }
+    else dt=new Date(y,mo,d,h,mi);
+    return {date:fmt(dt), at:String(dt.getHours()).padStart(2,"0")+":"+String(dt.getMinutes()).padStart(2,"0"), ms:dt.getTime()};
+  }
+  function icsUnesc(v){ return String(v||"").replace(/\\([\;,nN])/g,function(_,c){ return c==="n"||c==="N"?"\n":c; }); }
+  // NAME;P=V;P2="a:b":VALUE: the value starts at the first colon outside quotes
+  function icsProp(l){
+    for(var i=0,q=false;i<l.length;i++){ if(l[i]==='"') q=!q; else if(l[i]===":"&&!q) break; }
+    var head=l.slice(0,i).split(";"), params={};
+    head.slice(1).forEach(function(x){ var j=x.indexOf("="); if(j>0) params[x.slice(0,j).toUpperCase()]=x.slice(j+1).replace(/^"|"$/g,""); });
+    return {name:head[0].toUpperCase(), params:params, value:l.slice(i+1)};
+  }
   function parseEvents(text){
-    var lines=text.replace(/\r\n[ \t]/g,"").split(/\r?\n/); var cur=null,out=[];
+    var lines=String(text||"").replace(/\r?\n[ \t]/g,"").split(/\r?\n/), cur=null, nest=0, out=[];
     lines.forEach(function(l){
-      if(l.indexOf("BEGIN:VEVENT")===0) cur={};
-      else if(l.indexOf("END:VEVENT")===0){ if(cur&&cur.date) out.push(cur); cur=null; }
-      else if(cur){
-        if(l.indexOf("SUMMARY")===0) cur.title=l.slice(l.indexOf(":")+1);
-        else if(l.indexOf("UID")===0) cur.uid=l.slice(l.indexOf(":")+1);
-        else if(l.indexOf("RRULE")===0) cur.rrule=l.slice(l.indexOf(":")+1);
-        else if(l.indexOf("DTSTART")===0){ var m=l.slice(l.indexOf(":")+1).replace(/[^0-9]/g,""); if(m.length>=8) cur.date=m.slice(0,4)+"-"+m.slice(4,6)+"-"+m.slice(6,8); }
-      }
+      if(/^BEGIN:VEVENT\s*$/i.test(l)){ cur={exdates:[]}; nest=0; return; }
+      if(!cur) return;
+      if(/^END:VEVENT\s*$/i.test(l)){ if(cur.start) out.push(cur); cur=null; return; }
+      if(/^BEGIN:/i.test(l)){ nest++; return; }
+      if(/^END:/i.test(l)){ nest--; return; }
+      if(nest>0) return;                     // an alarm's SUMMARY or DESCRIPTION is not the event's
+      var p=icsProp(l), v=p.value.trim();
+      if(p.name==="SUMMARY") cur.title=icsUnesc(v).replace(/\s*\n\s*/g," ").trim();
+      else if(p.name==="UID") cur.uid=v;
+      else if(p.name==="RRULE") cur.rrule=v;
+      else if(p.name==="DTSTART") cur.start=icsTime(v,p.params);
+      else if(p.name==="DTEND") cur.endT=icsTime(v,p.params);
+      else if(p.name==="DURATION") cur.dur=v;
+      else if(p.name==="EXDATE") v.split(",").forEach(function(x){ var t=icsTime(x,p.params); if(t) cur.exdates.push(t); });
+      else if(p.name==="RECURRENCE-ID") cur.recur=icsTime(v,p.params);
+      else if(p.name==="STATUS") cur.cancelled=/^CANCELLED$/i.test(v);
     });
     return out;
   }
-  /* RRULE expansion — daily/weekly/monthly/yearly with INTERVAL, BYDAY, UNTIL, COUNT */
+  // how many days after its first day an event ends on this device's clock (0 = one day)
+  function icsSpan(e){
+    var s=e.start, a=icsLocal(s.day,s.hm,s.zone), last=null;
+    if(e.endT){ var b=icsLocal(e.endT.day,e.endT.hm||(s.hm?"00:00":null),e.endT.hm?e.endT.zone:s.zone); last=b.date; if(!s.hm||b.at==="00:00") last=addDays(last,-1); }
+    else if(e.dur){ var m=/P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?/.exec(e.dur)||[], days=(+m[1]||0)*7+(+m[2]||0);
+      if(!s.hm) last=addDays(a.date,days-1);
+      else { var mins=days*1440+(+m[3]||0)*60+(+m[4]||0), st=+a.at.slice(0,2)*60+ +a.at.slice(3); if(mins>0) last=addDays(a.date,Math.floor((st+mins-1)/1440)); } }
+    return last&&last>a.date?diffDays(last,a.date):0;
+  }
+  /* RRULE expansion — daily/weekly/monthly/yearly with INTERVAL, BYDAY (2TU, -1FR), BYMONTHDAY, BYMONTH, UNTIL, COUNT */
   var RRDOW={SU:0,MO:1,TU:2,WE:3,TH:4,FR:5,SA:6};
   function monthsBetween(a,b){ return (+b.slice(0,4)-+a.slice(0,4))*12+(+b.slice(5,7)-+a.slice(5,7)); }
+  // BYDAY=2TU (second Tuesday), -1FR (last Friday), MO (every Monday of the month)
+  function nthWeekday(day,list){
+    var dom=+day.slice(8), dim=new Date(+day.slice(0,4),+day.slice(5,7),0).getDate(), w=dow(day);
+    return list.some(function(b){ return b.dow===w&&(!b.n||b.n===Math.ceil(dom/7)||b.n===-Math.ceil((dim-dom+1)/7)); });
+  }
   function occurrenceDates(e){
     var r={}; String(e.rrule).split(";").forEach(function(p){ var kv=p.split("="); if(kv.length===2) r[kv[0].toUpperCase()]=kv[1]; });
     var freq=r.FREQ; if(!freq) return [e.date];
     var interval=Math.max(1,+r.INTERVAL||1);
     var until=null; if(r.UNTIL){ var u=r.UNTIL.replace(/[^0-9]/g,""); if(u.length>=8) until=u.slice(0,4)+"-"+u.slice(4,6)+"-"+u.slice(6,8); }
     var count=+r.COUNT||null;
-    var byday=r.BYDAY? r.BYDAY.split(",").map(function(x){ return RRDOW[x.slice(-2)]; }).filter(function(x){ return x!==undefined; }) : null;
+    var bd=r.BYDAY? r.BYDAY.split(",").map(function(x){ var m=/^([+-]?\d+)?(SU|MO|TU|WE|TH|FR|SA)$/.exec(x.trim().toUpperCase()); return m?{n:+m[1]||0,dow:RRDOW[m[2]]}:null; }).filter(Boolean) : null;
+    var byday=bd? bd.map(function(b){ return b.dow; }) : null;
+    var bymd=r.BYMONTHDAY? r.BYMONTHDAY.split(",").map(Number) : null, bymo=r.BYMONTH? r.BYMONTH.split(",").map(Number) : null;
     var winStart=addDays(today(),-60), winEnd=addDays(today(),365);
     if(until&&until<winEnd) winEnd=until;
     var start=e.date, startDow=dow(start), ws=addDays(start,-((startDow+6)%7));
-    var out=[], n=0, day=start, guard=0;
-    while(day<=winEnd && guard++<3200){
+    function inMonth(day){
+      var dom=+day.slice(8);
+      if(bymd) return bymd.some(function(n){ return n>0?n===dom:new Date(+day.slice(0,4),+day.slice(5,7),0).getDate()+n+1===dom; });
+      if(bd) return nthWeekday(day,bd);
+      return day.slice(8)===start.slice(8);
+    }
+    // a long series (a birthday since 1990, a weekly meeting since 2015) starts near the window, not on
+    // its first day, when no COUNT needs the occurrences before it
+    var day=start;
+    if(!count&&start<winStart){
+      if(freq==="DAILY") day=addDays(start,Math.floor(diffDays(winStart,start)/interval)*interval);
+      else if(freq==="WEEKLY") day=addDays(ws,Math.floor(diffDays(winStart,ws)/7/interval)*interval*7);
+      else if(freq==="MONTHLY"){ var d0=parse(start); d0.setDate(1); d0.setMonth(d0.getMonth()+Math.floor(monthsBetween(start,winStart)/interval)*interval); day=fmt(d0); }
+      else if(freq==="YEARLY") day=(+start.slice(0,4)+Math.floor((+winStart.slice(0,4)-+start.slice(0,4))/interval)*interval)+"-01-01";
+      if(day<start) day=start;
+    }
+    var out=[], n=0, guard=0, cap=count?60000:3200;
+    while(day<=winEnd && guard++<cap){
       var hit=false;
       if(freq==="DAILY") hit=diffDays(day,start)%interval===0;
       else if(freq==="WEEKLY") hit=(Math.floor(diffDays(day,ws)/7)%interval===0)&&(byday?byday.indexOf(dow(day))>=0:dow(day)===startDow);
-      else if(freq==="MONTHLY") hit=day.slice(8)===start.slice(8)&&(monthsBetween(start,day)%interval===0);
-      else if(freq==="YEARLY") hit=day.slice(5)===start.slice(5)&&((+day.slice(0,4)-+start.slice(0,4))%interval===0);
+      else if(freq==="MONTHLY") hit=(monthsBetween(start,day)%interval===0)&&inMonth(day);
+      else if(freq==="YEARLY") hit=((+day.slice(0,4)-+start.slice(0,4))%interval===0)&&(bymo?bymo.indexOf(+day.slice(5,7))>=0&&(bymd||bd?inMonth(day):day.slice(8)===start.slice(8)):day.slice(5)===start.slice(5));
       if(hit){ n++; if(count&&n>count) break; if(day>=winStart) out.push(day); if(out.length>=500) break; }
       day=addDays(day,1);
     }
     return out;
   }
+  // parsed feed → [{uid, title, date, end?, at?}] on this device's clock
   function expandEvents(evs){
-    var out=[];
+    var out=[], moved={};
+    // an instance moved or cancelled on its own (RECURRENCE-ID) replaces that occurrence of its series
+    evs.forEach(function(e){ if(e.recur&&e.uid) moved[e.uid+"|"+icsLocal(e.recur.day,e.recur.hm,e.recur.zone).date]=1; });
     evs.forEach(function(e){
-      if(!e.rrule){ out.push(e); return; }
-      occurrenceDates(e).forEach(function(d){ out.push({title:e.title,uid:(e.uid||"ev")+"@"+d,date:d}); });
+      if(e.cancelled) return;
+      var s=e.start, span=icsSpan(e), series=!!e.rrule&&!e.recur, ex={};
+      var um=series&&s.hm&&/UNTIL=(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/i.exec(e.rrule), until=um?Date.UTC(+um[1],+um[2]-1,+um[3],+um[4],+um[5],+um[6]):null;   // a timed UNTIL is an instant
+      e.exdates.forEach(function(t){ ex[icsLocal(t.day,t.hm||s.hm,t.hm?t.zone:s.zone).date]=1; });
+      (series?occurrenceDates({date:s.day,rrule:e.rrule}):[s.day]).forEach(function(d){
+        var loc=icsLocal(d,s.hm,s.zone);
+        if(series&&(ex[loc.date]||(e.uid&&moved[e.uid+"|"+loc.date])||(until!==null&&loc.ms>until))) return;
+        var o={title:e.title, uid:series?(e.uid||"ev")+"@"+d:e.uid, date:loc.date};
+        if(loc.at) o.at=loc.at;
+        if(span>0) o.end=addDays(loc.date,span);
+        out.push(o);
+      });
     });
     return out;
   }
-  function sourceEnabled(ev){ if(!ev.sourceId) return true; var s=S.calSources.find(function(x){return x.id===ev.sourceId;}); return s?s.enabled!==false:true; }
+  function sourceEnabled(ev){ if(!ev.sourceId) return true; var s=S.calSources.find(function(x){return x.id===ev.sourceId;}); return s?s.enabled!==false:false; }   // a removed calendar's events are gone (review finding 3)
   // the same feed entry gets the same id on every fetch, so a refresh that changes nothing changes nothing
   function subEventId(sid,e,used){ var id="sub-"+sid+"-"+hashCode((e.uid||e.title||"")+"|"+e.date), n=used[id]=(used[id]||0)+1; return n>1?id+"-"+n:id; }
-  function refreshCalendars(cb){
+  /* V6.2: every subscription is read through his relay (S.proxy, a synced setting, never in the source):
+     Google, Outlook and iCloud send no CORS header, so a page cannot read a feed itself. The relay address
+     and the feed links are secrets: they never go into a toast, a log line, an error, the snapshot or a feed. */
+  var GOOGLE_TEST_FEED="https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics";
+  var CAL_ERR={
+    norelay:"Calendar feeds can't be read straight from the browser. Set your relay address in Settings → Calendars, or import an .ics file.",
+    unreachable:"Couldn't reach your relay. Check the relay address and your connection.",
+    notcal:"That link didn't return a calendar. Copy the calendar's iCal (.ics) address again.",
+    link:"The calendar host says this private link is wrong or was reset (not found). Copy the secret address in iCal format again.",
+    toobig:"This calendar is too large for the relay (over 5 MB).",
+    badurl:"The relay couldn't read this link as a web address."
+  };
+  // a relay's own words, without anything that looks like an address
+  function relaySays(t){ t=String(t||"").replace(/\S*:\/\/\S*/g,"…").replace(/\s+/g," ").trim().slice(0,80); return t?" (relay: “"+t+"”)":""; }
+  function calHttpError(status,body){
+    var b=String(body||"");
+    if(status===404||/calendar answered (401|403|404|410)\b/.test(b)) return CAL_ERR.link;
+    if(status===403&&/host/i.test(b)) return "Your relay doesn't fetch this calendar's host. It takes Google, Outlook, iCloud and Proton links"+relaySays(b)+".";
+    if(status===403) return "Your relay refused this page"+relaySays(b)+". It answers only Gena's own address.";
+    if(status===413) return CAL_ERR.toobig;
+    if(status===422) return CAL_ERR.notcal;
+    if(status===400) return CAL_ERR.badurl;
+    if(/could not reach/i.test(b)) return "Your relay couldn't reach the calendar host. Try again later.";
+    return "The calendar couldn't be read: HTTP "+status+relaySays(b)+".";
+  }
+  function feedTarget(u){ return String(u||"").trim().replace(/^webcals?:/i,"https:"); }
+  // https://x.workers.dev, …/ or …/?url= all become an address that ends in ?url= (or &url=); null when not https
+  function relayNorm(v){
+    v=String(v||"").trim(); if(!v) return {value:""};
+    var u; try{ u=new URL(v); }catch(e){ return {err:"That isn't a web address. It looks like https://<your-relay>.workers.dev/?url="}; }
+    if(u.protocol!=="https:") return {err:"The relay address must start with https://"};
+    var base=v.replace(/([?&]url=).*$/i,"$1"); if(/[?&]url=$/i.test(base)) return {value:base};
+    base=base.replace(/[?&]+$/,"");
+    if(base.indexOf("?")>=0) return {value:base+"&url="};
+    return {value:base+(u.pathname==="/"&&!/\/$/.test(base)?"/":"")+"?url="};
+  }
+  // one feed through the relay → {evs} or {err}; never throws, never rejects
+  function fetchFeed(feed){
+    if(!S.proxy) return Promise.resolve({err:CAL_ERR.norelay});
+    return fetch(S.proxy+encodeURIComponent(feedTarget(feed)),{cache:"no-store",credentials:"omit"})
+      .then(function(r){ return r.text().then(function(t){
+        if(!r.ok) return {err:calHttpError(r.status,t)};
+        if(!/BEGIN:VCALENDAR/i.test(t)) return {err:CAL_ERR.notcal};
+        return {evs:expandEvents(parseEvents(t))}; }); },function(){ return {err:CAL_ERR.unreachable}; })
+      .catch(function(){ return {err:CAL_ERR.notcal}; });
+  }
+  var calLastRefresh=0;
+  // o.passive (on open, on return): the results wait for an open editor to close (the V5.1 hold); a tap applies at once
+  // events of a calendar that is no longer in the list (removed on the other device): device-local, so no sync effect
+  function dropOrphanEvents(){
+    var live={}; S.calSources.forEach(function(x){ live[x.id]=1; });
+    var n=S.events.length; S.events=S.events.filter(function(e){ return !e.sourceId||live[e.sourceId]; });
+    return n-S.events.length;
+  }
+  function refreshCalendars(cb,o){
+    o=o||{};
     var list=S.calSources.filter(function(s){return s.enabled&&s.url;});
+    calLastRefresh=Date.now();
+    dropOrphanEvents();
     if(!list.length){ if(cb)cb(); return; }
-    var pending=list.length;
-    list.forEach(function(s){
-      var target=s.url.replace(/^webcal:/i,"https:");
-      var url=s.useProxy?(S.proxy+encodeURIComponent(target)):target;
-      fetch(url).then(function(r){ if(!r.ok) throw 0; return r.text(); }).then(function(txt){
-        S.events=S.events.filter(function(e){return e.sourceId!==s.id;});
-        var evs=expandEvents(parseEvents(txt)), used={}; evs.forEach(function(e){ S.events.push({id:subEventId(s.id,e,used),uid:e.uid,title:e.title||"(event)",date:e.date,sourceId:s.id,color:s.color}); });
-        s.count=evs.length; s.lastSync=Date.now(); s.error=null;
-      }).catch(function(){ s.error="Couldn't fetch — the calendar host likely blocks browser access. Turn on the proxy option, or import the .ics file instead."; })
-      .then(function(){ if(--pending===0){ save(); if(cb)cb(); } });
+    Promise.all(list.map(function(s){ return fetchFeed(s.url).then(function(r){ r.id=s.id; return r; }); })).then(function(res){
+      function apply(){
+        res.forEach(function(r){ var s=S.calSources.find(function(x){ return x.id===r.id; }); if(!s) return;   // removed while it fetched
+          if(r.err){ s.error=r.err; return; }
+          S.events=S.events.filter(function(e){return e.sourceId!==s.id;});
+          var used={}; r.evs.forEach(function(e){ var ev={id:subEventId(s.id,e,used),uid:e.uid,title:e.title||"(event)",date:e.date,sourceId:s.id,color:s.color}; if(e.end) ev.end=e.end; if(e.at) ev.at=e.at; S.events.push(ev); });
+          s.count=r.evs.length; s.lastSync=Date.now(); s.error=null; });
+        save(); if(cb)cb();
+      }
+      if(o.passive) whenIdle(apply); else apply();
     });
   }
+  // C6: back in the app after a while, read the feeds again (the relay caches them for 5 minutes)
+  function calOnReturn(){ if(Date.now()-calLastRefresh>10*60000) refreshCalendars(function(){ if(groupOf(view)==="plan") renderPassive(); },{passive:true}); }
 
   function openDayModal(ds){
     var tasks=tasksOn(ds);
@@ -7363,9 +7779,13 @@ function GENA_MAIN() {
     body+='<div class="fld"><label>Tasks</label><ul class="tasks">'+
       (tasks.length?tasks.map(function(k){var p=proj(k.projectId);var mp=(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+(k.at?'<span class="pill block">🕒 '+fmtTime(k.at)+'</span>':"")+(k.subs&&k.subs.length?'<span class="pill subs-n">'+subCountText(k.subs,k.day)+'</span>':"");return '<li class="task '+(k.status==="done"?"done":"")+'" data-id="'+esc(k.id)+'"><button class="chk '+(k.status==="done"?"done":"")+'" data-dact="toggle" aria-label="done" aria-pressed="'+(k.status==="done")+'"></button><div class="task-main"><div class="task-title">'+esc(k.title)+'</div>'+(mp?'<div class="task-meta">'+mp+'</div>':"")+'</div><button class="task-x" data-dact="deltask" style="opacity:1" aria-label="delete">✕</button></li>';}).join(""):'<div class="empty">No tasks</div>')+'</ul></div>';
     body+='<div class="fld"><label>Events &amp; milestones</label><ul class="tasks">'+
-      (evs.length?evs.map(function(e){return '<li class="task" data-id="'+esc(e.id)+'"><span class="dot" style="background:'+(e.color||projColor(e.projectId))+';border-color:transparent;cursor:default"></span><div class="task-main"'+(e.sourceId?' style="cursor:default"':' data-dact="editev" title="Tap to edit"')+'><div class="task-title">'+esc(e.title)+'</div>'+(e.sourceId?'<div class="task-meta"><span class="pill block">subscribed</span></div>':"")+'</div>'+(e.sourceId?"":'<button class="task-x" data-dact="delev" style="opacity:1" aria-label="delete">✕</button>')+'</li>';}).join(""):'<div class="empty">No events</div>')+'</ul></div>';
+      (evs.length?evs.map(function(e){return '<li class="task" data-id="'+esc(e.id)+'"><span class="dot" style="background:'+(e.color||projColor(e.projectId))+';border-color:transparent;cursor:default"></span><div class="task-main"'+(e.sourceId?' style="cursor:default"':' data-dact="editev" title="Tap to edit"')+'><div class="task-title">'+esc(e.title)+'</div>'+(e.sourceId?'<div class="task-meta"><span class="pill block">subscribed</span></div>':"")+'</div>'+'<button class="task-x" data-dact="evmore" style="opacity:1" aria-label="Add to a calendar" title="Add to a calendar">⋯</button>'+(e.sourceId?"":'<button class="task-x" data-dact="delev" style="opacity:1" aria-label="delete">✕</button>')+'</li>';}).join(""):'<div class="empty">No events</div>')+'</ul></div>';
     var fitems=S.focus[ds]||[];
-    if(fitems.length) body+='<div class="fld"><label>Priority that day</label><ul class="tasks">'+fitems.map(function(f){ var ftxt=f.text, fdone=f.done, fsubs=f.subs; if(f.taskId){ var lk=S.tasks.find(function(x){return x.id===f.taskId;}); if(!lk) return ""; ftxt=lk.title; fdone=lk.status==="done"; fsubs=lk.subs; } return '<li class="task '+(fdone?"done":"")+'"><span class="dot '+(fdone?"on":"")+'" style="cursor:default"></span><div class="task-main" style="cursor:default"><div class="task-title">'+esc(ftxt)+'</div>'+(fsubs&&fsubs.length?'<div class="task-meta"><span class="pill subs-n">'+subCountText(fsubs,ds)+'</span></div>':"")+'</div></li>';}).join("")+'</ul></div>';
+    if(fitems.length) body+='<div class="fld"><label>Priority that day</label><ul class="tasks">'+fitems.map(function(f){ var ftxt=f.text, fdone=f.done, fsubs=f.subs;
+      if(f.habitId){ var fhb=habitById(f.habitId); if(!fhb) return ""; ftxt=fhb.name; fdone=habitDoneOn(fhb,ds); }
+      else if(f.personId){ var fpr=S.people.find(function(x){return x.id===f.personId;}); if(!fpr) return ""; ftxt="Follow up with "+fpr.name; fdone=fpr.last===ds; }
+      else if(!f.taskId&&typeof f.text!=="string") return "";
+      if(f.taskId){ var lk=S.tasks.find(function(x){return x.id===f.taskId;}); if(!lk) return ""; ftxt=lk.title; fdone=lk.status==="done"; fsubs=lk.subs; } return '<li class="task '+(fdone?"done":"")+'"><span class="dot '+(fdone?"on":"")+'" style="cursor:default"></span><div class="task-main" style="cursor:default"><div class="task-title">'+esc(ftxt)+'</div>'+(fsubs&&fsubs.length?'<div class="task-meta"><span class="pill subs-n">'+subCountText(fsubs,ds)+'</span></div>':"")+'</div></li>';}).join("")+'</ul></div>';
     var wlPrev=noteDisplayHtml(S.notes[ds]||"");
     if(/class="(wl|reflink)/.test(wlPrev)) body+='<div class="fld"><label>Links in this note</label><div class="jr-body">'+wlPrev+'</div></div>';
     body+='<div class="fld"><label>Notes</label>'+richTextHtml("day:"+ds,S.notes[ds]||"","Nothing written this day — add a note…",64,"d-note","rte-compact")+'</div>';
@@ -7382,6 +7802,7 @@ function GENA_MAIN() {
       else if(a.dataset.dact==="deltask"){ S.tasks=S.tasks.filter(function(k){return k.id!==id;}); save(); li.remove(); render(); }
       else if(a.dataset.dact==="delev"){ S.events=S.events.filter(function(x){return x.id!==id;}); save(); li.remove(); render(); }
       else if(a.dataset.dact==="editev"){ var ev=S.events.find(function(x){return x.id===id;}); if(ev){ close(); openEventModal(ev.date,ev); } }
+      else if(a.dataset.dact==="evmore"){ var ev2=S.events.find(function(x){return x.id===id;}); if(ev2){ close(); openAddToSheet(ev2); } }
     });
   }
 
@@ -7393,63 +7814,106 @@ function GENA_MAIN() {
       '<div class="row"><div class="fld"><label>Starts</label><input id="ev-d" type="date" value="'+(base.date||today())+'"/></div>'+
       '<div class="fld"><label>Ends <span style="text-transform:none;letter-spacing:0;font-weight:600">(blank = one day)</span></label><input id="ev-e" type="date" value="'+esc(base.end||"")+'"/></div></div>'+
       '<div class="fld"><label>Color</label><select id="ev-p"><option value="">Neutral</option>'+projOpts+'</select></div>'+
+      '<div class="fld"><label>Add to a calendar</label><div class="chips" id="ev-addto">'+addToHtml(calItem(base),"chip",false)+'</div></div>'+
       '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="ev-del" style="margin-right:auto">Delete</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">'+(editing?"Save":"Add")+'</button></div>');
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("m-save").onclick=function(){ var t=document.getElementById("ev-t").value.trim(); if(!t){toast("Title?");return;}
       var pid=document.getElementById("ev-p").value||null; var dt=document.getElementById("ev-d").value||today();
       var evEnd=document.getElementById("ev-e").value||null; if(!(evEnd&&evEnd>dt)) evEnd=null;
-      if(editing){ ev.title=t; ev.date=dt; ev.end=evEnd; ev.projectId=pid; } else { S.events.push({id:uid(),title:t,date:dt,end:evEnd,projectId:pid,source:"manual"}); }
-      save(); close(); render(); toast(editing?"Event saved":"Event added"); };
+      var saved=ev; if(editing){ ev.title=t; ev.date=dt; ev.end=evEnd; ev.projectId=pid; } else { saved={id:uid(),title:t,date:dt,end:evEnd,projectId:pid,source:"manual"}; S.events.push(saved); }
+      save(); close(); render(); if(addCalOffer()) toastAddTo(editing?"Event saved":"Event added",saved); else toast(editing?"Event saved":"Event added"); };
+    // what the form says now, not what it said when it opened
+    wireAddTo(document.getElementById("ev-addto"),function(){ var t=document.getElementById("ev-t").value.trim(); if(!t){ toast("Title?"); return null; }
+      var dt=document.getElementById("ev-d").value||today(), en=document.getElementById("ev-e").value||null; return calItem({title:t,date:dt,end:en&&en>dt?en:null,at:base.at}); });
     if(editing) document.getElementById("ev-del").onclick=function(){ confirmModal("Delete this event?","It disappears from the calendar.","Delete",function(){ S.events=S.events.filter(function(x){return x.id!==ev.id;}); save(); render(); }); };
   }
 
   function openCalendarsModal(){
-    var color=COLORS[0];
+    var color=COLORS[S.calSources.length%COLORS.length], renaming=null, colouring=null, relayMsg=null;   // each new calendar starts on the next colour
+    function synced(s){ var d=new Date(s.lastSync); return niceDate(fmt(d))+" "+fmtTime(String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")); }
     function rowHtml(s){
-      return '<div class="card" style="padding:12px;margin-bottom:8px" data-sid="'+esc(s.id)+'">'+
+      var named=renaming===s.id
+        ? '<input id="cs-rename" value="'+esc(s.name)+'" aria-label="Calendar name" style="flex:1;min-width:0"/><button class="chip" data-cact="rename-ok">Save</button>'
+        : '<b style="flex:1;overflow:hidden;text-overflow:ellipsis">'+esc(s.name)+'</b><button class="chip" data-cact="rename" aria-label="Rename" title="Rename">✎</button>';
+      return '<div class="card cal-src" style="padding:12px;margin-bottom:8px" data-sid="'+esc(s.id)+'">'+
         '<div style="display:flex;align-items:center;gap:8px">'+
-        '<span class="dot" style="background:'+esc(s.color)+';border-color:transparent;cursor:default"></span>'+
-        '<b style="flex:1;overflow:hidden;text-overflow:ellipsis">'+esc(s.name)+'</b>'+
-        '<button class="chip" data-cact="toggle">'+(s.enabled?"On":"Off")+'</button>'+
-        '<button class="chip" data-cact="refresh" aria-label="Sync">↻</button>'+
-        '<button class="chip" data-cact="remove" aria-label="Remove">✕</button></div>'+
-        '<div class="sub" style="margin:6px 0 0;font-size:11.5px">'+
-        (s.error?"⚠ "+esc(s.error):(s.lastSync?(s.count||0)+" events · synced "+niceDate(fmt(new Date(s.lastSync))):"not synced yet"))+
-        (s.useProxy?" · proxy on":"")+'</div></div>';
+        '<button class="dot" data-cact="colour" aria-label="Colour" title="Colour" style="background:'+esc(s.color)+';border-color:transparent"></button>'+named+
+        '<button class="chip" data-cact="toggle" aria-pressed="'+!!s.enabled+'">'+(s.enabled?"On":"Off")+'</button>'+
+        '<button class="chip" data-cact="refresh" aria-label="Refresh now" title="Refresh now">↻</button>'+
+        '<button class="chip" data-cact="remove" aria-label="Remove" title="Remove">✕</button></div>'+
+        '<div class="sub cal-src-status" style="margin:6px 0 0;font-size:11.5px">'+
+        (s.error?"⚠ "+esc(s.error):(s.lastSync?(s.count||0)+" events · synced "+esc(synced(s)):(s.enabled?"not synced yet":"off")))+'</div>'+
+        (colouring===s.id?'<div class="cp" id="cs-recolour" style="margin-top:8px"></div>':'')+'</div>';
     }
     function body(){
-      return '<h3>Calendar subscriptions</h3>'+
-        '<p class="sub">Paste an iCal / webcal link (Google, Apple, or Outlook “secret address in iCal format”). It re-syncs each time you open the app.</p>'+
-        '<div id="cal-list">'+(S.calSources.length?S.calSources.map(rowHtml).join(""):'<div class="empty">No calendars yet</div>')+'</div>'+
+      return '<h3>Calendars</h3>'+
+        '<div class="fld"><label>Relay address</label><div style="display:flex;gap:8px">'+
+        '<input id="cs-relay" value="'+esc(S.proxy||"")+'" placeholder="https://<your-relay>.workers.dev/?url=" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Relay address" style="flex:1;min-width:0"/>'+
+        '<button class="btn" id="cs-relay-test" style="flex:none">Test</button></div>'+
+        '<div class="sub" id="cs-relay-msg" style="font-size:11.5px;margin-top:6px">'+(relayMsg?esc(relayMsg):"Calendar feeds can't be read straight from the browser; your relay reads them for Gena. The address is kept with your data and syncs to your other devices.")+'</div></div>'+
+        '<div class="fld"><label>Subscriptions</label><div id="cal-list">'+(S.calSources.length?S.calSources.map(rowHtml).join(""):'<div class="empty">No calendars yet</div>')+'</div></div>'+
         '<div class="fld"><label>Add a calendar</label>'+
-        '<input id="cs-name" placeholder="Name (e.g. Work)" style="margin-bottom:8px"/>'+
-        '<input id="cs-url" placeholder="https://…/basic.ics   or   webcal://…" style="margin-bottom:8px"/>'+
-        '<div class="cp" id="cs-sw" style="margin-bottom:10px"></div>'+
-        '<label style="display:flex;align-items:flex-start;gap:8px;text-transform:none;letter-spacing:0;font-weight:600;font-size:13px"><input type="checkbox" id="cs-proxy" style="width:auto;margin-top:3px"/> Use a relay if the calendar host blocks direct access</label>'+
-        '<div class="sub" style="font-size:11px;margin-top:5px">Many hosts (including Google) stop browsers from reading feeds directly. The relay routes the request through a public service so it works — but that service sees the request. Leave off for private calendars and use “Import file” instead. Note: syncing only works in the downloaded file, not inside the Claude preview.</div>'+
+        '<input id="cs-name" placeholder="Name (e.g. Work, Family, School)" style="margin-bottom:8px"/>'+
+        '<input id="cs-url" placeholder="https://…/basic.ics   or   webcal://…" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" style="margin-bottom:8px"/>'+
+        '<div class="cp" id="cs-sw" style="margin-bottom:6px"></div>'+
+        '<div class="sub" style="font-size:11px;margin-top:5px">Google: Settings → your calendar → “Secret address in iCal format”. Outlook: Settings → Calendar → Shared calendars → Publish → ICS. Apple: share the calendar publicly and copy the webcal:// link.'+(S.proxy?"":" "+esc(CAL_ERR.norelay))+'</div>'+
         '</div>'+
-        '<div class="modal-actions"><button class="btn ghost" data-x>Close</button><button class="btn" id="cs-import">⤓ Import file</button><button class="btn primary" id="cs-add">Add calendar</button></div>';
+        '<div class="modal-actions"><button class="btn ghost" data-x>Close</button><button class="btn" id="cs-import">⤓ Import file</button>'+(S.calSources.length?'<button class="btn" id="cs-refresh">↻ Refresh</button>':'')+'<button class="btn primary" id="cs-add">Add calendar</button></div>';
+    }
+    function synced2(){ rebuild(); render(); }
+    // the relay's line changes in place: leaving the field fires change, and a rebuild there would eat the tap on Test
+    function say(t){ relayMsg=t; var el=document.getElementById("cs-relay-msg"); if(el) el.textContent=t; }
+    // C1: the address is checked and saved when the field is left or Test is tapped; a change re-reads every feed
+    function saveRelay(){
+      var inp=document.getElementById("cs-relay"); if(!inp) return null;
+      var n=relayNorm(inp.value); if(n.err){ say(n.err); return null; }
+      inp.value=n.value;
+      if(n.value!==(S.proxy||"")){ S.proxy=n.value; save(); say(n.value?"Saved.":"Relay removed."); if(n.value&&S.calSources.length){ say("Saved. Reading your calendars…"); refreshCalendars(synced2); } }
+      return n.value;
     }
     function wire(){
       document.querySelector("[data-x]").onclick=close;
       var sw=document.getElementById("cs-sw"); if(sw) openColorPicker(sw,{color:color},function(v){ color=v.color; },{shapes:false});
+      var rl=document.getElementById("cs-relay"); if(rl){ rl.onchange=saveRelay; rl.onkeydown=function(e){ if(e.key==="Enter"){ e.preventDefault(); saveRelay(); } }; }
+      var tb=document.getElementById("cs-relay-test"); if(tb) tb.onclick=function(){
+        var v=saveRelay(); if(v===null) return;
+        if(!v){ say("Type your relay address first."); return; }
+        say("Testing…");
+        fetchFeed(GOOGLE_TEST_FEED).then(function(r){ say(r.err?"Doesn't work: "+r.err:"Works: read "+r.evs.length+" events from Google's public holiday calendar."); });
+      };
       var add=document.getElementById("cs-add"); if(add) add.onclick=function(){
         var name=document.getElementById("cs-name").value.trim(), url=document.getElementById("cs-url").value.trim();
         if(!name||!url){toast("Name and link needed");return;}
-        S.calSources.push({id:uid(),name:name,url:url,color:color,enabled:true,useProxy:document.getElementById("cs-proxy").checked,count:0,lastSync:null,error:null});
-        save(); toast("Added — syncing…"); rebuild(); refreshCalendars(function(){ rebuild(); render(); });
+        if(!/^(https|webcals?):\/\/\S+$/i.test(url)){ toast("Use the calendar's https:// or webcal:// address");return; }
+        var dup=S.calSources.find(function(x){ return feedTarget(x.url)===feedTarget(url); });
+        if(dup){ toast("That calendar is already here, as “"+dup.name+"”"); return; }
+        S.calSources.push({id:uid(),name:name,url:url,color:color,enabled:true,count:0,lastSync:null,error:null});
+        document.getElementById("cs-name").value=""; document.getElementById("cs-url").value=""; color=COLORS[S.calSources.length%COLORS.length];
+        save(); toast(S.proxy?"Added — syncing…":"Added. It syncs once your relay address is set"); rebuild(); refreshCalendars(synced2);
       };
       var imp=document.getElementById("cs-import"); if(imp) imp.onclick=function(){ close(); importICS(); };
+      var rf=document.getElementById("cs-refresh"); if(rf) rf.onclick=function(){ toast("Syncing…"); refreshCalendars(synced2); };
+      var rn=document.getElementById("cs-rename"); if(rn){ rn.focus(); rn.select(); rn.onkeydown=function(e){ if(e.key==="Enter"){ e.preventDefault(); rn.parentNode.querySelector('[data-cact="rename-ok"]').click(); } else if(e.key==="Escape"){ e.stopPropagation(); renaming=null; rebuild(); } }; }
+      var rc=document.getElementById("cs-recolour"); if(rc){ var cs=S.calSources.find(function(x){ return x.id===colouring; });
+        if(cs) openColorPicker(rc,{color:cs.color},function(v){ cs.color=v.color; S.events.forEach(function(e){ if(e.sourceId===cs.id) e.color=v.color; }); colouring=null; save(); rebuild(); render(); },{shapes:false}); }
       var listEl=document.getElementById("cal-list");
       if(listEl) listEl.onclick=function(e){ var a=e.target.closest("[data-cact]"); if(!a)return; var host=e.target.closest("[data-sid]"); var sid=host.dataset.sid; var s=S.calSources.find(function(x){return x.id===sid;}); if(!s)return;
-        if(a.dataset.cact==="toggle"){ s.enabled=!s.enabled; save(); rebuild(); render(); }
-        else if(a.dataset.cact==="refresh"){ toast("Syncing…"); refreshCalendars(function(){ rebuild(); render(); }); }
-        else if(a.dataset.cact==="remove"){ S.events=S.events.filter(function(x){return x.sourceId!==sid;}); S.calSources=S.calSources.filter(function(x){return x.id!==sid;}); save(); rebuild(); render(); }
+        var act=a.dataset.cact;
+        if(act==="toggle"){ s.enabled=!s.enabled; save(); rebuild(); render(); if(s.enabled) refreshCalendars(synced2); }
+        else if(act==="refresh"){ toast("Syncing…"); refreshCalendars(synced2); }
+        else if(act==="rename"){ renaming=sid; colouring=null; rebuild(); }
+        else if(act==="rename-ok"){ var v=(document.getElementById("cs-rename").value||"").trim(); if(!v){ toast("A name, please"); return; } s.name=v; renaming=null; save(); rebuild(); render(); }
+        else if(act==="colour"){ colouring=colouring===sid?null:sid; renaming=null; rebuild(); }
+        else if(act==="remove"){ S.events=S.events.filter(function(x){return x.sourceId!==sid;}); S.calSources=S.calSources.filter(function(x){return x.id!==sid;}); save(); rebuild(); render(); }
       };
     }
-    function rebuild(){ var m=document.querySelector(".modal"); if(!m) return;
+    function rebuild(){ var m=document.querySelector(".modal"); if(!m||!document.getElementById("cal-list")) return;
       var y=m.scrollTop;                    // innerHTML= resets scroll, and these modals are long
-      m.innerHTML=body(); wire(); m.scrollTop=y; }
+      // what is half-typed survives a refresh landing; a relay address that was saved shows as saved
+      var keep={}; ["cs-name","cs-url","cs-relay"].forEach(function(id){ var f=document.getElementById(id); if(f&&(id!=="cs-relay"||relayNorm(f.value).err)) keep[id]=f.value; });
+      m.innerHTML=body(); wire(); m.scrollTop=y;
+      Object.keys(keep).forEach(function(id){ var f=document.getElementById(id); if(f) f.value=keep[id]; });
+    }
     modal(body()); wire();
   }
 
@@ -7827,12 +8291,14 @@ function GENA_MAIN() {
       '<button class="btn" id="x-restore">🛟 Restore from a local backup</button>'+
       (window.showSaveFilePicker?'<button class="btn" id="x-sync">🔗 '+(syncName?"Sync file: "+esc(syncName):"Link a sync file (auto-save)")+'</button>'+(syncName?'<button class="btn ghost" id="x-unsync">Unlink sync file</button>':""):"")+
       '<p class="label" style="margin:10px 0 0">Sync &amp; reminders</p>'+
+      '<button class="btn" id="x-cals">🗓 Calendars: subscriptions and relay</button>'+
       '<button class="btn" id="x-gh">☁️ '+(GH&&GH.gistId?"Cloud sync: connected":"Cloud sync via GitHub (cross-device)")+'</button>'+
       '<button class="btn" id="x-remind">🔔 Task-time reminders: '+(S.remind?"on":"off")+'</button>'+
       '<p class="label" style="margin:10px 0 0">Behaviour</p>'+
       '<button class="btn" id="x-autocarry" title="On: unfinished tasks move onto today by themselves. Off: they stay on their original day and wait in the Carried-over card until you place them.">⏳ Carry unfinished onto today: '+(S.autoCarry===false?"off":"on")+'</button>'+
       '<button class="btn" id="x-evening" title="A nudge in the evening to close the day out — tick off what you did and decide where the rest goes.">🌙 Evening review nudge: '+(S.eveningHour===false?"off":(((S.eveningHour+11)%12+1)+(S.eveningHour<12?"am":"pm")))+'</button>'+
       '<button class="btn" id="x-layout" title="On: Morning / Afternoon / Evening are their own cards on Today. Off: one To-do card, grouped flat, by time of day, or by Focus — your pick on the card.">🗂 Time-of-day cards: '+(S.todayLayout==="cards"?"on":"off")+'</button>'+
+      '<button class="btn" id="x-addcal" title="After you save an event, a one-line message offers to add it to Google Calendar, Outlook or Apple Calendar too.">🗓 Offer to add to another calendar: '+(addCalOffer()?"on":"off")+'</button>'+
       '<button class="btn" id="x-expandadd" title="On: adding a task opens its editor so you can fill in details straight away. Off: it just adds the line and keeps the cursor ready for the next one.">📝 Open the editor when I add a task: '+(S.expandOnAdd===false?"off":"on")+'</button>'+
       '<p class="label" style="margin:10px 0 0">Share &amp; capture</p>'+
       '<button class="btn" id="x-feed">📡 Reminder calendar feed (subscribe)</button>'+
@@ -7853,6 +8319,7 @@ function GENA_MAIN() {
     document.getElementById("x-ics").onclick=exportICSFile;
     document.getElementById("x-restore").onclick=function(){ close(); openRestoreModal(); };
     document.getElementById("x-feed").onclick=function(){ close(); openFeedModal(); };
+    document.getElementById("x-cals").onclick=function(){ close(); openCalendarsModal(); };
     document.getElementById("x-share").onclick=function(){ close(); openShareModal(); };
     document.getElementById("x-capture").onclick=function(){ close(); openCaptureModal(); };
     document.getElementById("x-lock").onclick=function(){ close(); openEncModal(); };
@@ -7879,6 +8346,10 @@ function GENA_MAIN() {
     document.getElementById("x-layout").onclick=function(){
       S.todayLayout=(S.todayLayout==="cards")?"one":"cards"; save(); render();
       this.textContent="🗂 Time-of-day cards: "+(S.todayLayout==="cards"?"on":"off");
+    };
+    document.getElementById("x-addcal").onclick=function(){
+      var on=!addCalOffer(); try{ localStorage.setItem(ADDCAL_KEY,on?"1":"0"); }catch(e){}
+      this.textContent="🗓 Offer to add to another calendar: "+(on?"on":"off");
     };
     document.getElementById("x-expandadd").onclick=function(){
       S.expandOnAdd=(S.expandOnAdd===false); save();
@@ -7957,7 +8428,7 @@ function GENA_MAIN() {
   function relatedTasks(person){
     var terms=[norm(person.name)];
     norm(person.name).split(/\s+/).forEach(function(w){ w=w.replace(/[^\w]/g,""); if(w.length>=4) terms.push(w); });
-    terms=terms.filter(Boolean);
+    terms=terms.filter(Boolean);   // the same rule as personLinkTest (F6)
     // An explicit personIds tag is the real link. Name-matching stays as a fallback so tasks written
     // before tagging existed (or just typed with someone's name in them) still surface here.
     var tagged={}, out=[];
@@ -8008,9 +8479,11 @@ function GENA_MAIN() {
         if(wCount.length) bits.push('<span class="pill block">⏸ '+wCount.length+' waiting · '+rounds+' check-in'+(rounds===1?'':'s')+'</span>');
         var linkedDone=S.tasks.filter(function(k){ return k.status==="done" && (k.personIds||[]).indexOf(p.id)>=0; }).length;
         if(linkedDone) bits.push('<span class="pill good">✓ '+linkedDone+' done together</span>');
+        var pof=p.focusId&&proj(p.focusId); if(pof) bits.unshift('<span class="pill proj'+pk(pof)+'" style="'+pcVars(pof)+'" title="Usual Focus"><i class="pdot"></i>'+(pof.emoji?esc(pof.emoji)+" ":"")+esc(pof.name)+'</span>');
+        var popn=personOpenPill(p); if(popn) bits.push(popn);
         if(bits.length) html+='<div class="task-meta" style="margin:6px 0 2px">'+bits.join("")+'</div>';
       })();
-      if(p.notes) html+='<div style="font-size:13px;margin-top:8px;white-space:pre-wrap">'+esc(p.notes)+'</div>';
+      if(p.notes) html+='<div class="person-notes" style="font-size:13px;margin-top:8px">'+sanitizeRTE(p.notes)+'</div>';   // rich text (dated lines from F2), not escaped markup
       var wOn=S.tasks.filter(function(k){ return isWaiting(k) && k.waitPersonId===p.id; });
       if(wOn.length) html+='<div class="label" style="margin:12px 0 4px">⏸ Waiting on them</div><ul class="tasks">'+wOn.map(function(k){return waitingRow(k, !!(k.nextAt&&k.nextAt<=today()));}).join("")+'</ul>';
       var rel=relatedTasks(p);
@@ -8021,6 +8494,7 @@ function GENA_MAIN() {
       html+='<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="chip" data-act="editperson" data-id="'+esc(p.id)+'">edit</button>'+
         '<button class="chip" data-act="logtouch" data-id="'+esc(p.id)+'">✓ Logged a touch</button>'+
         '<button class="chip" data-act="person-task" data-id="'+esc(p.id)+'">+ task</button>'+
+        '<button class="chip" data-act="person-item" data-id="'+esc(p.id)+'">＋ Item</button>'+
         '<button class="chip" data-act="'+(p.paused?"resume-person":"pause-person")+'" data-id="'+esc(p.id)+'">'+(p.paused?"Resume":"💤 Pause")+'</button></div>';
       html+='</div></details></div>';
     });
@@ -8042,9 +8516,11 @@ function GENA_MAIN() {
       '<div class="row"><div class="fld"><label>Prep task <span style="text-transform:none;letter-spacing:0;font-weight:600">(days before the next follow-up — 0 = none)</span></label><input id="pe-prep" type="number" min="0" max="30" value="'+(p.prepDays||"")+'" placeholder="e.g. 3"/></div></div>'+
       '<div class="row"><div class="fld"><label>Last contact</label><input id="pe-last" type="date" value="'+(p.last||"")+'"/></div>'+
       '<div class="fld"><label>Next follow-up</label><input id="pe-next" type="date" value="'+(p.next||"")+'"/></div></div>'+
+      '<div class="row"><div class="fld"><label>Usual Focus</label><select id="pe-foc"><option value="">None</option>'+focusSelectOpts(p.focusId)+'</select></div></div>'+
       '<div class="row"><div class="fld"><label>Main Domain</label><select id="pe-dom"><option value="">None</option>'+S.profiles.map(function(d){ return '<option value="'+esc(d.id)+'"'+(d.id===p.profileId?" selected":"")+'>'+esc((d.emoji?d.emoji+" ":"")+d.name)+'</option>'; }).join("")+'</select></div></div>'+
       '<div class="fld"><label>Also in</label><div class="chips" id="pe-doms">'+S.profiles.map(function(d){ return '<button type="button" class="chip" data-dom="'+esc(d.id)+'" aria-pressed="'+((p.profileIds||[]).indexOf(d.id)>=0)+'">'+esc((d.emoji?d.emoji+" ":"")+d.name)+'</button>'; }).join("")+'</div></div>'+
       '<div class="fld"><label>Collections</label>'+colChipsHtml(p.cols)+'</div>'+
+      '<div class="fld"><label class="check-row"><input type="checkbox" id="pe-sp"'+(p.startPriority?" checked":"")+'/> Start in Priority <span class="sub" style="display:block;font-weight:400;text-transform:none;letter-spacing:0">The day the follow-up is due, it starts in Priority</span></label></div>'+
       '<div class="fld"><label>Notes</label>'+richTextHtml(null,p.notes||"","How you know them, what to remember, what to ask next…",64,"pe-notes","rte-compact")+'</div>'+
       '<div class="fld"><label>Color</label><div class="cp" id="pe-sw"></div></div>'+
       '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="pe-del" style="margin-right:auto">Delete</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>');
@@ -8059,10 +8535,15 @@ function GENA_MAIN() {
         prepDays:+((document.getElementById("pe-prep")||{}).value)||0};
       if(editing && data.next!==p.next) data.prepFor=null;   // a new date gets a new prep task
       data.profileId=document.getElementById("pe-dom").value||null;   // P1: written every time, so the conversion never revisits him
+      data.focusId=(document.getElementById("pe-foc")||{}).value||null;   // F6: written every time, so the suggestion never revisits them
+      if(!data.profileId&&data.focusId){ var pef=proj(data.focusId); if(pef&&pef.profileId) data.profileId=pef.profileId; }   // the Focus's Domain, only when none is chosen
       data.profileIds=extras.filter(function(d){ return d!==data.profileId; });
       var pc=peCols(); if(pc.length||p.cols) data.cols=pc;
       if(patV) data.pat=patV;
+      var peSp=!!(document.getElementById("pe-sp")||{}).checked, peSpWas=!!p.startPriority; if(peSp||p.startPriority!==undefined) data.startPriority=peSp;
       if(editing){ for(var k in data) p[k]=data[k]; if(!patV) delete p.pat; } else { data.id=uid(); S.people.push(data); }
+      var peNow=editing?p:data;   // P4: switched on with the follow-up due today, it joins today's Priority at once
+      if(peSp&&!peSpWas) addToPriority(today(),null,null,[peNow]);
       save(); close(); render(); };
     if(editing) document.getElementById("pe-del").onclick=function(){ confirmModal("Delete this person?","Their card and notes are removed.","Delete",function(){ S.people=S.people.filter(function(x){return x.id!==p.id;}); save(); render(); }); };
   }
@@ -8465,7 +8946,8 @@ function GENA_MAIN() {
       var dayVal; if(!("day" in k)||k.day==null||k.day===""||String(k.day).toLowerCase()==="someday") dayVal=null; else dayVal=validDate(k.day)||t;
       var dueVal=validDate(k.due)||null, endVal=validDate(k.end)||null;
       var at=parseTimeAI(k.time); if(at&&!bl) bl=blockForTime(at);
-      S.tasks.push({id:uid(),title:String(k.title),projectId:pid,effortId:pl.eid||undefined,status:"todo",day:dayVal,block:bl,at:at,priority:!!k.priority,rollover:0,due:dueVal,end:(endVal&&dayVal&&endVal>dayVal)?endVal:null,notes:k.notes?plainToHtml(String(k.notes)):null,subs:aiSubs(k.subtasks),created:t}); n++; });
+      S.tasks.push({id:uid(),title:String(k.title),projectId:pid,effortId:pl.eid||undefined,status:"todo",day:dayVal,block:bl,at:at,priority:!!k.priority,rollover:0,due:dueVal,end:(endVal&&dayVal&&endVal>dayVal)?endVal:null,notes:k.notes?plainToHtml(String(k.notes)):null,subs:aiSubs(k.subtasks),created:t});
+      if(dueVal&&k.showBefore!=null&&isFinite(+k.showBefore)&&+k.showBefore>=0) S.tasks[S.tasks.length-1].showBefore=Math.floor(+k.showBefore); n++; });
     (d.phases||[]).forEach(function(ph){ if(!ph||!ph.title||!validDate(ph.start)||!validDate(ph.end))return;
       var pef=effortByName(ph.project), ppid=!pef&&ph.project?(S.projects.find(function(x){return lcEq(x.name,ph.project);})||{}).id||null:null;
       if(ph.end<ph.start) return;
@@ -8566,8 +9048,8 @@ function GENA_MAIN() {
       ["☁️","Cloud sync settings",function(){ openGhModal(); }],
       ["⚙️","Backup & settings",function(){ document.getElementById("menu-btn").onclick(); }]
     ].map(function(a){ return {icon:a[0],label:a[1],hint:"action",run:a[2]}; });
-    [["today","Today"],["week","Week"],["backlog","Backlog"],["hub","Hub"],["projects","Focuses"],["people","People"],["calendar","Calendar"],["timeline","Timeline"]].forEach(function(v){
-      out.push({icon:"→",label:"Go to "+v[1],hint:"view",run:function(){ view=v[0]; syncNav(); render(); }});
+    [["today","Today"],["plan","Events"],["week","Week"],["backlog","Backlog"],["hub","Hub"],["projects","Focuses"],["people","People"],["calendar","Calendar"],["timeline","Timeline"]].forEach(function(v){
+      out.push({icon:"→",label:"Go to "+v[1],hint:"view",run:function(){ if(GROUPS[v[0]]) goView(v[0]); else { view=v[0]; syncNav(); render(); } }});
     });
     // scopes (V6): the same values the sidebar sets; "Collection: …" is how search filters by Collection (K6)
     var sc=function(icon,label,hint,v){ out.push({icon:icon,label:label,hint:hint,run:function(){ setScope(v); }}); };
@@ -8614,9 +9096,10 @@ function GENA_MAIN() {
     build("");
   }
   function openShortcutsModal(){
-    var rows=[["⌘K / Ctrl+K","Command palette — every action in one box, and every Collection, Domain, Focus and Project to show"],["⌘Z / Ctrl+Z","Undo · add ⇧ to redo"],["/","Search everything"],["n","Jump to the quick-add box"],["g then t · w · h · p · e · c · l","Go to Today · Week · Hub · Lists · People · Calendar · Timeline"],["[[Name]] in a note","Links to a Focus, Project, person, or task — click it in Journal"],["[","Show / hide the sidebar"],["]","Show / hide the log panel"],["?","This cheat sheet"],["Esc","Close any popup or leave select mode"],["@ in any add box","Tag a Focus, time of day, day, or clock time"]];
+    var rows=[["⌘K / Ctrl+K","Command palette — every action in one box, and every Collection, Domain, Focus and Project to show"],["⌘Z / Ctrl+Z","Undo · add ⇧ to redo"],["/","Search everything"],["n","Jump to the quick-add box"],["g then t · w · h · p · e · c · l","Go to Today · Week · Hub · Lists · People · Calendar · Timeline"],["[[Name]] in a note","Links to a Focus, Project, person, or task — click it in Journal"],["[","Show / hide the sidebar"],["]","Show / hide the log panel"],["?","This cheat sheet"],["Esc","Close any popup or leave select mode"],["@ in any add box","Tag a Focus, time of day, day, or clock time"],["@priority","Start it in Priority (@focus works too)"]];
     // Naming is deliberate — these words mean different things and the app sticks to them.
-    var words=[["Domain","One part of your life — Career, Health, Family & Friends. It holds Focuses, Projects and people."],
+    var words=[["Events","The tab with Day, Week, Month and Week ahead: your day plan, your events and the calendars you subscribe to. It opens on Day."],
+      ["Domain","One part of your life — Career, Health, Family & Friends. It holds Focuses, Projects and people."],
       ["Focus","An ongoing stream of work inside one Domain. Its tasks and habits live in it."],
       ["Project","A bigger piece of work with steps, phases and progress. It lives in a Domain; its steps can sit in any Focus."],
       ["Collection","A shelf you fill yourself — Favorites, Home, Work, Body & Soul. It pulls up any Domain, Focus, Project, person or task you put in it."],
@@ -8900,7 +9383,7 @@ function GENA_MAIN() {
       // 41: follow-ups that landed — log the touch, or push a week
       var fuDue=isDay?agenda(t).followups:[];
       if(fuDue.length){
-        h+='<div class="fld"><label>👤 People to follow up</label><ul class="tasks">'+fuDue.map(function(p){ return followupRowHtml(p,t); }).join("")+'</ul></div>';
+        h+='<div class="fld"><label>👤 People to follow up</label><ul class="tasks">'+fuDue.map(function(p){ return followupRowHtml(p,t,true); }).join("")+'</ul></div>';
       }
       // 40a: check-backs that have landed are decisions too — the same three answers as the card
       var landedW=S.tasks.filter(function(k){ return isWaiting(k) && k.nextAt && k.nextAt<=t && inScope(k); });
@@ -9016,8 +9499,10 @@ function GENA_MAIN() {
           save(); rebuild(); return; }
         var fua=e.target.closest('[data-act="fu-done"],[data-act="fu-snooze"]');
         if(fua){ var fpp=S.people.find(function(x){return x.id===(fua.closest("[data-pid]")||{}).dataset.pid;}); if(!fpp) return;
-          if(fua.dataset.act==="fu-done"){ fpp.last=t; fpp.next=fpp.cadence?addDays(t,fpp.cadence):null; } else fpp.next=addDays(t,7);
-          save(); rebuild(); return; }
+          if(fua.dataset.act==="fu-done"){ var rvb={last:fpp.last,next:fpp.next}; retirePrep(fpp); fpp.last=t; fpp.next=fpp.cadence?addDays(t,fpp.cadence):null; save();
+            toastUndo("Logged a touch with "+fpp.name,function(){ fpp.last=rvb.last; fpp.next=rvb.next; save(); render(); });
+            openTouchCaptureModal(fpp,{after:function(){ openReviewModal(scope,fromDay); }}); return; }   // F1/F8: the capture window, then back to the review
+          fpp.next=addDays(t,7); save(); rebuild(); return; }
         var rh=e.target.closest("[data-rvh]");
         if(rh){ var yH2=isEve?t:(fromDay||addDays(t,-1));
           var hh=habitById(rh.dataset.hid);
@@ -9201,7 +9686,7 @@ function GENA_MAIN() {
     modal('<h3>👋 Welcome to Gena</h3><p class="sub">A planner that lives entirely on your device — no account, no server, your data stays yours.</p>'+
       '<div class="stack" style="font-size:14px;line-height:1.6;margin-top:6px">'+
       '<div>☀️ <b>Today</b> — pick one to three things for Priority, then work the morning / afternoon / evening blocks.</div>'+
-      '<div>🗓 <b>Plan</b> — a real calendar: drag tasks onto hours, resize them, or tap <b>✨ Plan my day</b> to fill the gaps.</div>'+
+      '<div>🗓 <b>Events</b> — a real calendar: drag tasks onto hours, resize them, or tap <b>✨ Plan my day</b> to fill the gaps.</div>'+
       '<div>⌨️ Type naturally: <b>“Call Sara tomorrow 4pm @Thesis”</b> files itself. The <b>@</b> button lists Focuses, people and times.</div>'+
       '<div>🌅 Each morning, a one-minute <b>review</b> clears yesterday and sets today.</div>'+
       '<div>🔒 Optional <b>passcode encryption</b> and <b>cloud sync</b> live in ⋯.</div>'+
@@ -9279,7 +9764,7 @@ function GENA_MAIN() {
         "TRIGGER"+(timed?":-PT30M":";RELATED=START:PT8H"),"END:VALARM"); } // timed: 30m before; all-day: 8am day-of
       L.push("END:VEVENT");
     });
-    S.events.forEach(function(ev){ if(!ev.date || lastDay(ev.date,ev.end)<horizon) return;
+    S.events.forEach(function(ev){ if(!ev.date || lastDay(ev.date,ev.end)<horizon || (alarms&&isSubEvent(ev))) return;   // the published feed: no subscribed calendar (device-local)
       L.push("BEGIN:VEVENT","UID:ev-"+ev.id+"@daybook","DTSTART;VALUE=DATE:"+ev.date.replace(/-/g,""),"SUMMARY:"+icsEsc(ev.title));
       if(ev.end&&ev.end>ev.date) L.push("DTEND;VALUE=DATE:"+addDays(ev.end,1).replace(/-/g,""));
       if(alarms){ L.push("BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+icsEsc(ev.title),"TRIGGER;RELATED=START:PT8H","END:VALARM"); }
@@ -9298,6 +9783,73 @@ function GENA_MAIN() {
     var blob=new Blob([buildICS(false)],{type:"text/calendar"});
     var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="daybook-"+today()+".ics"; a.click();
     toast("Calendar file downloaded — import it anywhere");
+  }
+  /* ---------- add to another calendar (V6.2 L1 to L5) ----------
+     Google and Outlook get a prefilled link that opens in a new tab (he picks the account there); Apple
+     Calendar gets a one-event .ics. Gena sends nothing anywhere itself and holds no token. */
+  var ADDCAL_KEY="gena-offer-addcal";   // L4: "Offer to add to another calendar" is a device setting (V6.2 adds no synced field)
+  function addCalOffer(){ try{ return localStorage.getItem(ADDCAL_KEY)!=="0"; }catch(e){ return true; } }
+  // an event or a dated task → {title, day, last, at, mins, details}
+  function calItem(x){
+    var day=x.date||x.day;
+    return {title:String(x.title||"").trim()||"(event)", day:day, last:lastDay(day,x.end), at:/^\d{2}:\d{2}$/.test(x.at||"")?x.at:null,
+      mins:Math.max(5,+x.dur||60), details:x.notes?htmlToText(x.notes).trim():""};
+  }
+  // a timed item's start and end as instants: this device's clock, sent as UTC so every calendar reads it the same
+  function calInstants(it){ var s=parse(it.day); s.setHours(+it.at.slice(0,2),+it.at.slice(3),0,0); return [s,new Date(s.getTime()+it.mins*60000)]; }
+  function utcStamp(d){ return d.toISOString().replace(/\.\d{3}Z$/,"Z").replace(/[-:]/g,""); }
+  function googleCalUrl(it){
+    var dates=it.at?calInstants(it).map(utcStamp).join("/"):it.day.replace(/-/g,"")+"/"+addDays(it.last,1).replace(/-/g,"");   // an all-day end is exclusive
+    return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent(it.title)+"&dates="+dates+(it.details?"&details="+encodeURIComponent(it.details):"");
+  }
+  function outlookCalUrl(it){
+    var se=it.at?calInstants(it).map(function(d){ return d.toISOString().replace(/\.\d{3}Z$/,"Z"); }):[it.day,addDays(it.last,1)];
+    return "https://outlook.live.com/calendar/0/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&subject="+encodeURIComponent(it.title)+
+      "&startdt="+encodeURIComponent(se[0])+"&enddt="+encodeURIComponent(se[1])+"&allday="+(it.at?"false":"true")+(it.details?"&body="+encodeURIComponent(it.details):"");
+  }
+  function icsFold(l){ var out=[]; while(l.length>74){ out.push(l.slice(0,74)); l=" "+l.slice(74); } out.push(l); return out.join("\r\n"); }
+  function oneEventIcs(it){
+    var L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Gena//Gena Planner//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH","BEGIN:VEVENT",
+      "UID:gena-"+hashCode(it.title+"|"+it.day+"|"+(it.at||""))+"@gena","DTSTAMP:"+utcStamp(new Date())];
+    if(it.at){ var se=calInstants(it); L.push("DTSTART:"+utcStamp(se[0]),"DTEND:"+utcStamp(se[1])); }
+    else L.push("DTSTART;VALUE=DATE:"+it.day.replace(/-/g,""),"DTEND;VALUE=DATE:"+addDays(it.last,1).replace(/-/g,""));
+    L.push("SUMMARY:"+icsEsc(it.title)); if(it.details) L.push("DESCRIPTION:"+icsEsc(it.details));
+    L.push("END:VEVENT","END:VCALENDAR");
+    return L.map(icsFold).join("\r\n")+"\r\n";
+  }
+  function downloadIcs(it){
+    var blob=new Blob([oneEventIcs(it)],{type:"text/calendar"});
+    var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=(it.title.replace(/[^\w\- ]+/g,"").trim().slice(0,40)||"event")+".ics"; a.click();
+    toast("Event file downloaded. Open it to add the event to Apple Calendar");
+  }
+  // the three choices as links (Google, Outlook open in a new tab with no opener) and a download
+  function addToHtml(it,cls,icons){
+    var a=function(k,url,icon,label){ return '<a class="'+cls+'" data-addcal="'+k+'" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+(icons?'<span class="si">'+icon+'</span>':'')+label+'</a>'; };
+    return a("google",googleCalUrl(it),"🗓","Add to Google Calendar")+a("outlook",outlookCalUrl(it),"📨","Add to Outlook")+
+      '<button class="'+cls+'" data-addcal="ics">'+(icons?'<span class="si">⤓</span>':'')+'Download .ics (Apple Calendar)</button>';
+  }
+  // get() reads the item at tap time (an editor's fields may have changed); null stops the tap
+  function wireAddTo(host,get,after){
+    host.addEventListener("click",function(e){ var a=e.target.closest("[data-addcal]"); if(!a||!host.contains(a)) return;
+      var it=get(); if(!it){ e.preventDefault(); return; }
+      if(a.dataset.addcal==="ics"){ e.preventDefault(); downloadIcs(it); }
+      else a.href=a.dataset.addcal==="google"?googleCalUrl(it):outlookCalUrl(it);
+      if(after) setTimeout(after,0); });
+  }
+  function openAddToSheet(x){
+    var it=calItem(x);
+    var root=modal('<div class="sheet-grip"></div><div class="sheet-title">Add “'+esc(it.title)+'” to a calendar</div>'+addToHtml(it,"sheet-row",true)+
+      '<div class="sub" style="font-size:11.5px;margin:8px 8px 0">Google and Outlook open with the event filled in; pick the account there. The .ics file opens in Apple Calendar on Mac and iPhone.</div>',"sheet");
+    document.getElementById("scrim").classList.add("sheet-scrim");
+    wireAddTo(root.querySelector(".modal"),function(){ return it; },close);
+  }
+  // L4: after Save, one line offers the same three
+  function toastAddTo(msg,x){
+    var t=document.getElementById("toast"), it=calItem(x);
+    t.textContent=msg+" · Also add to: ";
+    t.insertAdjacentHTML("beforeend",addToHtml(it,"toast-act",false).replace(">Add to Google Calendar<",">Google<").replace(">Add to Outlook<",">Outlook<").replace(">Download .ics (Apple Calendar)<",">.ics<"));
+    wireAddTo(t,function(){ return it; },function(){ t.classList.remove("show"); });
+    t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(function(){ t.classList.remove("show"); },8000);
   }
   /* ---------- quick capture (bookmarklet + share target) ---------- */
   function openCaptureModal(){
@@ -9433,6 +9985,7 @@ function GENA_MAIN() {
       out.push({ins:"@"+p.name.replace(/\s+/g,"-"),label:(p.emoji?esc(p.emoji)+" ":"")+esc(p.name),dot:dotStyle(p),hint:pr?esc(pr.name):"project"}); });
     S.people.forEach(function(pp){ if(hit(pp.name)) out.push({ins:"@"+pp.name.replace(/\s+/g,"-"),label:(pp.emoji?esc(pp.emoji):"👤")+" "+esc(pp.name),dot:dotStyle(pp,"var(--p5)"),hint:"person"}); });
     if(projOnly) return out.slice(0,8);
+    if(lt&&hit("priority")) out.unshift({ins:"@priority",label:"◎ Start in Priority",hint:"Priority"});   // V6.1 P5: first, so Enter takes it
     [["morning","☀️ morning"],["afternoon","🌤 afternoon"],["evening","🌙 evening"]].forEach(function(b){ if(hit(b[0])) out.push({ins:"@"+b[0],label:b[1],hint:"time of day"}); });
     ["today","tomorrow","someday","anytime","tonight"].forEach(function(d2){ if(hit(d2)) out.push({ins:"@"+d2,label:d2,hint:"day"}); });
     if(lt.length>=2) ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"].forEach(function(w){ if(hit(w)) out.push({ins:"@"+w,label:w,hint:"day"}); });
@@ -9440,7 +9993,7 @@ function GENA_MAIN() {
     if(/^\d{1,2}(:\d{2})?(a|p|am|pm)?$/.test(lt)&&out.length<8) out.unshift({ins:"@"+lt.replace(/(a|p)$/,"$1m"),label:"🕒 "+lt.replace(/(a|p)$/,"$1m"),hint:"time"});
     out=out.slice(0,8);
     // a name that matches nothing is probably a project you haven't made yet — offer to, right here
-    if(tok.length>=2 && !/^\d/.test(lt) && !S.projects.some(function(p){ return p.name.toLowerCase()===lt; }))
+    if(tok.length>=2 && !/^\d/.test(lt) && lt!=="priority" && lt!=="focus" && !S.projects.some(function(p){ return p.name.toLowerCase()===lt; }))
       out.push({newProj:tok.replace(/-/g," "),label:"＋ New Focus “"+esc(tok.replace(/-/g," "))+"”",hint:"create"});
     return out;
   }
@@ -9736,9 +10289,9 @@ function GENA_MAIN() {
   onOpen();
   handleCaptureParams();   // quick-capture from bookmarklet / PWA share -> Backlog (sets view before first paint)
   render();
-  refreshCalendars(function(){ if(view==="calendar") renderPassive(); });
+  refreshCalendars(function(){ if(groupOf(view)==="plan") renderPassive(); },{passive:true});
   ghCfgReady.then(function(){ updateSyncStatus(); ghPull(); });
-  document.addEventListener("visibilitychange",function(){ if(!document.hidden) ghPull(); });
+  document.addEventListener("visibilitychange",function(){ if(!document.hidden){ ghPull(); calOnReturn(); } });
   if(lockCfg()) showLock();
   if(bootDedupeCount>0){ save(); setTimeout(function(){ toast("Cleaned up "+bootDedupeCount+" duplicate item"+(bootDedupeCount===1?"":"s")+" (⌘Z to undo)"); },600); } // persist + push the de-duplicated data
   if(S.welcomed===false){ S.welcomed=true; save(); openWelcomeModal(); }
