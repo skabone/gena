@@ -17,6 +17,15 @@
 <!-- In the markup, not injected by the app: the passcode screen runs before the app does. -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Gena — a day planner</title>
+<!-- Look release D3, T4: set on <html> before the first paint, so the page never redraws at another size or in the
+     other theme: the row size (this device's choice, Compact unless he picked Roomy) and this device's copy of the
+     synced theme and colour scheme (gena-ui-theme, written by applyTheme; absent = System and Paper). applyTheme()
+     sets the same values again once the store is read. -->
+<script>(function(){ var de=document.documentElement, d="compact", t=null;
+  try{ if(localStorage.getItem("gena-ui-density")==="roomy") d="roomy"; t=JSON.parse(localStorage.getItem("gena-ui-theme")||"null"); }catch(e){}
+  de.setAttribute("data-density",d);
+  if(t&&(t.t==="light"||t.t==="dark")) de.setAttribute("data-theme",t.t);
+  if(t&&typeof t.s==="string"&&/^[a-z]+$/.test(t.s)&&t.s!=="paper") de.setAttribute("data-skin",t.s); })();</script>
 <style>
   :root {
     --paper: #f3efe6; --sheet: #fbfaf5; --card: #ffffff;
@@ -68,7 +77,7 @@
 
   /* navigation sidebar — full-height edge panel (content shifts over / expands when hidden) */
   .layout{ display:block; }
-  :root{ --sbw:240px; --rbw:300px; }   /* panel widths — dragged, per device (see panelWidths) */
+  :root{ --sbw:228px; --rbw:292px; }   /* panel widths — dragged, per device (see panelWidths); look release W2 defaults */
   #sidebar{ position:fixed; left:0; top:0; bottom:0; width:var(--sbw); z-index:45; background:var(--sheet); border-right:1.5px solid var(--line); padding:14px 12px 20px; overflow:auto; display:flex; flex-direction:column; gap:14px; transition:transform .2s ease; }
   body.sb-closed #sidebar{ transform:translateX(-102%); }
   .sb-brand{ display:flex; align-items:center; gap:8px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; font-size:12px; color:var(--ink); padding:4px 6px 0; }
@@ -83,19 +92,27 @@
   .rb-brand{ display:flex; align-items:center; gap:8px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; font-size:12px; color:var(--ink); padding:4px 6px 0; }
   .rb-brand .sb-act{ margin-left:auto; background:none; border:none; color:var(--ink-faint); cursor:pointer; font-size:11.5px; font-weight:700; font-family:inherit; }
   .rb-brand .sb-act:hover{ color:var(--terra-deep); }
-  #rb-scrim{ display:none; }
+  #rb-scrim{ display:none; } .pane-grip{ display:none; }
   @media (min-width:1001px){
-    .appbar, .wrap{ margin-left:var(--sbw); margin-right:0; transition:margin .2s ease; }
-    body.sb-closed .appbar, body.sb-closed .wrap{ margin-left:0; }
-    body:not(.rb-closed) .appbar, body:not(.rb-closed) .wrap{ margin-right:var(--rbw); }
-    /* the grab strip on a panel's inner edge; the centre reflows live while you drag */
-    .pane-grip{ position:absolute; top:0; bottom:0; width:10px; cursor:col-resize; z-index:2; touch-action:none; }
-    #sidebar .pane-grip{ right:0; } #rightbar .pane-grip{ left:0; }
-    #sidebar .pane-grip::after{ right:0; } #rightbar .pane-grip::after{ left:0; }
-    .pane-grip::after{ content:""; position:absolute; top:0; bottom:0; width:3px; background:transparent; transition:background .15s; }
-    .pane-grip:hover::after, body.pane-resizing .pane-grip::after{ background:var(--terra); }
-    body.pane-resizing, body.pane-resizing *{ cursor:col-resize !important; user-select:none; }
-    body.pane-resizing .appbar, body.pane-resizing .wrap, body.pane-resizing #sidebar, body.pane-resizing #rightbar{ transition:none; }
+    /* look release: the strip runs across the whole window; the panels start under it */
+    .wrap{ margin-left:var(--sbw); margin-right:0; transition:margin .2s ease; }
+    body.sb-closed .wrap{ margin-left:0; }
+    body:not(.rb-closed) .wrap{ margin-right:var(--rbw); }
+    #sidebar, #rightbar{ top:var(--strip-h); }
+    /* W1: one crisp line between a panel and the page, and that line is the handle (like Claude's and ChatGPT's
+       sidebars). The panels draw no border of their own; the grip is a 10 px invisible hit area centred on the
+       line, above the content; the line thickens to 3 px in the accent on hover, focus and drag without moving
+       anything; the centre reflows live while you drag */
+    #sidebar{ border-right:0; } #rightbar{ border-left:0; }
+    .pane-grip{ display:block; position:fixed; top:var(--strip-h); bottom:0; width:10px; cursor:col-resize; z-index:46; touch-action:none; outline:none; }
+    .pane-grip[data-pane="sb"]{ left:calc(var(--sbw) - 5px); } .pane-grip[data-pane="rb"]{ right:calc(var(--rbw) - 5px); }
+    body.sb-closed .pane-grip[data-pane="sb"], body.rb-closed .pane-grip[data-pane="rb"]{ display:none; }
+    .pane-grip::after{ content:""; position:absolute; top:0; bottom:0; left:50%; width:1px; transform:translateX(-50%); background:var(--line); transition:width .12s ease, background-color .12s ease; }
+    .pane-grip:hover::after, .pane-grip:focus-visible::after, .pane-grip.on::after{ width:3px; background:var(--terra); }
+    body.pane-resizing, body.pane-resizing *{ cursor:col-resize !important; user-select:none; -webkit-user-select:none; }
+    body.pane-resizing iframe{ pointer-events:none; }
+    body.pane-resizing .wrap, body.pane-resizing #sidebar, body.pane-resizing #rightbar{ transition:none; }
+    .sb-tree{ margin-right:5px; }   /* W6: the tree's scrollbar ends where the grip's hit area begins */
   }
   @media (max-width:1000px){
     #rightbar{ transform:translateX(102%); border-radius:18px 0 0 18px; box-shadow:0 0 60px rgba(0,0,0,.35); z-index:56; }
@@ -118,7 +135,7 @@
   .grp-dom{ font-size:12px; font-weight:700; color:var(--ink-soft); margin:12px 4px 2px; }
   .dom-h{ font-size:15px; font-weight:700; margin:18px 2px 8px; color:var(--ink); }
   .ef-ph{ display:flex; align-items:center; gap:8px; justify-content:space-between; font-size:13px; padding:3px 0; }
-  .task-meta .pill.step{ background:var(--line-soft); color:var(--ink-soft); }
+  .task-meta .pill.step{ background:var(--line-soft); color:var(--ink-soft); margin-top:0; }   /* not the help sheet's .step (its 14 px margin left an empty line above the details in WebKit; look release) */
   .next-step{ font-size:12.5px; color:var(--ink-soft); margin:8px 0 4px; line-height:1.4; }
   .ph-strip{ display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 2px; }
   .ph-chip{ font-size:11.5px; padding:2px 8px; border-radius:999px; background:var(--line-soft); color:var(--ink-soft); }
@@ -554,16 +571,10 @@
   .cp-prev{ list-style:none; margin:0; padding:0; border-radius:10px; overflow:hidden; background:var(--card); border:1px solid var(--line); }
   .cp-prev li.task{ margin:0; border:none; pointer-events:none; }
 
-  /* density & font (Phase 9b) — scale the two things that actually drive comfort: row padding and text */
-  :root[data-density="compact"]{ --row-pad:7px; --card-pad:13px; --gap:10px; }
-  :root[data-density="cozy"]{ --row-pad:11px; --card-pad:18px; --gap:14px; }
-  :root[data-density="roomy"]{ --row-pad:16px; --card-pad:24px; --gap:19px; }
-  :root[data-density="compact"] .task{ padding-top:var(--row-pad); padding-bottom:var(--row-pad); }
-  :root[data-density="roomy"] .task{ padding-top:var(--row-pad); padding-bottom:var(--row-pad); }
-  :root[data-density="compact"] .card{ padding:var(--card-pad); }
-  :root[data-density="roomy"] .card{ padding:var(--card-pad); }
-  :root[data-density="compact"] body{ font-size:14px; }
-  :root[data-density="roomy"] body{ font-size:16px; }
+  /* row size (look release D1 to D5): Compact is the default on every screen; Roomy is the size before the look
+     release (A6), so its rules are the base ones above and Compact only tightens. Set per device on <html>. */
+  :root{ --rowpad:10px; --rowfs:15px; }
+  :root[data-density="compact"]{ --rowpad:7px; }
   :root[data-font="serif"]{ --font: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; }
   :root[data-font="system"]{ --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable", "Segoe UI", Roboto, Inter, system-ui, sans-serif; }
   :root[data-font="mono"]{ --font: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
@@ -1347,13 +1358,205 @@
   @media (max-width:760px){
     input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]), select, textarea, [contenteditable]{ font-size:16px !important; }
   }
+  /* ---- Look release (V6.3, GD-065): the strip — one bar across the whole window ----
+     Left: the sidebar toggle, back and forward, the brand, the five tabs. Middle: the day in view with its
+     arrows and a live clock. Right: the sync chip, search, capture, ⋯ and the right-panel toggle. At 980 px
+     and below the date and time drop to a second row of the same strip. */
+  :root{ --strip-h:48px; --display:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif; }
+  .appbar{ position:sticky; top:0; z-index:50; background:var(--slate); border-radius:0; box-shadow:none; }
+  :root[data-theme="dark"] .appbar{ background:color-mix(in srgb, var(--slate) 80%, #000); }   /* T5: the darker slate in dark */
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .appbar{ background:color-mix(in srgb, var(--slate) 80%, #000); } }
+  .appbar .appbar-inner{ min-height:48px; padding:6px 10px; padding-left:max(10px,env(safe-area-inset-left)); padding-right:max(10px,env(safe-area-inset-right)); gap:6px; flex-wrap:nowrap; }
+  .appbar .icon-btn{ width:30px; height:30px; border-radius:8px; background:transparent; color:var(--slate-ink); opacity:.85; font-size:15px; flex:none; }
+  .appbar .icon-btn:hover{ background:rgba(255,255,255,.12); opacity:1; }
+  .appbar .icon-btn[aria-pressed="false"]{ opacity:.55; }
+  .appbar .icon-btn svg{ width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .appbar .navhist .icon-btn{ width:30px; height:30px; }
+  .sb-tgl .ico-narrow{ display:none; }
+  .appbar .brand{ font-size:13px; letter-spacing:.14em; margin:0 4px 0 4px; gap:7px; }
+  .appbar .brand-mark{ width:17px; height:17px; }
+  .appbar .nav{ background:transparent; padding:0; gap:2px; margin-left:4px; border-radius:0; min-width:0; flex:0 1 auto; }
+  .appbar .nav button{ color:var(--slate-ink); opacity:.8; padding:6px 12px; border-radius:999px; font-size:13px; font-weight:600; }
+  .appbar .nav button:hover{ background:rgba(255,255,255,.1); color:var(--slate-ink); opacity:1; }
+  .appbar .nav button[aria-current="true"], :root[data-theme="dark"] .appbar .nav button[aria-current="true"]{ background:var(--sheet); color:var(--ink); opacity:1; font-weight:700; }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .appbar .nav button[aria-current="true"]{ background:var(--sheet); color:var(--ink); } }
+  .when{ display:flex; align-items:center; gap:2px; white-space:nowrap; color:var(--slate-ink); flex:none; }
+  .when-d{ font-family:var(--display); font-size:15px; font-weight:650; min-width:132px; text-align:center; background:none; border:0; color:inherit; cursor:pointer; padding:3px 6px; border-radius:8px; }
+  .when-d:hover{ background:rgba(255,255,255,.1); }
+  .when-d:disabled{ cursor:default; background:none; }
+  .when-t{ font-size:12.5px; opacity:.78; font-variant-numeric:tabular-nums; margin-left:6px; }
+  .when[data-day="0"] .when-arrow{ display:none; }
+  .when .day-jump{ position:relative; overflow:hidden; cursor:pointer; padding:0; font-size:13px; }
+  .appbar .sync-chip{ flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  /* seconds show whenever the middle has room: wide windows, and the second row on narrow ones */
+  @media (min-width:981px) and (max-width:1240px){ .when .secs{ display:none; } }
+  @media (max-width:1000px){ .sb-tgl .ico-wide{ display:none; } .sb-tgl .ico-narrow{ display:inline; } }
+  @media (max-width:980px){
+    .appbar .appbar-inner{ flex-wrap:wrap; row-gap:0; padding-top:max(6px,env(safe-area-inset-top)); padding-bottom:8px; }
+    .appbar .nav{ flex:1 1 0; order:2; }
+    .appbar .spacer.sp-l{ display:none; }
+    .appbar .spacer{ order:3; flex:0 0 0; }
+    .appbar .sync-chip, .appbar #search-btn, .appbar #cap-btn, .appbar #theme-btn, .appbar #menu-btn, .appbar #rb-toggle{ order:4; }
+    .when{ order:9; flex:0 0 100%; justify-content:center; margin-top:4px; padding-top:6px; border-top:1px solid rgba(255,255,255,.14); }
+    .when-d{ font-size:19px; min-width:0; }
+    .when-t{ font-size:14px; }
+  }
+  @media (max-width:860px){ .appbar .brand{ display:none; } }
+  @media (min-width:761px) and (max-width:860px){
+    .appbar .sync-chip{ font-size:0; width:12px; height:12px; padding:0; border-radius:50%; background:var(--terra); opacity:.9; position:relative; flex:none; overflow:visible; }
+    .appbar .sync-chip::before{ content:""; position:absolute; inset:-16px -10px; }
+    .appbar .sync-chip[data-state="error"], .appbar .sync-chip[data-state="held"]{ width:22px; height:22px; }
+    .appbar .sync-chip[data-state="error"]::after{ content:"!"; font-size:14px; font-weight:800; line-height:22px; color:#fff; }
+    .appbar .sync-chip[data-state="held"]::after{ content:"✎"; font-size:13px; font-weight:700; line-height:22px; color:#fff; }
+  }
+  @media (max-width:760px){
+    .appbar .appbar-inner{ gap:4px; }
+    .appbar .nav{ order:2; flex:1 1 0; }
+    .appbar .nav button{ padding:6px 9px; }
+    .appbar .sync-chip{ flex:none; overflow:visible; }
+  }
+
+  /* ---- Look release: the sidebar is a flat tree with a footer (W3 to W6) ---- */
+  #sidebar{ padding:0; gap:0; overflow:hidden; }
+  @media (max-width:1000px){ #sidebar{ border-right:1px solid var(--line); } #rightbar{ border-left:1px solid var(--line); } }   /* drawers; on desktop the grip's line is the one border (W1) */
+  .sb-tree{ flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; padding:8px 6px 8px; font-size:13px; overscroll-behavior:contain; }
+  .sb-sec{ margin-bottom:6px; }
+  .sb-h{ margin:0; padding:2px 4px 2px 0; font-size:12px; font-weight:700; color:var(--ink-soft); }
+  .sb-h .sb-fold{ display:flex; align-items:center; gap:6px; padding:5px 6px; border-radius:7px; font-weight:700; color:var(--ink-soft); flex:1 1 auto; min-width:0; }
+  .sb-h .sb-fold:hover{ color:var(--ink); }
+  .sb-chev{ display:inline-block; width:12px; font-size:10px; color:var(--ink-faint); transition:transform .15s; }
+  .sb-sec.closed .sb-chev{ transform:rotate(-90deg); }
+  .sb-h .sb-act{ font-size:11.5px; padding:2px 4px; }
+  .sb-items{ display:flex; flex-direction:column; gap:1px; }
+  .sb-row{ gap:7px; font-size:13px; padding:4px 7px; border-radius:8px; min-height:28px; }
+  .sb-row[aria-pressed="true"], .sb-row.on{ font-weight:650; }
+  .sb-row .cnt{ font-size:11.5px; font-variant-numeric:tabular-nums; }
+  .sb-ico{ width:18px; flex:none; text-align:center; font-size:13px; }
+  .sb-row .pdot{ width:9px; height:9px; }
+  .sb-row .sb-star{ font-size:12px; }
+  @media (hover:hover){ .sb-row .sb-hov{ opacity:0; } .sb-row:hover .sb-hov, .sb-row:focus-within .sb-hov{ opacity:1; } }
+  .sb-arr{ width:14px; flex:none; display:inline-grid; place-items:center; background:none; border:0; padding:0; color:var(--ink-faint); font-size:10px; cursor:pointer; font-family:inherit; transition:transform .15s; }
+  .sb-arr:disabled{ cursor:default; }
+  @media (pointer:coarse){ .sb-arr{ width:30px; height:30px; } .sb-row{ min-height:40px; } }   /* a finger needs more than 14 px (look review finding 3) */
+  .sb-branch.open > .sb-row > .sb-arr{ transform:rotate(90deg); }
+  .sb-kids{ margin-left:14px; border-left:1px solid var(--line); padding-left:4px; display:flex; flex-direction:column; gap:1px; }
+  .sb-row.sb-kid{ padding-left:7px; }
+  .sb-row.sb-nodom{ cursor:default; color:var(--ink-soft); }
+  .sb-prog{ width:44px; height:4px; }
+  .sb-mini{ padding:4px 8px 2px; }
+  /* the month picker on Events Day / Week / Month (C2) */
+  .sb-month{ padding:6px 8px 10px; }
+  .sbm-h{ display:flex; align-items:center; justify-content:space-between; font-size:13px; margin-bottom:4px; color:var(--ink); }
+  .sbm-nav{ border:0; background:none; color:var(--ink-soft); font-size:16px; width:26px; height:24px; border-radius:6px; cursor:pointer; font-family:inherit; }
+  .sbm-nav:hover{ background:var(--line-soft); color:var(--ink); }
+  .sbm-g{ display:grid; grid-template-columns:repeat(7,1fr); gap:1px; text-align:center; }
+  .sbm-dw{ font-style:normal; font-size:10px; color:var(--ink-faint); padding:2px 0; }
+  .sbm-d{ border:0; background:none; font-family:inherit; font-size:11.5px; padding:4px 0; border-radius:6px; color:var(--ink); position:relative; cursor:pointer; font-variant-numeric:tabular-nums; }
+  .sbm-d:hover{ background:var(--line-soft); }
+  .sbm-d.sel{ background:var(--terra-bg); color:var(--terra-deep); font-weight:700; }
+  .sbm-d.tdy{ background:var(--slate); color:var(--slate-ink); font-weight:700; }
+  .sbm-d.has::after{ content:""; position:absolute; left:50%; bottom:1px; width:3px; height:3px; border-radius:50%; background:var(--terra); transform:translateX(-50%); }
+  .sb-drawer-head{ flex:none; padding:12px 14px 4px; }
+  @media (min-width:1001px){ .sb-drawer-head{ display:none; } }
+  @media (max-width:760px){ .sb-foot{ padding-bottom:calc(66px + env(safe-area-inset-bottom)); } }   /* clear of the bottom bar */
+  .sb-foot{ flex:none; margin:0; border-top:1px solid var(--line); padding:10px 12px calc(10px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:8px; font-size:12px; color:var(--ink-soft); }
+  .sb-foot-line{ display:flex; flex-wrap:wrap; justify-content:space-between; gap:2px 8px; font-size:11px; color:var(--ink-faint); }
+  .sb-foot-line .build-line{ color:var(--ink-soft); }
+  .sw-seg{ display:flex; background:var(--line-soft); border-radius:9px; padding:2px; }
+  .sw-seg button{ flex:1; border:0; background:transparent; padding:5px 6px; border-radius:7px; font-family:inherit; font-size:12px; color:var(--ink-soft); cursor:pointer; }
+  .sw-seg button[aria-pressed="true"]{ background:var(--card); color:var(--ink); box-shadow:0 1px 2px var(--shadow); font-weight:700; }
+  /* ---- Look release Block 3: big headings above their boxes, foldable groups and days, the right panel ---- */
+  /* H1: a Today card's title is a heading outside its box (display serif); the fold body is the box. Still a
+     <details>, so the fold, its S.collapsed key, keyboard and the anchor's "hidden rows are skipped" are unchanged */
+  #view .today-unit details.card.fold{ background:transparent; border:0; border-radius:0; padding:0; box-shadow:none; }
+  #view .today-unit details.card.fold > summary{ padding:2px 2px 8px; gap:10px; }
+  #view .today-unit details.card.fold > summary .fold-chev{ order:-1; width:14px; flex:none; font-size:13px; }
+  #view .today-unit details.card.fold > summary .fold-label{ font-family:var(--display); font-size:28px; font-weight:700; letter-spacing:-.01em; line-height:1.15; color:var(--ink); }
+  #view .today-unit details.card.fold > summary .fold-label .prio-n{ font-family:var(--font); }
+  #view .today-unit details.card.fold > .fold-body{ background:var(--card); border:1.5px solid var(--line); border-radius:16px; padding:6px 16px 10px; box-shadow:0 1px 3px var(--shadow); }
+  #view .today-unit details.fold[data-fold="focus"]{ border-left:0; }
+  #view .today-unit details.fold[data-fold="focus"] > .fold-body{ border-left:4px solid var(--terra); }
+  #view .today-unit .blocks-grid details.card.fold > summary .fold-label, #view .today-unit .grid2 details.card.fold > summary .fold-label{ font-size:21px; }
+  @media (max-width:860px){ #view .today-unit details.card.fold > summary .fold-label{ font-size:24px; } }
+  @media (max-width:480px){ #view .today-unit details.card.fold > summary .fold-label{ font-size:22px; } #view .today-unit details.card.fold > .fold-body{ padding:4px 12px 8px; } }
+  /* H2, H3, H7: foldable groups; a tap folds in place; the header is the wrapper's first child */
+  button.gfold{ -webkit-appearance:none; appearance:none; background:none; border:0; font-family:inherit; text-align:left; cursor:pointer; width:100%; color:inherit; }
+  .gchev{ display:inline-block; width:12px; flex:none; font-size:10px; color:var(--ink-faint); transition:transform .15s; }
+  .gfold[aria-expanded="false"] > .gchev{ transform:rotate(-90deg); }
+  .gwrap.closed > :not(:first-child){ display:none !important; }
+  .gwrap > button.gfold.grp-head{ margin:12px 0 5px; padding:8px 0 0; border-top:1px solid var(--line-soft); color:var(--ink-soft); }
+  .gwrap:first-child > button.gfold.grp-head{ margin-top:2px; padding-top:0; border-top:0; }
+  .gwrap.closed > button.gfold.grp-head{ margin-bottom:2px; }
+  button.gfold.grp-head:hover, button.gfold.dom-h:hover, button.gfold.block-fold:hover{ color:var(--ink); }
+  button.gfold.dom-h{ display:flex; align-items:center; gap:8px; font-size:15px; font-weight:700; margin:18px 2px 8px; color:var(--ink); }
+  button.gfold.block-fold{ display:flex; align-items:center; gap:8px; margin:18px 0 6px; font-size:13.5px; font-weight:700; color:var(--ink); }
+  button.gfold.block-fold .cnt{ font-size:11px; color:var(--ink-faint); font-weight:600; }
+  .wk-day-head h3 .wk-fold{ display:inline-flex; align-items:center; gap:6px; width:auto; padding:0; font-size:inherit; font-weight:inherit; }
+  .wk-day.closed{ padding-top:10px; padding-bottom:10px; }
+  .wk-day.closed .wk-day-head{ margin-bottom:0; }
+  /* H4: the right panel is flat: a serif heading with its count per section, Today and Coming due first */
+  #rightbar{ gap:2px; }
+  #rightbar details.card.fold{ background:none; border:0; border-radius:0; padding:0; box-shadow:none; border-bottom:1px solid var(--line-soft); }
+  #rightbar details.card.fold > summary{ padding:10px 2px 8px; gap:8px; }
+  #rightbar details.card.fold > summary .fold-chev{ order:-1; width:12px; flex:none; }
+  #rightbar details.card.fold > summary .fold-label{ display:flex; align-items:baseline; gap:8px; font-family:var(--display); font-size:19px; font-weight:700; color:var(--ink); }
+  #rightbar details.card.fold > .fold-body{ padding:0 2px 12px; }
+  .fold-n{ margin-left:auto; font-family:var(--font); font-size:12px; font-weight:600; color:var(--ink-faint); font-variant-numeric:tabular-nums; }
+  .rb-ev{ display:flex; gap:9px; align-items:flex-start; padding:7px 9px; border-radius:10px; background:var(--card); border:1px solid var(--line); margin-bottom:6px; font-size:13px; line-height:1.3; }
+  .rb-ev-t{ width:50px; flex:none; color:var(--ink-faint); font-size:11.5px; padding-top:1px; }
+  .rb-ev-bar{ width:4px; align-self:stretch; border-radius:2px; flex:none; }
+  .rb-ev-n{ flex:1; min-width:0; overflow-wrap:anywhere; }
+  /* ---- Look release Block 4: Compact (the default) on every screen; Roomy is the size before (D1 to D6) ----
+     Spacing only: the type sizes, the left strip and Gena's own Row fill stay as they are (no gradient, no
+     per-row pseudo-element, GD-031 to GD-033). */
+  :root[data-density="compact"] .task{ padding-top:var(--rowpad); padding-bottom:var(--rowpad); }
+  /* D1: on a desktop a row is one line: the title, then its details inline; they wrap under it only when long */
+  @media (min-width:761px){
+    :root[data-density="compact"] li.task > .task-main{ display:flex; flex-wrap:wrap; align-items:baseline; column-gap:10px; row-gap:0; }
+    :root[data-density="compact"] li.task > .task-main > .task-title{ flex:0 1 auto; min-width:0; }
+    :root[data-density="compact"] li.task > .task-main > .task-meta{ margin-top:0; flex:0 1 auto; min-width:0; line-height:1.6; }
+    :root[data-density="compact"] li.task > .task-main > :not(.task-title):not(.task-meta){ flex:1 1 100%; }
+  }
+  /* D4: a phone keeps the details on a second line with the same tighter padding; the 44 px growers stay */
+  @media (max-width:760px){ :root[data-density="compact"] .task-meta{ margin-top:1px; } }
+  /* D5: every screen's chrome a step tighter: cards, folds, the add row, view headings, segments, modals, sheets */
+  :root[data-density="compact"] .card{ padding:13px 15px; }
+  :root[data-density="compact"] details.fold > summary{ padding:11px 15px; }
+  :root[data-density="compact"] details.fold[open] > summary{ padding-bottom:4px; }
+  :root[data-density="compact"] .fold-body{ padding:0 15px 12px; }
+  :root[data-density="compact"] .stack, :root[data-density="compact"] .today-main{ gap:12px; }
+  :root[data-density="compact"] .capture{ margin:12px 0 8px; }
+  :root[data-density="compact"] .capture input.q{ padding:9px 13px; }
+  :root[data-density="compact"] .capture select, :root[data-density="compact"] .capture .add{ padding:8px 12px; }
+  :root[data-density="compact"] .capture .add{ padding:8px 16px; }
+  :root[data-density="compact"] h2.view-h{ font-size:21px; margin:2px 0 2px; }
+  :root[data-density="compact"] .sub{ margin-bottom:12px; }
+  :root[data-density="compact"] .seg button{ padding:5px 13px; }
+  :root[data-density="compact"] .modal{ padding:18px; }
+  :root[data-density="compact"] .sheet-row{ padding:10px 8px; }
+  :root[data-density="compact"] .panel-task{ padding:6px 0; }
+  :root[data-density="compact"] .grp-head{ margin:9px 0 4px; padding-top:6px; }
+  :root[data-density="compact"] .wk-land{ padding:6px 9px; margin:2px 0 6px; }
+  :root[data-density="compact"] .cal-head{ margin-bottom:8px; }
+  :root[data-density="compact"] .today-status{ margin:4px 0 2px; }
+  /* Events Day: the hour height stays; only the chrome above it shrinks */
+  :root[data-density="compact"] .day-head{ margin-bottom:6px; }
+  /* ---- Look release Block 5: the dark audit (T3) ----
+     The green buttons drew white text on the dark theme's lighter green (#7c9a6d, about 3:1); dark ink there is 5.7:1 */
+  :root[data-theme="dark"] .capture .add, :root[data-theme="dark"] .btn.primary{ color:var(--paper); }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .capture .add, :root:not([data-theme="light"]) .btn.primary{ color:var(--paper); } }
+  /* a Today heading never breaks inside a word: its chips and progress move under it on a narrow screen */
+  #view .today-unit details.card.fold > summary{ flex-wrap:wrap; row-gap:4px; }
+  #view .today-unit details.card.fold > summary .fold-label{ min-width:max-content; }
+  @media (prefers-reduced-motion:reduce){ #sidebar, #rightbar, .wrap, .sb-chev, .sb-arr, .pane-grip::after, .gchev{ transition:none !important; } }
+
 </style>
 
 <a href="#view" class="skip-link">Skip to content</a>
-<div class="appbar">
+<header class="appbar" id="strip">
   <div class="appbar-inner">
-    <button class="icon-btn" id="sb-burger" title="Menu" aria-label="Open navigation">☰</button>
-    <span class="navhist"><button class="icon-btn" id="nav-back" title="Back (⌘[ )" aria-label="Back" disabled>‹</button><button class="icon-btn" id="nav-fwd" title="Forward (⌘] )" aria-label="Forward" disabled>›</button></span>
+    <button class="icon-btn sb-tgl" id="sb-burger" title="Hide or show the sidebar" aria-label="Toggle the sidebar" aria-pressed="true"><svg class="ico-wide" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg><span class="ico-narrow" aria-hidden="true">☰</span></button>
+    <span class="navhist"><button class="icon-btn" id="nav-back" title="Back (⌘[ )" aria-label="Back" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><button class="icon-btn" id="nav-fwd" title="Forward (⌘] )" aria-label="Forward" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button></span>
     <div class="brand"><svg class="brand-mark" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="currentColor"><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z"/><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z" transform="rotate(90 32 32)"/><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z" transform="rotate(180 32 32)"/></g><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z" fill="#c0392b" transform="rotate(270 32 32)"/><path d="M32 6 C40 6 43 16 32 24 C21 16 24 6 32 6 Z" fill="currentColor" transform="rotate(270 32 32) translate(32 14.03) scale(0.72) translate(-32 -14.03)"/><line x1="24" y1="32" x2="32" y2="32" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="32" r="3" fill="currentColor"/></svg>Gena</div>
     <nav class="nav" id="nav" aria-label="Views">
       <button data-view="today" aria-current="true">Today</button>
@@ -1362,15 +1565,23 @@
       <button data-view="journal" data-group="journal learn">Journal</button>
       <button data-view="hub">Hub</button>
     </nav>
+    <span class="spacer sp-l"></span>
+    <div class="when" id="strip-when">
+      <button class="icon-btn when-arrow" id="strip-prev" title="Previous day" aria-label="Previous day"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="when-d" id="strip-date" title="Go to today" aria-label="Go to today"></button>
+      <button class="icon-btn when-arrow" id="strip-next" title="Next day" aria-label="Next day"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+      <label class="icon-btn when-arrow day-jump" title="Jump to a date"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><input type="date" id="strip-jump" aria-label="Jump to a date"/></label>
+      <span class="when-t" id="strip-clock"><span class="hm"></span><span class="secs"></span> <span class="ap"></span></span>
+    </div>
     <span class="spacer"></span>
     <button class="sync-chip" id="sync-status" title="Where your data is saved — tap for sync options" aria-label="Sync status"></button>
-    <button class="icon-btn" id="search-btn" title="Search ( / ) · Command palette (⌘K)" aria-label="Search">🔍</button>
-    <button class="icon-btn" id="cap-btn" title="Capture with Claude" aria-label="Capture with Claude">✨</button>
+    <button class="icon-btn" id="search-btn" title="Search ( / ) · Command palette (⌘K)" aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
+    <button class="icon-btn" id="cap-btn" title="Capture with Claude" aria-label="Capture with Claude"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg></button>
     <button class="icon-btn" id="theme-btn" title="Toggle light / dark" aria-label="Toggle theme">◐</button>
-    <button class="icon-btn" id="menu-btn" title="Backup, import, help" aria-label="More">⋯</button>
-    <button class="icon-btn" id="rb-toggle" title="Backlog & log panel" aria-label="Toggle the backlog and log panel">📋</button>
+    <button class="icon-btn" id="menu-btn" title="Backup, import, help" aria-label="More"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button>
+    <button class="icon-btn" id="rb-toggle" title="Hide or show the right panel" aria-label="Toggle the right panel" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/></svg></button>
   </div>
-</div>
+</header>
 
 <div class="wrap">
   <div class="global-head" id="global-head"></div>
@@ -1388,6 +1599,8 @@
 </div>
 
 <aside id="rightbar" aria-label="Backlog and log"></aside>
+<div class="pane-grip" data-pane="sb" tabindex="0" role="separator" aria-orientation="vertical" aria-label="Resize the sidebar" title="Drag to resize · double-click to reset"></div>
+<div class="pane-grip" data-pane="rb" tabindex="0" role="separator" aria-orientation="vertical" aria-label="Resize the right panel" title="Drag to resize · double-click to reset"></div>
 <div id="sb-scrim"></div>
 <div id="rb-scrim"></div>
 <div id="modal-root"></div>
@@ -1473,7 +1686,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-10-15-V6.2";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-10-15-V6.3";   // set by ship.sh on every release — the footer is how you tell a surface is current
   // The day V5 shipped (tag gena-2026-10-05-V5): the closing-states cutoff, fixed, so a later build's stamp
   // never moves it (I-28). Above `var S = load()`, which reads it.
   var V5_SHIP_DAY = "2026-10-05";
@@ -1646,6 +1859,11 @@ function GENA_MAIN() {
   }
   // Lightweight signature to detect whether two states differ in substance (ignores savedAt).
   function stateSig(d){ if(!d) return ""; var s=""; IDLISTS.forEach(function(key){ s+=key+":"+(d[key]||[]).filter(function(x){return !isSubEvent(x);}).map(function(x){return (x&&x.id)+"~"+(x&&x._m||0);}).sort().join(",")+"|"; }); IDMAPS.forEach(function(key){ var mm=(d._mm&&d._mm[key])||{}; s+=key+":"+Object.keys(d[key]||{}).map(function(k){return k+"~"+(mm[k]||0);}).sort().join(",")+"|"; }); s+="del:"+Object.keys(d._del||{}).sort().join(","); return s; }
+  /* Look release: this device's own UI keys (never in S). Declared above load() and applyTheme(), which run
+     before any later top-level var initializer (the hoisting trap in ARCHITECTURE → Known issues). */
+  var UI_FOLD_KEY="gena-ui-fold";
+  var UI_DENSITY_KEY="gena-ui-density";
+  var WK_SHOW_KEY="gena-ui-wkshow";
   var S = load();
   var bootDedupeCount = dedupeRemovedCount;               // duplicates cleaned on this load (toast shown after first render)
   var baseState = clone(S);
@@ -2435,6 +2653,13 @@ function GENA_MAIN() {
   function fullDate(s){ var d=parse(s); return WDFULL[d.getDay()]+", "+MONTHS[d.getMonth()]+" "+ordinal(d.getDate())+", "+d.getFullYear(); }
   function clockHtml(){ var now=new Date(); var loc=now.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
     return '<b>'+loc+'</b>'; }
+  /* Look release H2, H3, H7: a foldable group — a Focus in the To-do, a time block, a Backlog or panel group, a Domain
+     in Lists, a day in Week ahead. Its state is this device's (gena-ui-fold, keys "g:<where>:<id>" or "wk:<date>"),
+     never S. A closed group keeps its rows in the page, hidden, so drag targets, anchors and counts are unchanged;
+     a tap folds it in place without a render (v.onclick "gfold"). The header is always the wrapper's first child. */
+  function gOpen(key,def){ return '<div class="gwrap'+(uiFolded(key,def)?' closed':'')+'">'; }
+  function gHead(key,inner,def,cls){ var shut=uiFolded(key,def);
+    return '<button type="button" class="gfold '+(cls||"grp-head")+'" data-act="gfold" data-g="'+esc(key)+'" aria-expanded="'+!shut+'"><span class="gchev" aria-hidden="true">▾</span>'+inner+'</button>'; }
   function updateClock(){ var el=document.getElementById("clock"); if(el) el.innerHTML=clockHtml(); var g=document.getElementById("g-clock"); if(g) g.innerHTML=clockHtml(); }
   function fold(key,label,body,action){ var open=(S.collapsed[key]===undefined && key.indexOf("shelf-")===0)?"":(S.collapsed[key]?"":" open"); return '<details class="card fold" data-fold="'+key+'"'+open+'><summary><span class="fold-label">'+label+'</span>'+(action||"")+'<span class="fold-chev">▸</span></summary><div class="fold-body">'+body+'</div></details>'; }
   // Checked-off items sink into a fold at the foot of the card they lived in — crossed out, out
@@ -2472,10 +2697,13 @@ function GENA_MAIN() {
     if(S.accent){ r.setProperty("--terra",S.accent); r.setProperty("--terra-deep",shadeHex(S.accent,-18)); r.setProperty("--terra-bg",tintHex(S.accent)); }
     else { r.removeProperty("--terra"); r.removeProperty("--terra-deep"); r.removeProperty("--terra-bg"); }
     var de=document.documentElement;
-    if(S.density&&S.density!=="cozy") de.setAttribute("data-density",S.density); else de.removeAttribute("data-density");
+    de.setAttribute("data-density",uiDensity());   // look release D3: this device's Compact / Roomy; the old synced S.density is no longer read
     if(S.font&&S.font!=="rounded") de.setAttribute("data-font",S.font); else de.removeAttribute("data-font");
     if(rowFillsList().some(function(f){ return f[0]===S.rowFill; })&&S.rowFill!=="fade") de.setAttribute("data-rowfill",S.rowFill); else de.removeAttribute("data-rowfill");
-    document.body.setAttribute("data-scene", S.scene==="on"?"on":"off"); }
+    document.body.setAttribute("data-scene", S.scene==="on"?"on":"off");
+    // T4: this device's copy of the theme and scheme, read by the head script before the next first paint
+    var tc=JSON.stringify({t:S.theme==="light"||S.theme==="dark"?S.theme:"system", s:S.skin||"paper"});
+    try{ if(localStorage.getItem("gena-ui-theme")!==tc) localStorage.setItem("gena-ui-theme",tc); }catch(e){} }
   // F1 (GD-033): how a project's colour fills its rows. Absent means Fade, so nothing is written for anyone who never picks
   function rowFillsList(){ return [["fade","Fade"],["whole","Whole card"],["wash","Colour wash"],["off","Off"]]; }
   function rowFillName(){ return rowFillsList().some(function(f){ return f[0]===S.rowFill; })?S.rowFill:"fade"; }
@@ -3279,6 +3507,7 @@ function GENA_MAIN() {
     m.innerHTML=seg?seg+'<div class="grouped">'+inner+'</div>':inner;
     renderPanes();
     renderGlobalHead();
+    syncStrip();
     bind();
     restoreAnchor();
     if(lastRenderedView!==view && view==="day" && viewDay===today()){
@@ -3391,58 +3620,142 @@ function GENA_MAIN() {
     if(bn) [].forEach.call(bn.querySelectorAll("[data-view]"),function(c){ c.setAttribute("aria-current",cur(c)?"true":"false"); });
   }
   function sbSection(key,title,act,body){
-    var shut=!!S.collapsed["sb-"+key];
-    return '<div class="sb-card"><div class="sb-h"><button class="sb-fold" data-sb="fold" data-id="'+key+'" aria-expanded="'+!shut+'">'+(shut?"▸":"▾")+' '+title+'</button>'+(act||"")+'</div>'+(shut?"":body)+'</div>';
+    var shut=key==="show"?uiFolded("sb:show",false):!!S.collapsed["sb-"+key];   // Show is device-local (look review finding 6)
+    return '<section class="sb-sec'+(shut?' closed':'')+'" data-sec="'+key+'"><div class="sb-h"><button class="sb-fold" data-sb="fold" data-id="'+key+'" aria-expanded="'+!shut+'"><span class="sb-chev" aria-hidden="true">▾</span>'+title+'</button>'+(act||"")+'</div>'+(shut?"":'<div class="sb-items">'+body+'</div>')+'</section>';
+  }
+  /* look release: device-local fold state (H7, A1): one map in localStorage["gena-ui-fold"], never in S, never synced.
+     A key names a section, a Domain, a Focus group or a day; 1 is folded, 0 open, absent the element's default. */
+  var uiFoldMap=null;
+  function uiFolds(){ if(!uiFoldMap){ try{ uiFoldMap=JSON.parse(localStorage.getItem(UI_FOLD_KEY)||"{}")||{}; }catch(e){ uiFoldMap={}; } if(typeof uiFoldMap!=="object") uiFoldMap={}; } return uiFoldMap; }
+  function uiFolded(k,def){ var m=uiFolds(); return Object.prototype.hasOwnProperty.call(m,k)?m[k]===1:!!def; }
+  function uiSetFold(k,v){ var m=uiFolds(); m[k]=v?1:0;
+    if(k.indexOf("wk:")===0){ var t=fmt(new Date()); Object.keys(m).forEach(function(x){ if(x.indexOf("wk:")===0&&x.slice(3)<t) delete m[x]; }); }   // a past day's fold is never read again
+    try{ localStorage.setItem(UI_FOLD_KEY,JSON.stringify(m)); }catch(e){} }
+  // Compact (the default) or Roomy, per device (D3): localStorage["gena-ui-density"], read before first paint by the head script
+  function uiDensity(){ var v=null; try{ v=localStorage.getItem(UI_DENSITY_KEY); }catch(e){} return v==="roomy"?"roomy":"compact"; }
+  function setUiDensity(m){ m=m==="roomy"?"roomy":"compact"; try{ localStorage.setItem(UI_DENSITY_KEY,m); }catch(e){} document.documentElement.setAttribute("data-density",m); }
+  function themeMode(){ return S.theme==="light"||S.theme==="dark"?S.theme:"system"; }
+  function setThemeMode(m){ S.theme=m==="light"||m==="dark"?m:null; applyTheme(); save(); render(); }
+  // T1: on System the CSS follows prefers-color-scheme by itself; the accent tint and pattern lifts are computed, so redraw
+  (function(mq){ if(!mq) return; var on=function(){ if(S.theme!=="light"&&S.theme!=="dark"){ applyTheme(); renderPassive(); } };   // the system changed it, not him: never redraw under an open editor (look review finding 1)
+    if(mq.addEventListener) mq.addEventListener("change",on); else if(mq.addListener) mq.addListener(on); })(typeof matchMedia==="function"?matchMedia("(prefers-color-scheme: dark)"):null);
+  // the two switches in the sidebar footer and in Settings (T1, D3): the same buttons, the same handler
+  function themeSwitchHtml(attr){ return '<div class="sw-seg" role="group" aria-label="Appearance">'+[["light","Light"],["dark","Dark"],["system","System"]].map(function(x){
+      return '<button type="button" '+attr+'="theme" data-m="'+x[0]+'" aria-pressed="'+(themeMode()===x[0])+'">'+x[1]+'</button>'; }).join("")+'</div>'; }
+  function densitySwitchHtml(attr){ return '<div class="sw-seg" role="group" aria-label="Row size">'+[["compact","Compact"],["roomy","Roomy"]].map(function(x){
+      return '<button type="button" '+attr+'="density" data-m="'+x[0]+'" aria-pressed="'+(uiDensity()===x[0])+'">'+x[1]+'</button>'; }).join("")+'</div>'; }
+  function syncLine(){
+    if(typeof GH!=="undefined"&&GH&&GH.gistId) return ghError?"⚠ Sync error":(ghLastSync?"Synced "+new Date(ghLastSync).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):"Cloud sync on");
+    return (typeof syncName!=="undefined"&&syncName)?"File sync on":"Saved on this device";
+  }
+  /* The sidebar is a tree (W3): Domains open to their Focuses, Projects carry progress bars, Collections are flat rows.
+     The sections are flat (no boxes, W4); the tree scrolls and the footer stays (W6). Section folds that S.collapsed
+     already kept stay there; a Domain's fold is device-local. */
+  function sbCollections(st,row){
+    var cols=(S.collections||[]).slice().sort(function(a,b){ return (a.ord||0)-(b.ord||0); });
+    return sbSection("cols","Collections",'<button class="sb-act" data-sb="newcol">+ new</button>',cols.length?cols.map(function(c){ return row("col:"+c.id,'<span class="sb-ico">'+esc(c.emoji||"🗂")+'</span>',c.name,st.col[c.id],'<button class="sb-star sb-hov" data-sb="editcol" data-id="'+esc(c.id)+'" title="Edit Collection" aria-label="Edit Collection">✎</button>'); }).join(""):'<div class="sb-mini">No Collections.</div>');
+  }
+  function sbDomainsTree(st,row,more){
+    var cur=S.activeProfile, openCnt=openCount, shelved=0, kids={}, none=[];
+    S.projects.forEach(function(p){ if(!projActive(p)){ shelved++; return; } if(p.profileId&&profileById(p.profileId)) (kids[p.profileId]=kids[p.profileId]||[]).push(p); else none.push(p); });
+    var focusRow=function(p){ var fav=hasCol(p,"col-fav");
+      return row("fc:"+p.id,'<span class="pdot" style="'+dotStyle(p)+'"></span>',(p.emoji?p.emoji+" ":"")+p.name,openCnt(p.id),
+        more("fc",p.id,p.name)+'<button class="sb-star'+(fav?" on":" sb-hov")+'" data-sb="fav" data-id="'+esc(p.id)+'" title="Favorites" aria-label="In Favorites" aria-pressed="'+fav+'">'+(fav?"★":"☆")+'</button>',null,"sb-kid"); };
+    var branch=function(key,label,list){ var shut=uiFolded("sb-dom:"+key,true);
+      return '<button class="sb-arr" data-sb="domfold" data-id="'+esc(key)+'" aria-expanded="'+!shut+'" aria-label="'+(shut?"Show":"Hide")+' the Focuses in '+esc(label)+'"'+(list.length?'':' disabled')+'>'+(list.length?'▸':'')+'</button>'; };
+    var h=row("all",'<span class="sb-arr" aria-hidden="true"></span><span class="sb-ico">🌐</span>',"All","");
+    S.profiles.forEach(function(pr){ var list=kids[pr.id]||[], shut=uiFolded("sb-dom:"+pr.id,true);
+      h+='<div class="sb-branch'+(shut?'':' open')+'">'+row(pr.id,branch(pr.id,pr.name,list)+'<span class="sb-ico">'+esc(pr.emoji||"👤")+'</span>',pr.name,st.dom[pr.id]||0,
+          more("dom",pr.id,pr.name)+'<button class="sb-star sb-hov" data-sb="editprofile" data-id="'+esc(pr.id)+'" title="Edit Domain" aria-label="Edit Domain">✎</button>',pr.color?"--prof-dot:"+pr.color:"")+
+        (shut||!list.length?'':'<div class="sb-kids">'+list.map(focusRow).join("")+'</div>')+'</div>'; });
+    if(none.length){ var ns=uiFolded("sb-dom:none",true);
+      h+='<div class="sb-branch'+(ns?'':' open')+'"><div class="sb-row sb-nodom">'+branch("none","No Domain",none)+'<span class="sb-ico">◌</span><span class="sb-name">No Domain</span><span class="cnt">'+none.length+'</span></div>'+
+        (ns?'':'<div class="sb-kids">'+none.map(focusRow).join("")+'</div>')+'</div>'; }
+    if(!S.projects.length) h+='<div class="sb-mini">No Focuses yet — add one from Lists → Focuses.</div>';
+    if(shelved) h+='<div class="sb-mini">'+shelved+' Focus'+(shelved===1?"":"es")+' paused / ended in Lists → Focuses.</div>';
+    var act=(S.filterProjects.length?'<button class="sb-act" data-sb="clearfilter">✕ clear filter</button>':'')+'<button class="sb-act" data-sb="newprofile">+ new</button>';
+    return sbSection("doms","Domains",act,h);
+  }
+  function sbProjects(st,row,more){
+    var efs=(S.efforts||[]), act=efs.filter(projActive).sort(function(a,b){ return (b.pinned?1:0)-(a.pinned?1:0); });
+    var ph=efs.length?row("pjs",'<span class="sb-ico">◆</span>',"All Projects",st.allEff):"";
+    act.forEach(function(e){ var d=profileById(e.profileId), g=effortProgress(e.id), pc=g.all?Math.round(100*g.done/g.all):0;
+      ph+=row("pj:"+e.id,'<span class="pdot" style="background:'+esc((d&&d.color)||"var(--ink-faint)")+'" title="'+esc(d?d.name:"No Domain")+'"></span>',(e.emoji?e.emoji+" ":"")+e.name,"",
+        '<span class="sb-prog" title="'+g.done+' of '+g.all+' steps done"><i style="width:'+pc+'%"></i></span>'+(st.eff[e.id]?'<span class="cnt">'+st.eff[e.id]+'</span>':'')+more("pj",e.id,e.name)); });
+    if(!efs.length) ph='<div class="sb-mini">No Projects yet.</div>';
+    else if(efs.length>act.length) ph+='<div class="sb-mini">'+(efs.length-act.length)+' paused / ended in Lists → Projects.</div>';
+    return sbSection("pjs","Projects",'<button class="sb-act" data-sb="neweffort">+ new</button>',ph);
+  }
+  /* The sidebar follows the section and its tab (look release C1 to C5): only what that screen can use.
+     Today: Collections, the Domains tree, Projects. Events Day / Week / Month: a month picker, Calendars,
+     Collections. Week ahead: Calendars, the Show list, Collections. Lists (every tab), Journal and Hub: the
+     Domains tree, the same scopes as before. Nothing else, so no section from another screen lingers. */
+  function sidebarSections(v,seg){
+    var g=groupOf(v);
+    if(v==="today") return ["cols","doms","pjs"];
+    if(g==="plan") return seg==="agenda"?["cals","show","cols"]:["month","cals","cols"];
+    return ["doms"];
+  }
+  // Week ahead's Show list (C3, A2): per device, localStorage["gena-ui-wkshow"]; absent = everything shown
+  function weekShow(){ var o=null; try{ o=JSON.parse(localStorage.getItem(WK_SHOW_KEY)||"null"); }catch(e){}
+    o=o&&typeof o==="object"?o:{}; return {tasks:o.tasks!==0, due:o.due!==0, fu:o.fu!==0}; }
+  function setWeekShow(k,on){ var o=weekShow(), w={}; o[k]=!!on; Object.keys(o).forEach(function(x){ w[x]=o[x]?1:0; });
+    try{ localStorage.setItem(WK_SHOW_KEY,JSON.stringify(w)); }catch(e){} }
+  function sbShowHtml(){ var o=weekShow();
+    return sbSection("show","Show",'',[["tasks","Tasks"],["due","Due dates"],["fu","Follow-ups"]].map(function(x){
+      return '<div class="sb-row" role="button" tabindex="0" data-sb="wkshow" data-k="'+x[0]+'"><button class="cal-chk" role="checkbox" aria-checked="'+o[x[0]]+'" data-sb="wkshow" data-k="'+x[0]+'" aria-label="Show '+x[1].toLowerCase()+'" style="--cal:var(--slate)"></button><span class="sb-name">'+x[1]+'</span></div>'; }).join("")); }
+  /* Events Day / Week / Month (C2): a month picker. Today is marked, a day with a visible event gets a dot,
+     a tap goes there: the Day view to that day, Week and Month to the week or month holding it. */
+  var sbMonthAt=null;   // "YYYY-MM" the picker shows after ‹ ›; null follows the day in view
+  function sbMonthDays(ym){
+    var y=+ym.slice(0,4), mo=+ym.slice(5,7)-1, n=new Date(y,mo+1,0).getDate(), first=ym+"-01", last=ym+"-"+String(n).padStart(2,"0"), has={};
+    S.events.forEach(function(e){
+      var end=e.end&&e.end>e.date?e.end:e.date;   // evOnDay's range: one day, or date to end
+      if(!e.date||e.date>last||end<first||!calVisible(e)||(e.projectId&&!inScope(e))) return;
+      for(var d=e.date<first?first:e.date, to=end>last?last:end; d<=to; d=addDays(d,1)) has[d]=1;
+    });
+    return {pad:new Date(y,mo,1).getDay(), n:n, has:has};
+  }
+  function sbMonthHtml(){
+    var at=view==="day"?viewDay:calAnchorDate(), ym=sbMonthAt||at.slice(0,7), t=today(), m=sbMonthDays(ym), p=parse(ym+"-01");
+    var h='<div class="sb-month" aria-label="Month picker"><div class="sbm-h"><button class="sbm-nav" data-sb="mmon" data-d="-1" aria-label="Previous month">‹</button><b>'+MONTHS[p.getMonth()]+' '+p.getFullYear()+'</b><button class="sbm-nav" data-sb="mmon" data-d="1" aria-label="Next month">›</button></div>'+
+      '<div class="sbm-g">'+DOWNAMES.map(function(d){ return '<i class="sbm-dw">'+d.charAt(0)+'</i>'; }).join("");
+    for(var i=0;i<m.pad;i++) h+='<i></i>';
+    for(var dn=1;dn<=m.n;dn++){ var ds=ym+"-"+String(dn).padStart(2,"0");
+      h+='<button class="sbm-d'+(ds===t?" tdy":"")+(ds===at?" sel":"")+(m.has[ds]?" has":"")+'" data-sb="mday" data-d="'+ds+'" aria-label="'+esc(niceDate(ds))+(m.has[ds]?", events":"")+'"'+(ds===at?' aria-current="date"':'')+'>'+dn+'</button>'; }
+    return h+'</div></div>';
+  }
+  function sidebarTreeHtml(st,row,more){
+    var parts={month:sbMonthHtml, cals:calSidebarHtml, show:sbShowHtml, cols:function(){ return sbCollections(st,row); },
+      doms:function(){ return sbDomainsTree(st,row,more); }, pjs:function(){ return sbProjects(st,row,more); }};
+    return sidebarSections(view,groupOf(view)==="plan"?planSeg():null).map(function(k){ return parts[k](); }).join("");
   }
   function renderSidebar(){
     var sb=document.getElementById("sidebar"); if(!sb) return;
-    var openCnt=openCount, st=sidebarStats(), cur=S.activeProfile;
-    var row=function(val,icon,name,cnt,extra,style){ return '<div class="sb-row" role="button" tabindex="0" data-sb="scope" data-id="'+esc(val)+'" aria-pressed="'+(cur===val)+'"'+(style?' style="'+style+'"':'')+'>'+icon+'<span class="sb-name">'+esc(name)+'</span>'+(cnt?'<span class="cnt">'+cnt+'</span>':'')+(extra||"")+'</div>'; };
-    var h='<div class="sb-brand">🌼 Gena'+(APP_VERSION?'<span class="sb-ver">'+APP_VERSION+'</span>':'')+'<button class="sb-act" data-sb="collapse" title="Hide the sidebar">⟨ hide</button></div>';
-    // V6.2: on the Events tab, the Calendars filter comes first
-    if(groupOf(view)==="plan") h+=calSidebarHtml();
-    // Collections
-    var cols=(S.collections||[]).slice().sort(function(a,b){ return (a.ord||0)-(b.ord||0); });
-    var more=function(kind,id,name){ return '<button class="sb-star" data-sb="cols" data-kind="'+kind+'" data-id="'+esc(id)+'" title="Collections for '+esc(name)+'" aria-label="Collections for '+esc(name)+'">⋯</button>'; };
-    h+=sbSection("cols","Collections",'<button class="sb-act" data-sb="newcol">+ new</button>',cols.length?cols.map(function(c){ return row("col:"+c.id,esc(c.emoji||"🗂"),c.name,st.col[c.id],'<button class="sb-star" data-sb="editcol" data-id="'+esc(c.id)+'" title="Edit Collection" aria-label="Edit Collection">✎</button>'); }).join(""):'<div class="sb-mini">No Collections.</div>');
-    // Domains
-    var dh=row("all","🌐","All","");
-    S.profiles.forEach(function(pr){
-      dh+='<div class="sb-row" role="button" tabindex="0" data-sb="scope" data-id="'+esc(pr.id)+'" aria-pressed="'+(cur===pr.id)+'" style="'+(pr.color?"--prof-dot:"+pr.color:"")+'">'+esc(pr.emoji||"👤")+'<span class="sb-name">'+esc(pr.name)+'</span><span class="cnt">'+(st.dom[pr.id]||0)+'</span>'+more("dom",pr.id,pr.name)+'<button class="sb-star" data-sb="editprofile" data-id="'+esc(pr.id)+'" title="Edit Domain" aria-label="Edit Domain">✎</button></div>';
-    });
-    h+=sbSection("doms","Domains",'<button class="sb-act" data-sb="newprofile">+ new</button>',dh);
-    // Focuses, grouped under their Domain (active ones; the rest is a count)
-    var fh="", shelved=0, groups=S.profiles.map(function(d){ return {d:d,list:[]}; }).concat([{d:null,list:[]}]), gi={};
-    groups.forEach(function(g,i){ gi[g.d?g.d.id:""]=i; });
-    S.projects.forEach(function(p){ if(!projActive(p)){ shelved++; return; } var g=groups[gi[p.profileId]!==undefined?gi[p.profileId]:groups.length-1]; g.list.push(p); });
-    groups.forEach(function(g){ if(!g.list.length) return;
-      fh+='<div class="sb-sub">'+(g.d?esc(g.d.emoji||"")+" "+esc(g.d.name):"No Domain")+'</div>';
-      g.list.forEach(function(p){ var fav=hasCol(p,"col-fav");
-        fh+=row("fc:"+p.id,'<span class="pdot" style="'+dotStyle(p)+'"></span>',(p.emoji?p.emoji+" ":"")+p.name,openCnt(p.id),
-          more("fc",p.id,p.name)+'<button class="sb-star'+(fav?" on":"")+'" data-sb="fav" data-id="'+esc(p.id)+'" title="Favorites" aria-label="In Favorites" aria-pressed="'+fav+'">'+(fav?"★":"☆")+'</button>'); });
-    });
-    if(!fh) fh='<div class="sb-mini">No active Focuses yet — add one from Lists → Focuses.</div>';
-    if(shelved) fh+='<div class="sb-mini">'+shelved+' paused / ended in Lists → Focuses.</div>';
-    h+=sbSection("focs","Focuses",S.filterProjects.length?'<button class="sb-act" data-sb="clearfilter">✕ clear filter</button>':'',fh);
-    // Projects: all of them, then each active one with its Domain's dot and progress
-    var efs=(S.efforts||[]), act=efs.filter(projActive).sort(function(a,b){ return (b.pinned?1:0)-(a.pinned?1:0); });
-    var ph=efs.length?row("pjs","◆","All Projects",st.allEff):"";
-    act.forEach(function(e){ var d=profileById(e.profileId), g=effortProgress(e.id), pc=g.all?Math.round(100*g.done/g.all):0;
-      ph+=row("pj:"+e.id,'<span class="pdot" style="background:'+esc((d&&d.color)||"var(--ink-faint)")+'" title="'+esc(d?d.name:"No Domain")+'"></span>',(e.emoji?e.emoji+" ":"")+e.name,st.eff[e.id],
-        '<span class="sb-prog" title="'+g.done+' of '+g.all+' steps done"><i style="width:'+pc+'%"></i></span>'+more("pj",e.id,e.name)); });
-    if(!efs.length) ph='<div class="sb-mini">No Projects yet.</div>';
-    else if(efs.length>act.length) ph+='<div class="sb-mini">'+(efs.length-act.length)+' paused / ended in Lists → Projects.</div>';
-    h+=sbSection("pjs","Projects",'<button class="sb-act" data-sb="neweffort">+ new</button>',ph);
-    // the build ID, lower left: how he tells this surface is current (CG-1); the phone shows it on the Hub
-    h+='<div class="sb-foot build-line" title="Version and build ID">'+esc(buildLine())+'</div>';
-    sb.innerHTML=h+'<div class="pane-grip" data-pane="sb" title="Drag to resize"></div>';
+    var st=sidebarStats(), cur=S.activeProfile;
+    var row=function(val,icon,name,cnt,extra,style,cls){ return '<div class="sb-row'+(cls?" "+cls:"")+'" role="button" tabindex="0" data-sb="scope" data-id="'+esc(val)+'" aria-pressed="'+(cur===val)+'"'+(style?' style="'+style+'"':'')+'>'+icon+'<span class="sb-name">'+esc(name)+'</span>'+(cnt?'<span class="cnt">'+cnt+'</span>':'')+(extra||"")+'</div>'; };
+    var more=function(kind,id,name){ return '<button class="sb-star sb-hov" data-sb="cols" data-kind="'+kind+'" data-id="'+esc(id)+'" title="Collections for '+esc(name)+'" aria-label="Collections for '+esc(name)+'">⋯</button>'; };
+    var old=sb.querySelector&&sb.querySelector(".sb-tree"), top=old?old.scrollTop:0;
+    // the footer (W5): Light / Dark / System, Compact / Roomy, and the build ID lower left — how he tells this surface is current (CG-1)
+    // the drawer covers the strip on a phone, so it keeps its own ⟨ hide (the strip's toggle is its home on desktop)
+    sb.innerHTML='<div class="sb-brand sb-drawer-head">🌼 Gena'+(APP_VERSION?'<span class="sb-ver">'+APP_VERSION+'</span>':'')+'<button class="sb-act" data-sb="collapse" title="Hide the sidebar">⟨ hide</button></div>'+
+      '<div class="sb-tree">'+sidebarTreeHtml(st,row,more)+'</div>'+
+      '<div class="sb-foot">'+themeSwitchHtml("data-sb")+densitySwitchHtml("data-sb")+
+      '<div class="sb-foot-line"><span class="build-line" title="Version and build ID">'+esc(buildLine())+'</span><span class="sb-sync" id="sb-sync">'+esc(syncLine())+'</span></div></div>';
+    if(top){ var t=sb.querySelector(".sb-tree"); if(t) t.scrollTop=top; }
   }
   document.getElementById("sidebar").onclick=function(e){
     var a=e.target.closest("[data-sb]"); if(!a) return;
     var t=a.dataset.sb;
     if(t==="view"){ view=a.dataset.v; syncNav(); document.body.classList.remove("sb-open"); render(); }
     else if(t==="scope"){ if(e.target.closest("[data-sb]")!==a) return; setScope(a.dataset.id); }
-    else if(t==="fold"){ S.collapsed["sb-"+a.dataset.id]=!S.collapsed["sb-"+a.dataset.id]; save(); renderSidebar(); }
+    else if(t==="fold"){ if(a.dataset.id==="show"){ uiSetFold("sb:show",!uiFolded("sb:show",false)); } else { S.collapsed["sb-"+a.dataset.id]=!S.collapsed["sb-"+a.dataset.id]; save(); } renderSidebar(); }
+    else if(t==="domfold"){ var dk="sb-dom:"+a.dataset.id; uiSetFold(dk,!uiFolded(dk,true)); renderSidebar(); }
+    else if(t==="mmon"){ var mp=parse((sbMonthAt||(view==="day"?viewDay:calAnchorDate()).slice(0,7))+"-01"); mp.setMonth(mp.getMonth()+(+a.dataset.d)); sbMonthAt=fmt(mp).slice(0,7); renderSidebar(); }
+    else if(t==="mday"){ sbMonthAt=null; if(view==="day") viewDay=a.dataset.d; else { S.calAnchor=a.dataset.d; save(); } document.body.classList.remove("sb-open"); render(); }
+    else if(t==="wkshow"){ var wk=a.dataset.k; setWeekShow(wk,!weekShow()[wk]); render(); }
+    else if(t==="theme"){ setThemeMode(a.dataset.m); }
+    else if(t==="density"){ setUiDensity(a.dataset.m); render(); }
     else if(t==="fav"){ var p=proj(a.dataset.id); if(p){ var on=hasCol(p,"col-fav"); p.cols=(p.cols||[]).filter(function(c){ return c!=="col-fav"; }); if(!on) p.cols.push("col-fav"); save(); render(); } }
     else if(t==="projfilter"){ var fid=a.dataset.id; var fi=S.filterProjects.indexOf(fid); if(fi<0) S.filterProjects.push(fid); else S.filterProjects.splice(fi,1); save(); render(); }
     else if(t==="clearfilter"){ S.filterProjects=[]; save(); render(); }
@@ -3482,13 +3795,19 @@ function GENA_MAIN() {
       var moved=calDrag.cid?calDrop(calDrag.cid,t.id,t.after):calDropGroup(calDrag.key,t.id,t.after); calDrag=null; if(moved){ save(); render(); } };
     sb.ondragend=function(){ calDrag=null; calMark(null); };
   })(document.getElementById("sidebar"));
-  function applySidebarState(){ document.body.classList.toggle("sb-closed", !S.sbOpen); }
+  // a row that is a div with role="button" answers Enter and Space like a button does
+  document.getElementById("sidebar").addEventListener("keydown",function(e){
+    if(e.key!=="Enter"&&e.key!==" ") return;
+    var r=e.target; if(!r.matches||!r.matches('div[role="button"][data-sb]')) return;
+    e.preventDefault(); r.click();
+  });
+  function applySidebarState(){ document.body.classList.toggle("sb-closed", !S.sbOpen); document.getElementById("sb-burger").setAttribute("aria-pressed",String(!!S.sbOpen)); }
   document.getElementById("sb-burger").onclick=function(){
     if(window.innerWidth>1000){ S.sbOpen=!S.sbOpen; save(); applySidebarState(); }
     else document.body.classList.toggle("sb-open");
   };
   document.getElementById("sb-scrim").onclick=function(){ document.body.classList.remove("sb-open"); };
-  function applyRightbarState(){ document.body.classList.toggle("rb-closed", !S.panelOpen); }
+  function applyRightbarState(){ document.body.classList.toggle("rb-closed", !S.panelOpen); document.getElementById("rb-toggle").setAttribute("aria-pressed",String(!!S.panelOpen)); }
   /* A closed panel is not built. With thousands of tasks the Backlog & log panel is a third of a render,
      and on a phone both panels are closed nearly always. render() marks a closed panel stale instead;
      the observer below builds it the moment a class on <body> shows it — before the next paint, so a
@@ -3515,13 +3834,47 @@ function GENA_MAIN() {
   function renderGlobalHead(){
     var el=document.getElementById("global-head"); if(!el) return;
     el.innerHTML=(S.name?'<span class="gh-name">'+esc(S.name)+'</span>'
-        :(S.nameNudgeGone?'':'<button class="chip" id="gh-setname" style="padding:3px 11px">👋 Add your name</button><button class="chip" id="gh-setname-x" style="padding:3px 8px" title="Don’t ask again" aria-label="Dismiss">✕</button>'))+
-      '<span class="clock" id="g-clock">'+clockHtml()+'</span>';
+        :(S.nameNudgeGone?'':'<button class="chip" id="gh-setname" style="padding:3px 11px">👋 Add your name</button><button class="chip" id="gh-setname-x" style="padding:3px 8px" title="Don’t ask again" aria-label="Dismiss">✕</button>'));
     var bx=document.getElementById("gh-setname-x");
     if(bx) bx.onclick=function(){ S.nameNudgeGone=true; save(); renderGlobalHead(); };
     var b=document.getElementById("gh-setname");
     if(b) b.onclick=function(){ document.getElementById("menu-btn").onclick(); setTimeout(function(){ var n=document.getElementById("set-name"); if(n) n.focus(); },0); };
   }
+
+  /* ---------- the strip's middle (look release S2, S3): the day in view, its arrows, a live clock ----------
+     Today and Events Day show the day in view with ‹ › (the old day header's actions: previous / next day; the
+     date itself goes back to today) and 📅 to jump; every other view shows today's date without arrows. */
+  function stripDayView(){ return view==="today"||view==="day"; }
+  function stripDay(n){ if(!stripDayView()) return; viewDay=n===0?today():addDays(viewDay,n); render(); }
+  function syncStrip(){
+    var w=document.getElementById("strip-when"); if(!w) return;
+    var on=stripDayView(), t=today(), d=on?viewDay:t, p=parse(d), b=document.getElementById("strip-date"), j=document.getElementById("strip-jump");
+    var txt=WDFULL[p.getDay()]+", "+MONTHS[p.getMonth()].slice(0,3)+" "+p.getDate()+(d.slice(0,4)!==t.slice(0,4)?", "+d.slice(0,4):"");
+    w.dataset.day=on?"1":"0";
+    if(b.textContent!==txt) b.textContent=txt;
+    b.disabled=!on||d===t; b.setAttribute("aria-label",b.disabled?txt:txt+": go to today"); b.title=b.disabled?"":"Go to today";
+    if(j&&j.value!==d) j.value=d;
+  }
+  document.getElementById("strip-prev").onclick=function(){ stripDay(-1); };
+  document.getElementById("strip-next").onclick=function(){ stripDay(1); };
+  document.getElementById("strip-date").onclick=function(){ stripDay(0); };
+  document.getElementById("strip-jump").onchange=function(e){ if(e.target.value&&stripDayView()){ viewDay=e.target.value; render(); } };
+  // one text node per part, written only when it changes: a tick never renders or lays out the page; it stops while hidden
+  var stripClockT=null;
+  function stripTick(){
+    stripClockT=null; if(document.hidden) return;
+    var el=document.getElementById("strip-clock"); if(!el) return;
+    var n=new Date(), h=n.getHours(), hm=(h%12||12)+":"+("0"+n.getMinutes()).slice(-2), ap=h<12?"AM":"PM", c=el.children;
+    if(c[0].textContent!==hm) c[0].textContent=hm;
+    c[1].textContent=":"+("0"+n.getSeconds()).slice(-2);
+    if(c[2].textContent!==ap) c[2].textContent=ap;
+    stripClockT=setTimeout(stripTick,1005-n.getMilliseconds());
+  }
+  document.addEventListener("visibilitychange",function(){ if(document.hidden){ clearTimeout(stripClockT); stripClockT=null; } else if(!stripClockT) stripTick(); });
+  stripTick();
+  // the panels start under the strip, which is one row or two (narrow screens)
+  (function(bar){ if(!bar) return; var set=function(){ document.documentElement.style.setProperty("--strip-h",bar.offsetHeight+"px"); };
+    if(typeof ResizeObserver!=="undefined") new ResizeObserver(set).observe(bar); set(); })(document.getElementById("strip"));
 
   /* ---------- TODAY ---------- */
   function impFirst(arr){ return arr.slice().sort(function(a,b){ return (b.priority?1:0)-(a.priority?1:0); }); }
@@ -3930,11 +4283,6 @@ function GENA_MAIN() {
     var layer=dayBlocksLayer(timed, lo);
     var evs=S.events.filter(function(e){ return evOnDay(e,d)&&calVisible(e); }).sort(evByTime);
     var head='<div class="day-head">'+
-      '<button class="icon-btn" data-act="daynav" data-d="-1" aria-label="Previous day" title="Previous day">‹</button>'+
-      '<h2 class="day-title">'+esc(niceDate(d))+(isToday?' · today':'')+'</h2>'+
-      '<button class="icon-btn" data-act="daynav" data-d="1" aria-label="Next day" title="Next day">›</button>'+
-      (isToday?'':'<button class="chip" data-act="daynav" data-d="0">Back to today</button>')+
-      '<label class="chip day-jump" title="Jump to a date">📅<input type="date" id="day-jump" value="'+d+'" aria-label="Jump to a date"/></label>'+
       (unsched.length?'<button class="chip" data-act="planday" style="margin-left:auto" title="Slot every unscheduled task into the day’s free gaps">✨ Plan my day</button>':'')+
       '</div>'+capacityHtml(d);
     var evBanner=evs.length?'<div class="day-events">'+evs.map(function(e){ return '<span class="pill block">📅 '+evTime(e,d)+esc(e.title)+'</span>'; }).join("")+'</div>':'';
@@ -3975,12 +4323,7 @@ function GENA_MAIN() {
       : (open.length===0 ? "All "+total+" done. Beautifully clear. ✨" : doneCount+" of "+total+" done today."));
     else if(isPast) status = "Looking back. "+(doneCount ? doneCount+" thing"+(doneCount===1?"":"s")+" completed this day." : "Nothing was completed this day.")+(open.length?" "+open.length+" still open.":"");
     else status = "Planning ahead. "+(open.length ? open.length+" task"+(open.length===1?"":"s")+" lined up for this day." : "Nothing planned yet — add tasks below.");
-    var html='<div class="today-head day-nav">'+
-      '<span style="display:inline-flex;gap:6px;align-items:center;flex:1 1 auto;min-width:0">'+
-      '<button class="icon-btn" data-act="daynav" data-d="-1" aria-label="Previous day" title="Previous day">‹</button>'+
-      '<h2 class="view-h" style="min-width:0">'+(matchMedia("(max-width:480px)").matches?niceDate(vd):fullDate(vd))+'</h2>'+
-      '<button class="icon-btn" data-act="daynav" data-d="1" aria-label="Next day" title="Next day">›</button></span>'+
-      (isToday?'':'<button class="chip" data-act="daynav" data-d="0">Back to today</button>')+
+    var html='<div class="today-head">'+
       (isToday&&streak>=2?'<span class="streak-pill" title="Days in a row with at least one task done">🔥 '+streak+'-day streak</span>':"")+
       (scopeActive()?'<button class="chip" data-act="clearscope" title="Showing a filtered slice — tap to show everything" style="background:var(--warn-bg);border-color:var(--warn-bg);color:var(--warn)">🔍 '+esc(scopeLabel())+' ✕</button>':'')+
       '<button class="chip" style="margin-left:auto" data-act="review" title="Run a review — loose ends, today, or the week">'+(new Date().getHours()>=14?"🌙":"🌅")+' Review</button>'+
@@ -4060,8 +4403,8 @@ function GENA_MAIN() {
       blocks.forEach(function(b){
         var items=orderTasks(open.filter(function(k){return k.block===b;}),true);
         curList=b;
-        masterHtml+='<div class="grp-head grp-block">'+BLOCK_ICONS[b]+' '+b.charAt(0).toUpperCase()+b.slice(1)+(b===nowBlock?' <span class="now-pill">now</span>':'')+'<span class="cnt">'+items.length+'</span></div>'+
-          '<ul class="tasks" data-list="'+b+'">'+items.map(taskLi).join("")+inlineAddRow(b,"Add to "+b+"…")+'</ul>';
+        masterHtml+=gOpen("g:blk:"+b)+gHead("g:blk:"+b,BLOCK_ICONS[b]+' '+b.charAt(0).toUpperCase()+b.slice(1)+(b===nowBlock?' <span class="now-pill">now</span>':'')+'<span class="cnt">'+items.length+'</span>',false,"grp-head grp-block")+
+          '<ul class="tasks" data-list="'+b+'">'+items.map(taskLi).join("")+inlineAddRow(b,"Add to "+b+"…")+'</ul></div>';
       });
       curList=null;
     } else if(oneCard && grp==="project"){
@@ -4071,8 +4414,8 @@ function GENA_MAIN() {
       dgs.forEach(function(dg){
         if(dgs.length>1||dg.d) masterHtml+='<div class="grp-dom">'+(dg.d?esc(dg.d.emoji||"")+" "+esc(dg.d.name):"No Domain")+'</div>';
         dg.items.forEach(function(g){
-          masterHtml+='<div class="grp-head"><span class="pdot" style="'+dotStyle(g)+'"></span>'+esc(g.name)+'<span class="cnt">'+g.items.length+'</span></div>'+
-            '<ul class="tasks" data-list="master">'+g.items.map(taskLi).join("")+'</ul>';
+          masterHtml+=gOpen("g:fc:"+g.id)+gHead("g:fc:"+g.id,'<span class="pdot" style="'+dotStyle(g)+'"></span>'+esc(g.name)+'<span class="cnt">'+g.items.length+'</span>')+
+            '<ul class="tasks" data-list="master">'+g.items.map(taskLi).join("")+'</ul></div>';
         });
       });
       curList=null;
@@ -4166,8 +4509,8 @@ function GENA_MAIN() {
     var MOVES=[["morning","☀️ Morning"],["afternoon","🌤 Afternoon"],["evening","🌙 Evening"],["anytime","⏳ Anytime"],["someday","💭 Someday"]];
     var blAdd='<ul class="tasks" data-list="someday" style="padding:0;margin:0 0 4px"><li class="task inline-row" style="padding:6px 4px"><span class="inline-plus">+</span><input class="inline-add" data-block="someday" placeholder="Add to backlog…" aria-label="Add to backlog"/></li></ul>';
     var blBody=blAdd+(backlog.length?groupByProject(backlog).map(function(g){
-      return '<div class="grp-head"><span class="pdot" style="'+dotStyle(g)+'"></span>'+esc(g.name)+'<span class="cnt">'+g.items.length+'</span></div>'+
-        g.items.map(backlogSideRow).join("");
+      return gOpen("g:rbl:"+g.id)+gHead("g:rbl:"+g.id,'<span class="pdot" style="'+dotStyle(g)+'"></span>'+esc(g.name)+'<span class="cnt">'+g.items.length+'</span>')+
+        '<div>'+g.items.map(backlogSideRow).join("")+'</div></div>';
     }).join(""):'<div class="empty">Backlog is empty</div>');
     var vdLabel = vd===today() ? "today" : niceDate(vd);
     function carriedRow(k){
@@ -4181,8 +4524,8 @@ function GENA_MAIN() {
     }
     // grouped by project — the project name moves to a heading so it isn't repeated on every row
     var cb=carried.length?groupByProject(carried).map(function(g){
-      return '<div class="grp-head"><span class="pdot" style="'+dotStyle(g)+'"></span>'+esc(g.name)+'<span class="cnt">'+g.items.length+'</span></div>'+
-        g.items.map(carriedRow).join("");
+      return gOpen("g:rcar:"+g.id)+gHead("g:rcar:"+g.id,'<span class="pdot" style="'+dotStyle(g)+'"></span>'+esc(g.name)+'<span class="cnt">'+g.items.length+'</span>')+
+        '<div>'+g.items.map(carriedRow).join("")+'</div></div>';
     }).join(""):'<div class="empty">Nothing carried over 🎉</div>';
     curList="done"; var doneRows=doneV.map(taskLi).join(""); curList=null;
     var db=doneV.length?'<ul class="tasks" data-list="done">'+doneRows+'</ul>':'<div class="empty">Nothing completed '+(vd===today()?"yet":"this day")+'</div>';
@@ -4200,12 +4543,27 @@ function GENA_MAIN() {
         (x.action?'<button class="sugg-act" data-act="sugg" data-sid="'+esc(x.id)+'">'+x.action+'</button>':'')+
         '<button class="sugg-dismiss" data-act="sugg-x" data-sid="'+esc(x.id)+'" aria-label="Dismiss">✕</button></div>';
     }).join(""):'<div class="empty">Nothing to nudge you about 🎉</div>';
-    rb.innerHTML='<div class="pane-grip" data-pane="rb" title="Drag to resize"></div><div class="rb-brand">📋 Panel<button class="sb-act" data-act="panel-toggle" title="Hide the panel">hide ⟩</button></div>'+
-      fold("panel-sugg","✨ Suggestions"+(sg.length?" · "+sg.length:""),sgBody)+
-      fold("panel-backlog","🗃 Backlog"+(backlog.length?" · "+backlog.length:""),blBody)+
-      fold("panel-carried","⏳ Carried over"+(carried.length?" · "+carried.length:""),cb)+
-      fold("panel-done","✓ Completed"+(doneV.length?" · "+doneV.length:""),db)+
-      fold("panel-log","🗂 Completed log",lb);
+    /* H4: Today (the day's events) and Coming due open at the top; the rest below, folded until he opens one.
+       Every panel section folds on this device (data-uifold, A1). The old synced panel-* keys are no longer read:
+       an open <details> wrote false into them on every draw, so "folded by default" could never apply through them. */
+    var n=function(x){ return '<span class="fold-n">'+x+'</span>'; };
+    var evs=S.events.filter(function(e){ return evOnDay(e,vd)&&calVisible(e)&&!(e.projectId&&!inScope(e)); }).sort(evByTime);
+    var evBody=evs.length?evs.map(function(e){ var c=evColor(e)||(e.projectId?projColor(e.projectId):null);
+      return '<div class="rb-ev"><span class="rb-ev-t">'+(e.at&&e.date===vd?esc(fmtTime(e.at)):"all day")+'</span><span class="rb-ev-bar" style="background:'+esc(c||"var(--ink-faint)")+'"></span><span class="rb-ev-n">'+esc(e.title)+'</span></div>'; }).join(""):'<div class="empty">No events '+(vd===today()?"today":"this day")+'</div>';
+    var cd=comingDueTasks();
+    var cdBody=cd.length?cd.map(function(k){ var p=k.projectId?proj(k.projectId):null;
+      return '<div class="panel-task" data-id="'+esc(k.id)+'"><div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title" style="font-size:13.5px">'+esc(k.title)+'</div>'+
+        '<div class="task-meta">'+(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+esc(p.name)+'</span>':'')+'<span class="pill aged'+(diffDays(k.due,today())<=2?" hot":"")+'">due '+esc(niceDate(k.due))+'</span></div></div>'+
+        '<div class="panel-move"><button data-act="sched" data-id="'+esc(k.id)+'" data-d="'+today()+'">📅 Today</button><button data-act="sched" data-id="'+esc(k.id)+'" data-d="pick">📅…</button></div></div>'; }).join(""):'<div class="empty">Nothing due in the next two weeks</div>';
+    var uf=function(key,label,body,def){ var shut=uiFolded(key,!!def); return '<details class="card fold" data-uifold="'+key+'"'+(shut?'':' open')+'><summary><span class="fold-label">'+label+'</span><span class="fold-chev">▸</span></summary><div class="fold-body">'+body+'</div></details>'; };
+    rb.innerHTML='<div class="rb-brand">📋 Panel<button class="sb-act" data-act="panel-toggle" title="Hide the panel">hide ⟩</button></div>'+
+      uf("p:today",(vd===today()?"Today":esc(niceDate(vd)))+n(evs.length),evBody)+
+      uf("p:due","Coming due"+n(cd.length),cdBody)+
+      uf("p:sugg","Suggestions"+n(sg.length),sgBody,true)+
+      uf("p:backlog","Backlog"+n(backlog.length),blBody,true)+
+      uf("p:carried","Carried over"+n(carried.length),cb,true)+
+      uf("p:done","Done "+(vd===today()?"today":"this day")+n(doneV.length),db,true)+
+      uf("p:log","Completed log",lb,true);
   }
 
   /* The hand-coded course dashboard is the best-loved card in the app and dies with the semester.
@@ -4234,22 +4592,23 @@ function GENA_MAIN() {
     }).sort(function(a,b){ return a.due.localeCompare(b.due) || (a.day||"9999").localeCompare(b.day||"9999"); });
   }
   // ---- 43: the week's landing rail ----
-  function landingRailHtml(d){
+  // show: Week ahead's Show list (look C3); without it every kind is drawn. Follow-ups covers check-backs too.
+  function landingRailHtml(d,show){
     var L=landingOn(d), t=today(); if(!L.count) return "";
-    var rows=[];
-    L.due.forEach(function(k){ var p=k.projectId?proj(k.projectId):null, lead=addDays(d,-1);
+    var rows=[], sh=show||{due:true,fu:true};
+    if(sh.due) L.due.forEach(function(k){ var p=k.projectId?proj(k.projectId):null, lead=addDays(d,-1);
       rows.push('<div class="land-row" data-id="'+esc(k.id)+'"><span class="land-ico">⚑</span><span class="land-t" data-act="edit" title="Tap to edit">'+esc(k.title)+'</span>'+
         (p?'<span class="pill proj'+pk(p)+'" style="'+pcVars(p)+'"><i class="pdot"></i>'+esc(p.name)+'</span>':'')+
         (k.day?'<span class="pill aged">planned '+esc(niceDate(k.day))+' — after the deadline</span>':'<span class="pill aged">no day yet</span>')+
         '<span class="land-acts"><button class="chip" data-act="dueday" data-d="'+(lead>=t?lead:t)+'">→ '+(lead>=t?niceDate(lead):"today")+'</button>'+
         '<button class="chip" data-act="dueday" data-d="'+(d>=t?d:t)+'">→ due day</button></span></div>'); });
-    L.checkbacks.forEach(function(k){ rows.push('<div class="land-row" data-id="'+esc(k.id)+'"><span class="land-ico">⏸</span><span class="land-t" data-act="edit">'+esc(k.title)+'</span><span class="pill block">check-back'+(waitLabel(k)?' · '+esc(waitLabel(k)):'')+'</span></div>'); });
-    L.followups.forEach(function(p){ rows.push('<div class="land-row" data-pid="'+esc(p.id)+'"><span class="land-ico">👤</span><span class="land-t" data-act="editperson" data-id="'+esc(p.id)+'">Follow up with '+esc(p.name)+'</span>'+(p.cadence?'<span class="pill rec">↻ every '+p.cadence+'d</span>':'')+'</div>'); });
+    if(sh.fu) L.checkbacks.forEach(function(k){ rows.push('<div class="land-row" data-id="'+esc(k.id)+'"><span class="land-ico">⏸</span><span class="land-t" data-act="edit">'+esc(k.title)+'</span><span class="pill block">check-back'+(waitLabel(k)?' · '+esc(waitLabel(k)):'')+'</span></div>'); });
+    if(sh.fu) L.followups.forEach(function(p){ rows.push('<div class="land-row" data-pid="'+esc(p.id)+'"><span class="land-ico">👤</span><span class="land-t" data-act="editperson" data-id="'+esc(p.id)+'">Follow up with '+esc(p.name)+'</span>'+(p.cadence?'<span class="pill rec">↻ every '+p.cadence+'d</span>':'')+'</div>'); });
     L.phaseStarts.forEach(function(ph){ var pp=proj(ph.projectId); rows.push('<div class="land-row"><span class="land-ico">◧</span><span class="land-t">'+esc(ph.title)+' starts</span>'+(pp?'<span class="pill proj'+pk(pp)+'" style="'+pcVars(pp)+'"><i class="pdot"></i>'+esc(pp.name)+'</span>':'')+'</div>'); });
     L.phaseEnds.forEach(function(ph){ var pp=proj(ph.projectId);
       var left=S.tasks.filter(function(k){ return isOpen(k) && k.projectId===ph.projectId && ((k.due&&k.due<=ph.end)||(k.day&&k.day>=ph.start&&k.day<=ph.end)); }).length;
       rows.push('<div class="land-row"><span class="land-ico">◧</span><span class="land-t">'+esc(ph.title)+' ends</span>'+(pp?'<span class="pill proj'+pk(pp)+'" style="'+pcVars(pp)+'"><i class="pdot"></i>'+esc(pp.name)+'</span>':'')+(left?'<span class="pill '+(left>3?"aged":"block")+'">'+left+' open in it</span>':'<span class="pill good">clear</span>')+'</div>'); });
-    return '<div class="wk-land">'+rows.join("")+'</div>';
+    return rows.length?'<div class="wk-land">'+rows.join("")+'</div>':"";
   }
   function weekAheadStripHtml(){
     var t=today(), n={due:0,cb:0,fu:0,ph:0,tasks:0,mins:0,noday:0}, days=[];
@@ -4789,20 +5148,22 @@ function GENA_MAIN() {
 
   /* ---------- WEEK — the next seven days ---------- */
   function viewWeek(){
-    var t=today();
+    var t=today(), show=weekShow();
     var html='<h2 class="view-h">This week</h2><p class="sub">The next seven days — drag tasks between days, or add straight into one.'+(scopeActive()?' <b>Filtered:</b> '+esc(scopeLabel())+' — <button class="chip" data-act="clearscope" style="padding:2px 9px">show all</button>':'')+'</p>';
     html+=weekAheadStripHtml();
     html+='<div class="stack">';
     for(var i=0;i<7;i++){
       var d=addDays(t,i);
-      var open=orderTasks(dayTodo(d).filter(function(k){return isOpen(k)&&inScope(k);}),false);
+      var open=show.tasks?orderTasks(dayTodo(d).filter(function(k){return isOpen(k)&&inScope(k);}),false):[];
       var load=dayLoad(d);
       var done=S.tasks.filter(function(k){return k.status==="done"&&k.completedOn===d&&inScope(k);}).length;
       var evs=S.events.filter(function(e){return evOnDay(e,d)&&calVisible(e)&&!(e.projectId&&!inScope(e));});
-      html+='<div class="card"><div class="wk-day-head"><h3>'+(i===0?"Today":(i===1?"Tomorrow":WDFULL[dow(d)]))+'</h3><span class="sub">'+MONTHS[+d.slice(5,7)-1].slice(0,3)+' '+(+d.slice(8))+'</span>'+foldProg(done,open.length+done)+
+      // H3: every day folds (kept per date on this device); a day with nothing on it starts folded (A5)
+      var rail=landingRailHtml(d,show), wk="wk:"+d, shut=uiFolded(wk,!open.length&&!evs.length&&!rail);
+      html+='<div class="card gwrap wk-day'+(shut?' closed':'')+'"><div class="wk-day-head"><h3><button type="button" class="gfold wk-fold" data-act="gfold" data-g="'+wk+'" aria-expanded="'+!shut+'"><span class="gchev" aria-hidden="true">▾</span>'+(i===0?"Today":(i===1?"Tomorrow":WDFULL[dow(d)]))+'</button></h3><span class="sub">'+MONTHS[+d.slice(5,7)-1].slice(0,3)+' '+(+d.slice(8))+(shut&&!open.length&&!evs.length&&!rail?' · nothing yet':'')+'</span>'+foldProg(done,open.length+done)+
         (load.planned?'<span class="pill block" title="Timed work planned">⏱ '+fmtMins(load.planned)+'</span>':'')+
         '<button class="chip" style="margin-left:auto;padding:3px 9px" data-act="panel-goday" data-d="'+d+'">open day →</button></div>';
-      html+=landingRailHtml(d);
+      html+=rail;
       if(evs.length) html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 2px">'+evs.map(function(e){var ec=evColor(e), c=ec||(e.projectId?projColor(e.projectId):null), bd=evBand(ec?null:proj(e.projectId));return '<span class="cal-ev '+(c?"":"evt")+bd[0]+'" style="'+(c?cbg(c)+bd[1]:"")+'">'+esc(e.title)+'</span>';}).join("")+'</div>';
       html+='<ul class="tasks" data-list="day:'+d+'">'+open.map(taskLi).join("")+inlineAddRow("day:"+d,"Add to "+(i===0?"today":niceDate(d))+"…")+'</ul></div>';
     }
@@ -4839,14 +5200,17 @@ function GENA_MAIN() {
     if(!undated.length){ html+='<div class="card empty" style="padding:34px">Your backlog is empty. Anything without a deadline lands here.</div>'; return html; }
     // L5: grouped by Domain, then Focus
     domainOrder(undated,function(k){ var p=proj(k.projectId); return p?p.profileId:null; }).forEach(function(g){
-      html+='<h3 class="dom-h">'+(g.d?esc(g.d.emoji||"")+" "+esc(g.d.name):"No Domain")+'</h3>';
+      var dk="g:bld:"+(g.d?g.d.id:"none");
+      html+=gOpen(dk)+gHead(dk,(g.d?esc(g.d.emoji||"")+" "+esc(g.d.name):"No Domain"),false,"dom-h")+'<div>';
       var byProj={}, order=[]; g.items.forEach(function(k){ var key=proj(k.projectId)?k.projectId:"__none"; if(!byProj[key]){ byProj[key]=[]; order.push(key); } byProj[key].push(k); });
       order.sort(function(a,b){ return (a==="__none")-(b==="__none"); });
       order.forEach(function(key){
         var p=key==="__none"?null:proj(key);
-        html+='<div class="block-head"><p class="label">'+(p?'<span style="color:'+esc(p.color)+'">●</span> '+esc(p.name):"No Focus")+'</p><span class="cnt">'+byProj[key].length+'</span></div>';
-        html+='<div class="card" style="margin-bottom:14px">'+byProj[key].map(backlogRow).join("")+'</div>';
+        var gk="g:bl:"+(g.d?g.d.id:"none")+":"+key;
+        html+=gOpen(gk)+gHead(gk,(p?'<span style="color:'+esc(p.color)+'">●</span> '+esc(p.name):"No Focus")+'<span class="cnt">'+byProj[key].length+'</span>',false,"block-fold");
+        html+='<div class="card" style="margin-bottom:14px">'+byProj[key].map(backlogRow).join("")+'</div></div>';
       });
+      html+='</div></div>';   // the Domain's Focus groups, then its fold group
     });
     return html;
   }
@@ -4914,7 +5278,8 @@ function GENA_MAIN() {
     };
     var act=efs.filter(projActive).sort(function(a,b){ return (b.pinned?1:0)-(a.pinned?1:0)||String(a.name).localeCompare(String(b.name)); });
     domainOrder(act,function(e){ return e.profileId; }).forEach(function(g){
-      html+='<h3 class="dom-h">'+(g.d?esc(g.d.emoji||"")+" "+esc(g.d.name):"No Domain")+'</h3><div class="board">'+g.items.map(card).join("")+'</div>'; });
+      var gk="g:pjd:"+(g.d?g.d.id:"none");
+      html+=gOpen(gk)+gHead(gk,(g.d?esc(g.d.emoji||"")+" "+esc(g.d.name):"No Domain"),false,"dom-h")+'<div class="board">'+g.items.map(card).join("")+'</div></div>'; });
     var off=efs.filter(function(e){ return projState(e)==="off"; }), ended=efs.filter(function(e){ return projState(e)==="ended"; });
     if(off.length) html+='<div style="margin-top:16px">'+fold("shelf-pj-off","💤 Paused · "+off.length,'<div class="board shelf-board">'+off.map(card).join("")+'</div>')+'</div>';
     if(ended.length) html+='<div style="margin-top:16px">'+fold("shelf-pj-ended","🏁 Ended · "+ended.length,'<div class="board shelf-board">'+ended.map(card).join("")+'</div>')+'</div>';
@@ -4965,7 +5330,8 @@ function GENA_MAIN() {
     // L2: grouped by Domain (his order), Focuses without one last
     html+='</div>';
     domainOrder(projCards,function(pc){ return pc.p.profileId; }).forEach(function(g){
-      html+='<h3 class="dom-h">'+(g.d?esc(g.d.emoji||"")+" "+esc(g.d.name):"No Domain")+'</h3><div class="board">'; g.items.forEach(renderCard); html+='</div>'; });
+      var gk="g:fcd:"+(g.d?g.d.id:"none");
+      html+=gOpen(gk)+gHead(gk,(g.d?esc(g.d.emoji||"")+" "+esc(g.d.name):"No Domain"),false,"dom-h")+'<div class="board">'; g.items.forEach(renderCard); html+='</div></div>'; });
     if(shelvedCards.length){
       var offC=shelvedCards.filter(function(pc){return projState(pc.p)==="off";}), endC=shelvedCards.filter(function(pc){return projState(pc.p)==="ended";});
       var shelf=function(key,label,cards){ if(!cards.length) return "";
@@ -5092,8 +5458,9 @@ function GENA_MAIN() {
     return keys.map(function(ak){ var g=by[ak];
       g.order.sort(function(a,b){ return (a==="__none")-(b==="__none")||g.projs[a].p&&g.projs[b].p&&g.projs[a].p.name.localeCompare(g.projs[b].p.name)||0; });
       return '<div class="rep-area"><div class="rep-area-h">'+esc(g.name)+'</div>'+g.order.map(function(pk2){ var pg=g.projs[pk2], pp=pg.p;
-        return '<div class="grp-head"><span class="pdot" style="'+dotStyle(pp?{color:pp.color,pat:pp.pat}:{color:"var(--ink-faint)"})+'"></span>'+esc(pp?pp.name:"No Focus")+'<span class="cnt">'+pg.items.length+'</span></div>'+
-          '<ul class="tasks">'+pg.items.map(row).join("")+'</ul>'; }).join("")+'</div>'; }).join("");
+        var gk="g:rep:"+ak+":"+pk2;
+        return gOpen(gk)+gHead(gk,'<span class="pdot" style="'+dotStyle(pp?{color:pp.color,pat:pp.pat}:{color:"var(--ink-faint)"})+'"></span>'+esc(pp?pp.name:"No Focus")+'<span class="cnt">'+pg.items.length+'</span>')+
+          '<ul class="tasks">'+pg.items.map(row).join("")+'</ul></div>'; }).join("")+'</div>'; }).join("");
   }
   function viewRepeats(){
     var t=today();
@@ -6052,6 +6419,7 @@ function GENA_MAIN() {
       var idEl=e.target.closest("[data-id]"); var anyId=idEl&&idEl.dataset.id;
       if(a.closest("summary")) e.preventDefault();
       if(act==="toggle"){ toggleTask(id||anyId, taskEl||idEl); }
+      else if(act==="gfold"){ var gw=a.closest(".gwrap"); if(gw){ var gs=!gw.classList.contains("closed"); gw.classList.toggle("closed",gs); a.setAttribute("aria-expanded",String(!gs)); uiSetFold(a.dataset.g,gs); } renderAnchor=null; }
       else if(act==="edit"){ var tk=S.tasks.find(function(x){return x.id===(id||anyId);});
         if(!tk){}
         else if(a.closest("#rightbar")||a.closest(".proj-card")||a.closest(".rep-card")||a.closest(".modal")||a.closest(".wk-land")||a.closest(".card.brief")||a.closest('[data-fold="comingdue"]')) openTaskModal({edit:tk});
@@ -6297,7 +6665,9 @@ function GENA_MAIN() {
   // the panel's folds remember themselves; its rows are replaced by every build, so this runs after each one
   function wireRightbar(){
     var rb=document.getElementById("rightbar"); if(!rb) return;
-    rb.querySelectorAll("details.fold").forEach(function(d){ d.addEventListener("toggle",function(){ S.collapsed[d.dataset.fold]=!d.open; save(); }); });
+    rb.querySelectorAll("details.fold").forEach(function(d){ d.addEventListener("toggle",function(){
+      if(d.dataset.uifold){ if(uiFolds()[d.dataset.uifold]!==(d.open?0:1)) uiSetFold(d.dataset.uifold,!d.open); return; }   // H4: this device's; a draw that changes nothing writes nothing
+      S.collapsed[d.dataset.fold]=!d.open; save(); }); });
   }
   // srcRow: the row it was ticked from (click, swipe or the ⋯ sheet, which presses the row's own box), for the anchor
   function toggleTask(id,srcRow){ var k=S.tasks.find(function(x){return x.id===id;}); if(!k)return;
@@ -8546,8 +8916,10 @@ function GENA_MAIN() {
         '<div class="swatches" id="acc-sw" style="flex:1">'+ACCENTS.map(function(a){return '<button class="sw" style="background:'+a[1]+'" data-c="'+a[1]+'" title="'+esc(a[0])+'" aria-label="'+esc(a[0])+'" aria-pressed="'+(S.accent===a[1])+'"></button>';}).join("")+'</div>'+
         '<button class="chip" id="acc-reset" style="flex:none">Reset</button></div>'+
         '<div class="sub" style="font-size:11px;margin-top:6px">Overrides the colour scheme’s accent everywhere — buttons, pills, highlights.</div></div>'+
-      '<div class="row"><div class="fld"><label>Density</label><div class="chips" id="dens-row">'+
-        [["compact","Compact"],["cozy","Cozy"],["roomy","Roomy"]].map(function(dv){return '<button class="chip" data-d="'+dv[0]+'" aria-pressed="'+((S.density||"cozy")===dv[0])+'">'+dv[1]+'</button>';}).join("")+'</div></div>'+
+      '<div class="fld"><label>Appearance</label><div class="chips" id="theme-row">'+[["light","Light"],["dark","Dark"],["system","System"]].map(function(tv){return '<button class="chip" data-m="'+tv[0]+'" aria-pressed="'+(themeMode()===tv[0])+'">'+tv[1]+'</button>';}).join("")+'</div>'+
+        '<div class="sub" style="font-size:11px;margin-top:6px">System follows your Mac or phone. Also at the bottom of the sidebar, and ◐ in this menu.</div></div>'+
+      '<div class="row"><div class="fld"><label>Row size (this device)</label><div class="chips" id="dens-row">'+
+        [["compact","Compact"],["roomy","Roomy"]].map(function(dv){return '<button class="chip" data-d="'+dv[0]+'" aria-pressed="'+(uiDensity()===dv[0])+'">'+dv[1]+'</button>';}).join("")+'</div></div>'+
       '<div class="fld"><label>Background</label><div class="chips" id="scene-row">'+
         [["off","Plain"],["on","Scene"]].map(function(sv){return '<button class="chip" data-s="'+sv[0]+'" aria-pressed="'+((S.scene||"off")===sv[0])+'">'+sv[1]+'</button>';}).join("")+'</div></div>'+
       '<div class="fld"><label>Typeface</label><div class="chips" id="font-row">'+
@@ -8653,8 +9025,11 @@ function GENA_MAIN() {
     if(accPick) accPick.oninput=function(){ setAccent(accPick.value); };
     if(accSw) accSw.onclick=function(e){ var b=e.target.closest(".sw"); if(b) setAccent(b.dataset.c); };
     if(accReset) accReset.onclick=function(){ setAccent(null); toast("Accent back to the colour scheme’s own"); };
+    var themeRow=document.getElementById("theme-row");
+    if(themeRow) themeRow.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; setThemeMode(b.dataset.m);
+      [].forEach.call(themeRow.children,function(c){c.setAttribute("aria-pressed",c===b);}); };
     var densRow=document.getElementById("dens-row");
-    if(densRow) densRow.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; S.density=b.dataset.d; applyTheme(); save();
+    if(densRow) densRow.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; setUiDensity(b.dataset.d); render();
       [].forEach.call(densRow.children,function(c){c.setAttribute("aria-pressed",c===b);}); };
     var sceneRow=document.getElementById("scene-row");
     if(sceneRow) sceneRow.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; S.scene=b.dataset.s; applyTheme(); save();
@@ -8733,7 +9108,8 @@ function GENA_MAIN() {
     // L6, P3: grouped by main Domain, people with none under "No Domain"
     var groups=domainOrder(people,function(p){ return p.profileId; });
     groups.forEach(function(g){
-    if(groups.length>1||g.d) html+='<h3 class="dom-h">'+(g.d?esc(g.d.emoji||"")+" "+esc(g.d.name):"No Domain")+'</h3>';
+    var gk="g:ppl:"+(g.d?g.d.id:"none");
+    html+=gOpen(gk)+(groups.length>1||g.d?gHead(gk,(g.d?esc(g.d.emoji||"")+" "+esc(g.d.name):"No Domain"),false,"dom-h"):'<span hidden></span>');
     html+='<div class="board">';
     g.items.forEach(function(p){
       var pz=isPaused(p,t), isDue=p.next&&p.next<=t&&!pz;
@@ -8774,7 +9150,7 @@ function GENA_MAIN() {
         '<button class="chip" data-act="'+(p.paused?"resume-person":"pause-person")+'" data-id="'+esc(p.id)+'">'+(p.paused?"Resume":"💤 Pause")+'</button></div>';
       html+='</div></details></div>';
     });
-    html+='</div>';
+    html+='</div></div>';   // the board, then the fold group
     });
     if(!people.length) html+='<div class="card empty" style="padding:34px">'+(scopeActive()&&S.people.length?'Nobody in '+esc(scopeLabel())+' — <button class="chip" data-act="clearscope" style="padding:2px 9px">show all</button>':'No people yet. Add someone you want to stay in touch with — a recruiter, a mentor, a friend.')+'</div>';
     return html;
@@ -10207,6 +10583,7 @@ function GENA_MAIN() {
     else if(GH&&GH.gistId) el.textContent = ghError ? "⚠ cloud sync error" : (ghBusy ? "☁ syncing…" : "☁ synced"+(ghLastSync?" · "+new Date(ghLastSync).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):""));
     else if(syncName) el.textContent="🔗 file sync on";
     else el.textContent="● saved on device";
+    var sl=document.getElementById("sb-sync"); if(sl) sl.textContent=syncLine();
   }
   document.getElementById("sync-status").onclick=function(){ openGhModal(); };
 
@@ -10369,32 +10746,60 @@ function GENA_MAIN() {
 
   /* ---------- boot ---------- */
   document.getElementById("cap-btn").onclick=function(){ goView("hub"); document.querySelector(".hub-cap")&&document.getElementById("cap-in")&&document.getElementById("cap-in").focus(); };
+  /* Panel widths (look release W1): the one 1 px line between a panel and the page is also its handle
+     (.pane-grip: a 10 px invisible hit area centred on the line). Widths are per device in
+     localStorage["gena-panes"] and applied through --sbw / --rbw; the page always keeps 420 px. */
+  var PANE={sb:{v:"--sbw",min:170,max:420,def:228}, rb:{v:"--rbw",min:220,max:440,def:292}}, PANE_PAGE_MIN=420;
+  // a width the panel may take: its own limits, and never so wide that the page drops under 420 px
+  function paneClamp(k,w,vw,other){ var p=PANE[k], hi=Math.max(p.min,Math.min(p.max,vw-other-PANE_PAGE_MIN));
+    return Math.max(p.min,Math.min(hi,Math.round(w))); }
+  // a key on a focused handle: the arrows move the line 16 px (Shift 48), Home is the default; null = not a resize key
+  function paneKeyWidth(k,key,shift,w){ var s=shift?48:16;
+    if(key==="Home") return PANE[k].def;
+    if(key!=="ArrowLeft"&&key!=="ArrowRight") return null;
+    return (key==="ArrowRight")===(k==="sb")?w+s:w-s; }
   (function panelWidths(){
-    var LIM={sb:[170,420], rb:[220,540]}, VAR={sb:"--sbw", rb:"--rbw"}, root=document.documentElement;
-    var saved={}; try{ saved=JSON.parse(localStorage.getItem("gena-panes")||"{}")||{}; }catch(e){}
-    Object.keys(VAR).forEach(function(k){ if(saved[k]) root.style.setProperty(VAR[k], saved[k]+"px"); });
+    var root=document.documentElement, saved={}; try{ saved=JSON.parse(localStorage.getItem("gena-panes")||"{}")||{}; }catch(e){}
+    var cur=function(k){ return parseFloat(getComputedStyle(root).getPropertyValue(PANE[k].v))||PANE[k].def; };
+    var other=function(k){ return document.body.classList.contains(k==="sb"?"rb-closed":"sb-closed")?0:cur(k==="sb"?"rb":"sb"); };
+    var grip=function(k){ return document.querySelector('.pane-grip[data-pane="'+k+'"]'); };
+    var aria=function(k){ var g=grip(k); if(g) g.setAttribute("aria-valuenow",Math.round(cur(k))); };
+    var keep=function(){ try{ localStorage.setItem("gena-panes",JSON.stringify(saved)); }catch(e){} };
+    var set=function(k,w){ root.style.setProperty(PANE[k].v,w+"px"); aria(k); };
+    var reset=function(k){ root.style.removeProperty(PANE[k].v); delete saved[k]; keep(); aria(k); };
+    Object.keys(PANE).forEach(function(k){ var g=grip(k);
+      if(saved[k]) root.style.setProperty(PANE[k].v, paneClamp(k,saved[k],1e6,0)+"px");
+      if(g){ g.setAttribute("aria-valuemin",PANE[k].min); g.setAttribute("aria-valuemax",PANE[k].max); } aria(k); });
     var drag=null;
     document.addEventListener("pointerdown",function(e){
-      var g=e.target.closest&&e.target.closest(".pane-grip"); if(!g||window.innerWidth<=1000) return;
-      e.preventDefault(); drag={k:g.dataset.pane, x0:e.clientX,
-        w0:parseFloat(getComputedStyle(root).getPropertyValue(VAR[g.dataset.pane]))||(g.dataset.pane==="sb"?240:300)};
-      document.body.classList.add("pane-resizing"); try{ g.setPointerCapture(e.pointerId); }catch(err){}
+      var g=e.target.closest&&e.target.closest(".pane-grip"); if(!g||window.innerWidth<=1000||e.button>0) return;
+      e.preventDefault(); drag={k:g.dataset.pane, x0:e.clientX, w0:cur(g.dataset.pane), g:g};
+      g.classList.add("on"); document.body.classList.add("pane-resizing"); try{ g.setPointerCapture(e.pointerId); }catch(err){}
     });
     document.addEventListener("pointermove",function(e){
       if(!drag) return;
-      var d=e.clientX-drag.x0, w=drag.k==="sb"?drag.w0+d:drag.w0-d;
-      w=Math.max(LIM[drag.k][0], Math.min(LIM[drag.k][1], Math.round(w)));
-      root.style.setProperty(VAR[drag.k], w+"px");
+      if(!(e.buttons&1)){ end(); return; }   // the release never reached the page (look review finding 5)
+      var d=e.clientX-drag.x0;
+      set(drag.k, paneClamp(drag.k, drag.k==="sb"?drag.w0+d:drag.w0-d, window.innerWidth, other(drag.k)));
     });
     function end(){ if(!drag) return;
-      saved[drag.k]=parseFloat(getComputedStyle(root).getPropertyValue(VAR[drag.k]))||null;
-      try{ localStorage.setItem("gena-panes",JSON.stringify(saved)); }catch(e){}
-      drag=null; document.body.classList.remove("pane-resizing"); }
+      saved[drag.k]=Math.round(cur(drag.k)); keep();
+      drag.g.classList.remove("on"); drag=null; document.body.classList.remove("pane-resizing"); }
     document.addEventListener("pointerup",end); document.addEventListener("pointercancel",end);
-    // double-click a grip to snap back to the default width
-    document.addEventListener("dblclick",function(e){ var g=e.target.closest&&e.target.closest(".pane-grip"); if(!g) return;
-      root.style.removeProperty(VAR[g.dataset.pane]); delete saved[g.dataset.pane];
-      try{ localStorage.setItem("gena-panes",JSON.stringify(saved)); }catch(err){} });
+    window.addEventListener("blur",end);
+    document.addEventListener("keydown",function(e){ if(drag&&e.key==="Escape"){ set(drag.k,drag.w0); end(); } },true);
+    // a window smaller than the stored width: re-fit without rewriting what he chose (look review finding 4)
+    window.addEventListener("resize",function(){ if(window.innerWidth<=1000) return;
+      Object.keys(PANE).forEach(function(k){ if(saved[k]&&!drag) set(k,paneClamp(k,saved[k],window.innerWidth,other(k))); }); });
+    // double-click the line to snap back to the default width
+    document.addEventListener("dblclick",function(e){ var g=e.target.closest&&e.target.closest(".pane-grip"); if(g) reset(g.dataset.pane); });
+    document.addEventListener("keydown",function(e){
+      var g=e.target.closest&&e.target.closest(".pane-grip"); if(!g) return;
+      var k=g.dataset.pane, w=paneKeyWidth(k,e.key,e.shiftKey,cur(k)); if(w===null) return;
+      e.preventDefault();
+      if(e.key==="Home"){ reset(k); return; }
+      w=paneClamp(k,w,window.innerWidth,other(k)); set(k,w); saved[k]=w; keep();
+    });
   })();
   (function blockResize(){
     var rs=null;
@@ -10558,7 +10963,6 @@ function GENA_MAIN() {
       else { syncReconnect=true; if(view==="today") render(); }
     }).catch(function(){});
   });
-  setInterval(updateClock,1000);
   fillProjSelect();
   applySidebarState();
   applyRightbarState();
