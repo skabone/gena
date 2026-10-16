@@ -125,6 +125,27 @@
   .ph-chip.now{ background:var(--terra-bg); color:var(--terra-deep); font-weight:700; }
   .ph-chip.past{ opacity:.6; }
   .sb-sub{ font-size:11.5px; color:var(--ink-soft); font-weight:600; padding:8px 8px 2px; }
+  /* V6.2 Calendars filter: Apple Calendar's look — an account row, then its calendars, each with a checkbox in its colour */
+  .sb-row.cal-acct{ font-size:12.5px; font-weight:700; color:var(--ink-soft); padding:6px 8px 4px; gap:6px; }
+  .sb-row.cal-acct .sb-fold{ width:14px; flex:none; text-align:center; }
+  .sb-row.cal-row{ padding:5px 8px 5px 26px; gap:8px; }   /* the checkbox sits under its account's name */
+  .cal-chk{ --cal:var(--ink-soft); width:16px; height:16px; flex:none; border-radius:4px; border:1.5px solid var(--cal); background:transparent; padding:0; cursor:pointer; position:relative; }
+  .cal-row .cal-chk{ --cal:inherit; border-color:var(--cal); }
+  .cal-chk[aria-checked="true"]{ background:var(--cal); }
+  .cal-chk[aria-checked="true"]::after{ content:"✓"; position:absolute; inset:0; color:var(--calink,#fff); font-size:11px; line-height:13px; font-weight:800; text-align:center; }
+  .cal-acct .cal-chk[aria-checked="true"]::after{ color:var(--card); }
+  .cal-chk[aria-checked="mixed"]::after{ content:""; position:absolute; left:3px; right:3px; top:6px; height:1.5px; border-radius:1px; background:var(--cal); }
+  .cal-grip{ width:10px; flex:none; color:var(--ink-faint); font-size:12px; cursor:grab; opacity:0; }
+  .sb-row:hover .cal-grip{ opacity:1; }
+  @media (hover:none){ .cal-grip{ display:none; } }
+  .cal-row.cal-err .sb-name, .cal-row.cal-off .sb-name{ opacity:.55; }
+  .cal-drop-before{ box-shadow:inset 0 2px 0 var(--terra); } .cal-drop-after{ box-shadow:inset 0 -2px 0 var(--terra); }
+  .cs-acct-h{ font-size:12px; font-weight:700; color:var(--ink-soft); margin:10px 2px 6px; }
+  .cal-src-more{ display:flex; align-items:center; gap:8px; margin-top:8px; }
+  .cal-src-more label{ margin:0; font-size:11.5px; flex:none; }
+  .modal .cal-src-more input{ flex:1; min-width:0; width:auto; padding:5px 9px; font-size:13px; }
+  .cal-src-more .chip[disabled]{ opacity:.35; cursor:default; }
+  .cal-src.cal-src-hl{ border-color:var(--terra); }
   .sb-prog{ flex:none; width:34px; height:5px; border-radius:3px; background:var(--line); overflow:hidden; }
   .sb-prog i{ display:block; height:100%; background:var(--good); }
   #sb-scrim{ display:none; }
@@ -403,7 +424,7 @@
   .proj-notes:focus{ outline:none; border-color:var(--terra); }
 
   /* calendar */
-  .cal-head{ display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .cal-head{ display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; }   /* review finding 7: wraps on a phone, no sideways scroll */
   .cal-head h3{ margin:0; font-size:18px; font-weight:800; min-width:180px; }
   .cal-grid{ display:grid; grid-template-columns: repeat(7,1fr); gap:6px; }
   .cal-dow{ font-size:11.5px; font-weight:700; color:var(--ink-soft); text-transform:none; letter-spacing:0; text-align:center; padding:4px 0; }
@@ -1452,7 +1473,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-10-15-V6.1";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-10-15-V6.2";   // set by ship.sh on every release — the footer is how you tell a surface is current
   // The day V5 shipped (tag gena-2026-10-05-V5): the closing-states cutoff, fixed, so a later build's stamp
   // never moves it (I-28). Above `var S = load()`, which reads it.
   var V5_SHIP_DAY = "2026-10-05";
@@ -3157,7 +3178,7 @@ function GENA_MAIN() {
   function segHtml(){
     var g=groupOf(view); if(!g) return "";
     var items = g==="plan"
-      ? [["day","Day",view==="day"],["wk","Week",planSeg()==="wk"],["month","Month",planSeg()==="month"],["agenda","Week ahead",view==="week"]]
+      ? [["agenda","Week ahead",view==="week"],["day","Day",view==="day"],["wk","Week",planSeg()==="wk"],["month","Month",planSeg()==="month"]]
       : g==="journal" ? [["journal","Journal",view==="journal"],["learn","Learn",view==="learn"]]
       : [["repeats","Repeats",view==="repeats"],["projects","Focuses",view==="projects"],["efforts","Projects",view==="efforts"],["people","People",view==="people"],["backlog","Backlog",view==="backlog"],["timeline","Timeline",view==="timeline"]];
     return '<div class="seg" role="tablist" aria-label="'+(g==="plan"?"Events":(g==="journal"?"Journal":"Lists"))+'">'+items.map(function(it){
@@ -3378,6 +3399,8 @@ function GENA_MAIN() {
     var openCnt=openCount, st=sidebarStats(), cur=S.activeProfile;
     var row=function(val,icon,name,cnt,extra,style){ return '<div class="sb-row" role="button" tabindex="0" data-sb="scope" data-id="'+esc(val)+'" aria-pressed="'+(cur===val)+'"'+(style?' style="'+style+'"':'')+'>'+icon+'<span class="sb-name">'+esc(name)+'</span>'+(cnt?'<span class="cnt">'+cnt+'</span>':'')+(extra||"")+'</div>'; };
     var h='<div class="sb-brand">🌼 Gena'+(APP_VERSION?'<span class="sb-ver">'+APP_VERSION+'</span>':'')+'<button class="sb-act" data-sb="collapse" title="Hide the sidebar">⟨ hide</button></div>';
+    // V6.2: on the Events tab, the Calendars filter comes first
+    if(groupOf(view)==="plan") h+=calSidebarHtml();
     // Collections
     var cols=(S.collections||[]).slice().sort(function(a,b){ return (a.ord||0)-(b.ord||0); });
     var more=function(kind,id,name){ return '<button class="sb-star" data-sb="cols" data-kind="'+kind+'" data-id="'+esc(id)+'" title="Collections for '+esc(name)+'" aria-label="Collections for '+esc(name)+'">⋯</button>'; };
@@ -3430,7 +3453,35 @@ function GENA_MAIN() {
     else if(t==="cols"){ openColsModal(a.dataset.kind,a.dataset.id); }
     else if(t==="editprofile"){ openProfileModal(profileById(a.dataset.id)); }
     else if(t==="collapse"){ if(window.innerWidth>1000){ S.sbOpen=false; save(); applySidebarState(); } else document.body.classList.remove("sb-open"); }
+    // V6.2 Calendars filter: a checkbox (or the row) shows or hides at once, no refetch; it syncs (F3)
+    else if(t==="calchk"||t==="calrow"){ var cs=a.dataset.cid===CAL_GENA?calGena():calById(a.dataset.cid); if(cs){ calSetHidden(cs,!cs.hidden); save(); render(); } }
+    else if(t==="calgchk"){ var cg=calGroups().find(function(g){ return g.key===a.dataset.key; }); if(cg){ var hide=cg.items.every(function(x){ return !x.hidden; }); cg.items.forEach(function(x){ calSetHidden(x,hide); }); save(); render(); } }
+    else if(t==="calfold"){ var fk="sb-cal:"+a.dataset.key; S.collapsed[fk]=!S.collapsed[fk]; save(); renderSidebar(); }
+    else if(t==="calall"){ [calGena()].concat(calFeeds()).forEach(function(x){ calSetHidden(x,false); }); save(); render(); }
+    else if(t==="calmore"){ openCalSheet(a.dataset.cid); }
+    else if(t==="calgmore"){ openCalGroupSheet(a.dataset.key); }
+    else if(t==="caladd"){ openCalendarsModal(); }
   };
+  /* F9: drag a calendar within its account, or an account as a block; the order saves once per drop. The
+     handlers are properties so a test can call them with a fake event (synthetic drag events do not work) */
+  var calDrag=null;
+  function calDropTarget(e){
+    if(!calDrag||!e.target||!e.target.closest) return null;
+    var r=e.target.closest(calDrag.cid?".cal-row[data-cid]":".cal-grp[data-key]"); if(!r) return null;
+    var id=calDrag.cid?r.dataset.cid:r.dataset.key; if(id===(calDrag.cid||calDrag.key)) return null;
+    if(calDrag.cid&&r.closest(".cal-grp")!==calDrag.grp) return null;   // within its own account only
+    var b=r.getBoundingClientRect(); return {el:r, id:id, after:e.clientY>b.top+b.height/2};
+  }
+  function calMark(t){ [].forEach.call(document.querySelectorAll(".cal-drop-before,.cal-drop-after"),function(x){ x.classList.remove("cal-drop-before","cal-drop-after"); }); if(t) t.el.classList.add(t.after?"cal-drop-after":"cal-drop-before"); }
+  (function(sb){
+    sb.ondragstart=function(e){ var r=e.target&&e.target.closest&&e.target.closest(".cal-row[data-cid],.cal-acct[data-key]"); if(!r) return;
+      calDrag=r.dataset.cid?{cid:r.dataset.cid, grp:r.closest(".cal-grp")}:{key:r.dataset.key};
+      if(e.dataTransfer){ e.dataTransfer.effectAllowed="move"; try{ e.dataTransfer.setData("text/plain",""); }catch(x){} } };
+    sb.ondragover=function(e){ var t=calDropTarget(e); calMark(t); if(t){ e.preventDefault(); if(e.dataTransfer) e.dataTransfer.dropEffect="move"; } };
+    sb.ondrop=function(e){ var t=calDropTarget(e); calMark(null); if(!t) return; e.preventDefault();
+      var moved=calDrag.cid?calDrop(calDrag.cid,t.id,t.after):calDropGroup(calDrag.key,t.id,t.after); calDrag=null; if(moved){ save(); render(); } };
+    sb.ondragend=function(){ calDrag=null; calMark(null); };
+  })(document.getElementById("sidebar"));
   function applySidebarState(){ document.body.classList.toggle("sb-closed", !S.sbOpen); }
   document.getElementById("sb-burger").onclick=function(){
     if(window.innerWidth>1000){ S.sbOpen=!S.sbOpen; save(); applySidebarState(); }
@@ -3877,7 +3928,7 @@ function GENA_MAIN() {
     var timed=all.filter(isTimed), unsched=all.filter(function(k){ return !isTimed(k) && isOpen(k); });
     var hr=hourRange(timed), lo=hr.lo, hi=hr.hi;
     var layer=dayBlocksLayer(timed, lo);
-    var evs=S.events.filter(function(e){ return evOnDay(e,d)&&sourceEnabled(e); }).sort(evByTime);
+    var evs=S.events.filter(function(e){ return evOnDay(e,d)&&calVisible(e); }).sort(evByTime);
     var head='<div class="day-head">'+
       '<button class="icon-btn" data-act="daynav" data-d="-1" aria-label="Previous day" title="Previous day">‹</button>'+
       '<h2 class="day-title">'+esc(niceDate(d))+(isToday?' · today':'')+'</h2>'+
@@ -4171,7 +4222,7 @@ function GENA_MAIN() {
   // 14-day slice filtered to deadlines; the week rail (43) is the 7-day slice, all kinds.
   function landingOn(d){
     var t=today(), ag=agenda(d);
-    var dueLoose=S.tasks.filter(function(k){ return isOpen(k) && k.due===d && inScope(k) && !(k.day && k.day<=k.due); });
+    var dueLoose=S.tasks.filter(function(k){ return isOpen(k) && k.due===d && inScope(k) && !(k.day && k.day<=k.due) && !showsBefore(k,d); });   // review finding 12: a graduated task is already in that day's list
     return {day:d, due:dueLoose, checkbacks:ag.checkbacks, followups:ag.followups, phaseEnds:ag.phaseEnds, phaseStarts:ag.phaseStarts,
             count:dueLoose.length+ag.checkbacks.length+ag.followups.length+ag.phaseEnds.length+ag.phaseStarts.length};
   }
@@ -4252,7 +4303,7 @@ function GENA_MAIN() {
     var due=S.tasks.filter(function(k){ return isOpen(k) && k.due===day && inScope(k); });
     var phaseEnds=S.phases.filter(function(ph){ return ph.end===day && inScope(ph); });
     var phaseStarts=S.phases.filter(function(ph){ return ph.start===day && inScope(ph); });
-    var events=S.events.filter(function(ev){ return evOnDay(ev,day) && inScope(ev); });
+    var events=S.events.filter(function(ev){ return evOnDay(ev,day) && calVisible(ev) && inScope(ev); });
     return {day:day, tasks:tasks, habits:habits, followups:followups, checkbacks:checkbacks, due:due,
             phaseEnds:phaseEnds, phaseStarts:phaseStarts, events:events,
             count: tasks.length+habits.length+followups.length+checkbacks.length};
@@ -4278,14 +4329,26 @@ function GENA_MAIN() {
     document.getElementById("tc-add").onclick=addRow;
     if(!touch) addRow(); else { var tn=document.getElementById("tc-notes"); if(tn) tn.focus(); }
     function done(){ close(); render(); if(o.after) o.after(); }
-    document.getElementById("tc-none").onclick=done;
-    document.getElementById("tc-go").onclick=function(){
+    function val(id){ return ((document.getElementById(id)||{}).value||""); }
+    function typed(){ return !!(val("tc-notes").trim()||val("tc-in").trim()||[].some.call(box.querySelectorAll(".tc-title"),function(x){ return x.value.trim(); })); }
+    // what Save writes; returns the toast's words and how to take it back
+    function keep(){
       var pp=S.people.find(function(x){ return x.id===p.id; })||p;   // by id: a sync may have replaced it
       var items=[].map.call(box.querySelectorAll(".tc-item"),function(r){ var q=function(c){ return r.querySelector(c)||{}; };
         return {title:q(".tc-title").value, day:q(".tc-day").value, due:q(".tc-due").value, sb:q(".tc-sb").value, sp:!!q(".tc-sp").checked, focusId:q(".tc-foc").value}; });
-      var n=captureTouch(pp,touch?(document.getElementById("tc-notes")||{}).value:"",items,(document.getElementById("tc-in")||{}).value);
-      save(); done(); toast((n.note?"Note saved":"")+(n.note&&n.tasks?" · ":"")+(n.tasks?n.tasks+" item"+(n.tasks===1?"":"s")+" added, linked to "+pp.name:"")||"Nothing added");
-    };
+      var had=S.tasks.length, notes0=pp.notes;
+      var n=captureTouch(pp,touch?val("tc-notes"):"",items,val("tc-in")), ids=S.tasks.slice(had).map(function(k){ return k.id; });
+      save();
+      return {msg:(n.note?"Note saved":"")+(n.note&&n.tasks?" · ":"")+(n.tasks?n.tasks+" item"+(n.tasks===1?"":"s")+" added, linked to "+pp.name:"")||"Nothing added",
+        undo:function(){ var q=S.people.find(function(x){ return x.id===p.id; }); if(q&&n.note) q.notes=notes0;
+          S.tasks=S.tasks.filter(function(k){ return ids.indexOf(k.id)<0; });
+          Object.keys(S.focus).forEach(function(d){ S.focus[d]=S.focus[d].filter(function(f){ return ids.indexOf(f.taskId)<0; }); });
+          save(); render(); }};
+    }
+    document.getElementById("tc-none").onclick=done;
+    document.getElementById("tc-go").onclick=function(){ var r=keep(); done(); toast(r.msg); };
+    // review finding 8: a tap outside or Escape keeps what was typed (as Save does) and says so, with Undo; then the day review goes on
+    onModalDismiss=function(){ if(!typed()){ done(); return; } var r=keep(); done(); toastUndo("Kept what you typed: "+r.msg, r.undo); };
   }
   // One row of the Items form; the Focus select starts on the person's usual Focus
   function captureItemHtml(p){
@@ -4735,12 +4798,12 @@ function GENA_MAIN() {
       var open=orderTasks(dayTodo(d).filter(function(k){return isOpen(k)&&inScope(k);}),false);
       var load=dayLoad(d);
       var done=S.tasks.filter(function(k){return k.status==="done"&&k.completedOn===d&&inScope(k);}).length;
-      var evs=S.events.filter(function(e){return evOnDay(e,d)&&sourceEnabled(e)&&!(e.projectId&&!inScope(e));});
+      var evs=S.events.filter(function(e){return evOnDay(e,d)&&calVisible(e)&&!(e.projectId&&!inScope(e));});
       html+='<div class="card"><div class="wk-day-head"><h3>'+(i===0?"Today":(i===1?"Tomorrow":WDFULL[dow(d)]))+'</h3><span class="sub">'+MONTHS[+d.slice(5,7)-1].slice(0,3)+' '+(+d.slice(8))+'</span>'+foldProg(done,open.length+done)+
         (load.planned?'<span class="pill block" title="Timed work planned">⏱ '+fmtMins(load.planned)+'</span>':'')+
         '<button class="chip" style="margin-left:auto;padding:3px 9px" data-act="panel-goday" data-d="'+d+'">open day →</button></div>';
       html+=landingRailHtml(d);
-      if(evs.length) html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 2px">'+evs.map(function(e){var c=e.color||(e.projectId?projColor(e.projectId):null), bd=evBand(e.color?null:proj(e.projectId));return '<span class="cal-ev '+(c?"":"evt")+bd[0]+'" style="'+(c?cbg(c)+bd[1]:"")+'">'+esc(e.title)+'</span>';}).join("")+'</div>';
+      if(evs.length) html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 2px">'+evs.map(function(e){var ec=evColor(e), c=ec||(e.projectId?projColor(e.projectId):null), bd=evBand(ec?null:proj(e.projectId));return '<span class="cal-ev '+(c?"":"evt")+bd[0]+'" style="'+(c?cbg(c)+bd[1]:"")+'">'+esc(e.title)+'</span>';}).join("")+'</div>';
       html+='<ul class="tasks" data-list="day:'+d+'">'+open.map(taskLi).join("")+inlineAddRow("day:"+d,"Add to "+(i===0?"today":niceDate(d))+"…")+'</ul></div>';
     }
     html+='</div>';
@@ -5114,7 +5177,7 @@ function GENA_MAIN() {
   function dayItems(ds){
     var items=[];
     tasksOn(ds).forEach(function(k){ if(inScope(k)) items.push({id:k.id,t:k.title,c:projColor(k.projectId),pp:proj(k.projectId),done:k.status==="done",imp:!!k.priority,at:k.at||null,block:k.block||null,sp:spanPos(k.day,k.end,ds)}); });
-    S.events.forEach(function(ev){ if(!evOnDay(ev,ds)||!sourceEnabled(ev)) return; if(ev.projectId&&!inScope(ev)) return; var c=ev.color||(ev.projectId?projColor(ev.projectId):null); items.push({t:ev.title,c:c,pp:ev.color?null:proj(ev.projectId),evt:!c,sp:spanPos(ev.date,ev.end,ds)}); });
+    S.events.forEach(function(ev){ if(!evOnDay(ev,ds)||!calVisible(ev)) return; if(ev.projectId&&!inScope(ev)) return; var ec=evColor(ev), c=ec||(ev.projectId?projColor(ev.projectId):null); items.push({t:ev.title,c:c,pp:ec?null:proj(ev.projectId),evt:!c,sp:spanPos(ev.date,ev.end,ds)}); });
     // spans first, in a stable order — if a middle day is busy and the cell truncates, the bar must
     // survive the cut or the strip breaks visually
     items.sort(function(a,b){ return (b.sp?1:0)-(a.sp?1:0) || (a.t<b.t?-1:1); });
@@ -5142,10 +5205,10 @@ function GENA_MAIN() {
       '<button class="icon-btn" style="background:var(--slate)" data-act="cal" data-d="1" aria-label="Forward">›</button>'+
       '<button class="chip" data-act="cal" data-d="0" style="margin-left:6px">Today</button>'+
       '<button class="chip" data-act="calendars" style="margin-left:auto">🗓 Calendars</button>'+
-      (S.calSources.length?'<button class="chip" data-act="calrefresh" title="Read your subscribed calendars again">↻ Refresh</button>':'')+
+      (calFeeds().length?'<button class="chip" data-act="calrefresh" title="Read your subscribed calendars again">↻ Refresh</button>':'')+
       '<button class="chip" data-act="import-ics">⤓ Import file</button></div>';
     html+='<div class="chips" style="margin-bottom:14px">'+[["week","7 days"],["workweek","Work week"],["3day","3 days"],["year","Year"]].map(function(v){return '<button class="chip" data-act="calview" data-v="'+v[0]+'" aria-pressed="'+(cv===v[0])+'">'+v[1]+'</button>';}).join("")+'</div>';
-    if(S.calSources.length) html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+S.calSources.map(function(s){return '<span class="pill" style="'+(s.enabled&&/^#/.test(s.color||"")?esc(cbg(s.color)):"background:"+(s.enabled?esc(s.color):"var(--line)")+";color:#fff")+'">'+esc(s.name)+(s.error?" ⚠":"")+'</span>';}).join("")+'</div>';
+    if(calFeeds().length) html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+calOrdered().map(function(s){ var on=s.enabled&&!s.hidden; return '<span class="pill" style="'+(on&&/^#/.test(s.color||"")?esc(cbg(s.color)):"background:"+(on?esc(s.color):"var(--line)")+";color:#fff")+'">'+esc(calName(s))+(calState(s.id).error?" ⚠":"")+'</span>';}).join("")+'</div>';
     if(cv==="month") html+=monthGridHtml(a);
     else if(cv==="year") html+=yearGridHtml(+a.slice(0,4));
     else html+=weekTimeGridHtml(spanDays(cv,a));
@@ -5176,7 +5239,7 @@ function GENA_MAIN() {
     var t=today(), perDay=days.map(function(ds){
       var all=tasksOn(ds).filter(function(k){ return inScope(k); });
       return {ds:ds, timed:all.filter(isTimed), loose:all.filter(function(k){ return !isTimed(k) && isOpen(k); }),
-              evs:S.events.filter(function(e){ return evOnDay(e,ds)&&sourceEnabled(e)&&!(e.projectId&&!inScope(e)); }).sort(evByTime)};
+              evs:S.events.filter(function(e){ return evOnDay(e,ds)&&calVisible(e)&&!(e.projectId&&!inScope(e)); }).sort(evByTime)};
     });
     var hr=hourRange([].concat.apply([],perDay.map(function(x){return x.timed;}))), lo=hr.lo, hi=hr.hi;
     var BI={morning:"☀︎ ",afternoon:"🌤 ",evening:"🌙 "};
@@ -5186,7 +5249,7 @@ function GENA_MAIN() {
       return '<div class="wk-tg-head'+(x.ds===t?" today":"")+'" data-act="calday" data-d="'+x.ds+'" title="Open this day">'+DOWNAMES[d.getDay()]+' <b>'+d.getDate()+'</b></div>'; }).join("");
     h+='<div class="wk-tg-corner"></div>'+perDay.map(function(x){
       return '<ul class="tasks wk-allday" data-list="day:'+x.ds+'" title="Anything without a time — drop a block here to clear its time">'+
-        x.evs.map(function(e){ var c=e.color||(e.projectId?projColor(e.projectId):null), bd=evBand(e.color?null:proj(e.projectId)); return '<div class="cal-ev '+(c?"":"evt")+bd[0]+'" style="'+(c?cbg(c)+bd[1]:"")+'">📅 '+evTime(e,x.ds)+esc(e.title)+'</div>'; }).join("")+
+        x.evs.map(function(e){ var ec=evColor(e), c=ec||(e.projectId?projColor(e.projectId):null), bd=evBand(ec?null:proj(e.projectId)); return '<div class="cal-ev '+(c?"":"evt")+bd[0]+'" style="'+(c?cbg(c)+bd[1]:"")+'">📅 '+evTime(e,x.ds)+esc(e.title)+'</div>'; }).join("")+
         orderTasks(x.loose,false).map(function(k){ var c=projColor(k.projectId), bd=evBand(proj(k.projectId));
           return '<div class="cal-ev'+(c?"":" plain")+bd[0]+'" draggable="true" data-tid="'+esc(k.id)+'" data-act="tb-edit" data-id="'+esc(k.id)+'" style="'+(c?cbg(c)+bd[1]:"")+'">'+(k.priority?"★ ":"")+(k.block?BI[k.block]:"")+esc(k.title)+'</div>'; }).join("")+'</ul>'; }).join("");
     h+='<div class="wk-tg-labels">';
@@ -5224,7 +5287,7 @@ function GENA_MAIN() {
   function yearGridHtml(y){
     var busy={};
     S.tasks.forEach(function(k){ if(k.day&&k.day.slice(0,4)===String(y)&&inScope(k)) busy[k.day]=1; });
-    S.events.forEach(function(e){ if(!e.date||!sourceEnabled(e)||(e.projectId&&!inScope(e))) return;
+    S.events.forEach(function(e){ if(!e.date||!calVisible(e)||(e.projectId&&!inScope(e))) return;
       for(var ed0=e.date, last0=lastDay(e.date,e.end); ed0<=last0; ed0=addDays(ed0,1)){ if(ed0.slice(0,4)===String(y)) busy[ed0]=1; }
     });
     var t=today();
@@ -5438,7 +5501,7 @@ function GENA_MAIN() {
     // completed work stays on the timeline — it is a record of the term, not just a to-do forecast
     var datedTasks=S.tasks.filter(function(k){ return k.day && inScope(k); });
     var scopedPhases=S.phases.filter(function(ph){ return inScope(ph); });
-    var scopedEvents=S.events.filter(function(ev){ return ev.date && sourceEnabled(ev) && !(ev.projectId&&!inScope(ev)); });
+    var scopedEvents=S.events.filter(function(ev){ return ev.date && calVisible(ev) && !(ev.projectId&&!inScope(ev)); });
     // 45: deadlines and check-backs are dates too — the timeline is where "am I on track" gets answered
     var dueMarks=S.tasks.filter(function(k){ return isOpen(k) && k.due && inScope(k); });
     var cbMarks=S.tasks.filter(function(k){ return isWaiting(k) && k.nextAt && inScope(k); });
@@ -6206,7 +6269,7 @@ function GENA_MAIN() {
       else if(act==="calday"){ openDayModal(a.dataset.d); }
       else if(act==="import-ics"){ importICS(); }
       else if(act==="calendars"){ openCalendarsModal(); }
-      else if(act==="calrefresh"){ toast("Syncing…"); refreshCalendars(function(){ render(); var bad=S.calSources.filter(function(s){ return s.enabled&&s.error; }).length; if(bad) toast(bad+" calendar"+(bad===1?"":"s")+" couldn’t sync — see 🗓 Calendars"); }); }
+      else if(act==="calrefresh"){ toast("Syncing…"); refreshCalendars(function(){ render(); var bad=calFeeds().filter(function(s){ return s.enabled&&calState(s.id).error; }).length; if(bad) toast(bad+" calendar"+(bad===1?"":"s")+" couldn’t sync — see 🗓 Calendars"); }); }
       else if(act==="delphase"){ var phid=a.dataset.id; confirmModal("Remove this phase?","It disappears from the Timeline. The Project keeps its steps.","Remove",function(){ S.phases=S.phases.filter(function(x){return x.id!==phid;}); save(); render(); }); }
       else if(act==="email-toggle"){ var em=S.emails.find(function(x){return x.id===anyId;}); if(em){ em.done=!em.done; save(); render(); } }
       else if(act==="email-del"){ S.emails=S.emails.filter(function(x){return x.id!==anyId;}); save(); render(); }
@@ -7653,7 +7716,27 @@ function GENA_MAIN() {
     }
     // a long series (a birthday since 1990, a weekly meeting since 2015) starts near the window, not on
     // its first day, when no COUNT needs the occurrences before it
-    var day=start;
+    // D7 (review finding 4): with no BYDAY/BYMONTHDAY (and, yearly, no BYMONTH) a period has one hit, so step by period
+    if((freq==="MONTHLY"&&!bymd&&!bd)||(freq==="YEARLY"&&!bymo&&!bymd&&!bd)){
+      var step=(freq==="YEARLY"?12:1)*interval, y0=+start.slice(0,4), m0=+start.slice(5,7)-1, dom0=+start.slice(8), k=0, hits=[], seen=0;
+      if(!count&&start<winStart) k=Math.floor(monthsBetween(start,winStart)/step)*step;
+      for(var st=0;st<4000;st++,k+=step){
+        var yy=y0+Math.floor((m0+k)/12), mm=(m0+k)%12, ds=yy+"-"+String(mm+1).padStart(2,"0")+"-"+start.slice(8);
+        if(ds>winEnd) break;
+        if(dom0>new Date(yy,mm+1,0).getDate()) continue;   // no Feb 30th: that period has none
+        seen++; if(count&&seen>count) break; if(ds>=winStart) hits.push(ds); if(hits.length>=500) break;
+      }
+      return hits;
+    }
+    var day=start, n=0;
+    // D7: a COUNT series that is daily, or weekly, starts near the window too, its earlier hits counted, not walked
+    if(count&&start<winStart&&(freq==="DAILY"||freq==="WEEKLY")){
+      if(freq==="DAILY"){ var j=Math.floor(diffDays(winStart,start)/interval); day=addDays(start,j*interval); n=j; }
+      else { var W=Math.floor(diffDays(winStart,ws)/7/interval)*interval;
+        if(W>0){ var per=byday?byday.filter(function(x,i){ return byday.indexOf(x)===i; }).length:1, first=0;
+          for(var f=start;f<addDays(ws,7);f=addDays(f,1)) if(byday?byday.indexOf(dow(f))>=0:dow(f)===startDow) first++;
+          n=first+(W/interval-1)*per; day=addDays(ws,W*7); } }
+    }
     if(!count&&start<winStart){
       if(freq==="DAILY") day=addDays(start,Math.floor(diffDays(winStart,start)/interval)*interval);
       else if(freq==="WEEKLY") day=addDays(ws,Math.floor(diffDays(winStart,ws)/7/interval)*interval*7);
@@ -7661,7 +7744,7 @@ function GENA_MAIN() {
       else if(freq==="YEARLY") day=(+start.slice(0,4)+Math.floor((+winStart.slice(0,4)-+start.slice(0,4))/interval)*interval)+"-01-01";
       if(day<start) day=start;
     }
-    var out=[], n=0, guard=0, cap=count?60000:3200;
+    var out=[], guard=0, cap=count?((freq==="MONTHLY"||freq==="YEARLY")?Math.min(8000,count*(freq==="YEARLY"?366:31)*interval+31):4000):3200;   // a COUNT walk that did not jump reaches what its COUNT covers, up to about 22 years back (review finding 1); older ones are cut so a hostile feed cannot hang the app
     while(day<=winEnd && guard++<cap){
       var hit=false;
       if(freq==="DAILY") hit=diffDays(day,start)%interval===0;
@@ -7695,6 +7778,89 @@ function GENA_MAIN() {
     return out;
   }
   function sourceEnabled(ev){ if(!ev.sourceId) return true; var s=S.calSources.find(function(x){return x.id===ev.sourceId;}); return s?s.enabled!==false:false; }   // a removed calendar's events are gone (review finding 3)
+  /* V6.2 Calendars filter. A calendar item may carry `account` (his own label), `hidden` and `ord`; Gena's own
+     events use the pseudo item cal-gena (no url: never fetched, never listed in Settings), made on first hide. */
+  var CAL_PROVIDERS=["Gena","Apple","Google","Outlook","Other"], CAL_GENA="cal-gena", CALSTATE_KEY="gena-calstate";
+  function calById(id){ return (S.calSources||[]).find(function(x){ return x.id===id; })||null; }
+  function calFeeds(){ return S.calSources.filter(function(s){ return !s.own; }); }
+  function calGena(){ return calById(CAL_GENA)||{id:CAL_GENA,own:true,name:"My events"}; }
+  // D1: the provider, read from the feed's host each time (never stored)
+  function calProvider(s){
+    if(s&&s.own) return "Gena";
+    var m=/^[a-z][a-z0-9+.-]*:\/\/(?:[^\/?#@]*@)?([^\/?#:]+)/i.exec(feedTarget(s&&s.url)), h=m?m[1].toLowerCase():"";
+    if(/(^|\.)icloud\.com$/.test(h)) return "Apple";
+    if(/(^|\.)google\.com$/.test(h)) return "Google";
+    if(h==="outlook.office365.com"||/(^|\.)live\.com$/.test(h)) return "Outlook";
+    return "Other";
+  }
+  function calAccount(s){ var a=s&&!s.own&&typeof s.account==="string"?s.account.trim():""; return a||calProvider(s); }
+  // D2: "A-Home" under Apple shows as "Home"; the stored name is never changed
+  function calName(s){
+    if(!s) return ""; if(s.own) return s.name||"My events";
+    var p=calProvider(s), n=String(s.name||""), cut=n.replace(/^[AGO][-: ]\s*/,"");
+    return (p==="Apple"||p==="Google"||p==="Outlook")&&cut&&n.charAt(0)===p.charAt(0)?cut:n;
+  }
+  // D3: the one place that decides whether an event is drawn; Gena's own events follow cal-gena (D4)
+  function calVisible(ev){
+    if(!ev.sourceId){ var g=calById(CAL_GENA); return !(g&&g.hidden); }
+    return sourceEnabled(ev)&&!calById(ev.sourceId).hidden;
+  }
+  // D6: a subscribed event keeps no colour of its own; it is its calendar's
+  function evColor(e){ if(e.sourceId){ var s=calById(e.sourceId); return (s&&s.color)||e.color||null; } return e.color||null; }
+  // D5 (review finding 10): count, last sync and error are this device's own, never on the synced item
+  function calStates(){ try{ var o=JSON.parse(localStorage.getItem(CALSTATE_KEY)||"{}"); return o&&typeof o==="object"?o:{}; }catch(e){ return {}; } }
+  function calState(id){ return calStates()[id]||{}; }
+  function setCalStates(patch){ var o=calStates(); Object.keys(patch).forEach(function(id){ if(patch[id]) o[id]=patch[id]; else delete o[id]; }); try{ localStorage.setItem(CALSTATE_KEY,JSON.stringify(o)); }catch(e){} }
+  // D8: Gena, Apple, Google, Outlook, Other, then his own account names (by provider, then A to Z); calendars in
+  // the order added. Once he reorders, every item has an ord and that decides; an account sits at its smallest ord
+  function calRank(p){ var i=CAL_PROVIDERS.indexOf(p); return i<0?CAL_PROVIDERS.length:i; }
+  function calCustomOrder(){ return S.calSources.some(function(s){ return typeof s.ord==="number"; }); }
+  function calGroups(){
+    var by=Object.create(null), gs=[];   // an account named constructor must not collide (review finding 4)
+    [calGena()].concat(calFeeds()).forEach(function(s,i){ var k=calAccount(s), g=by[k];
+      if(!g){ g=by[k]={key:k, items:[], rank:Infinity, i:gs.length}; gs.push(g); }
+      g.items.push(s); g.rank=Math.min(g.rank,calRank(calProvider(s))); });
+    if(calCustomOrder()){
+      var o=function(s){ return typeof s.ord==="number"?s.ord:Infinity; };   // an item from a device that did not know ord goes last
+      gs.forEach(function(g){ g.items=g.items.map(function(s,i){ return [s,i]; }).sort(function(a,b){ return o(a[0])-o(b[0])||a[1]-b[1]; }).map(function(x){ return x[0]; }); g.pos=o(g.items[0]); });
+      return gs.sort(function(a,b){ return a.pos-b.pos||a.i-b.i; });
+    }
+    var key=function(g){ var r=CAL_PROVIDERS.indexOf(g.key); return r>=0?[r,0,""]:[CAL_PROVIDERS.length,g.rank,g.key.toLowerCase()]; };
+    return gs.sort(function(a,b){ var x=key(a), y=key(b); return x[0]-y[0]||x[1]-y[1]||(x[2]<y[2]?-1:x[2]>y[2]?1:0)||a.i-b.i; });
+  }
+  function calOrdered(){ var out=[]; calGroups().forEach(function(g){ g.items.forEach(function(s){ if(!s.own) out.push(s); }); }); return out; }
+  // the first reorder writes an ord on every item, cal-gena included, spaced by 10
+  function calWriteOrder(gs){ var n=0; gs.forEach(function(g){ g.items.forEach(function(s){ if(s.id===CAL_GENA&&!calById(CAL_GENA)) S.calSources.push(s); s.ord=(n+=10); }); }); }
+  function calGroupOf(gs,id){ for(var i=0;i<gs.length;i++) if(gs[i].items.some(function(s){ return s.id===id; })) return gs[i]; return null; }
+  function moveIn(a,from,to){ var x=a.splice(from,1)[0]; a.splice(to,0,x); }
+  // F9 and F10 share these: Move up/down, ▲▼ in Settings, and a drop
+  function calMove(id,d){ var gs=calGroups(), g=calGroupOf(gs,id); if(!g) return false;
+    var i=g.items.findIndex(function(s){ return s.id===id; }), j=i+d; if(j<0||j>=g.items.length) return false;
+    moveIn(g.items,i,j); calWriteOrder(gs); return true; }
+  function calMoveGroup(key,d){ var gs=calGroups(), i=gs.findIndex(function(g){ return g.key===key; }), j=i+d; if(i<0||j<0||j>=gs.length) return false;
+    moveIn(gs,i,j); calWriteOrder(gs); return true; }
+  // a calendar dropped on another of its account's rows goes before it, or after it on the row's lower half
+  function calDrop(id,onId,after){ var gs=calGroups(), g=calGroupOf(gs,id); if(!g||id===onId||calGroupOf(gs,onId)!==g) return false;
+    var i=g.items.findIndex(function(s){ return s.id===id; }); var x=g.items.splice(i,1)[0], j=g.items.findIndex(function(s){ return s.id===onId; });
+    g.items.splice(j+(after?1:0),0,x); calWriteOrder(gs); return true; }
+  // an account dropped on another moves all its calendars together
+  function calDropGroup(key,onKey,after){ var gs=calGroups(), i=gs.findIndex(function(g){ return g.key===key; }); if(i<0||key===onKey||!gs.some(function(g){ return g.key===onKey; })) return false;
+    var x=gs.splice(i,1)[0], j=gs.findIndex(function(g){ return g.key===onKey; }); gs.splice(j+(after?1:0),0,x); calWriteOrder(gs); return true; }
+  // a calendar added (or moved to another account) once the order is his: last in its account's block, or after the last block
+  function calPlace(s){
+    if(!calCustomOrder()) return;
+    delete s.ord;
+    var gs=calGroups(), g=calGroupOf(gs,s.id), all=[], mine=[];
+    gs.forEach(function(x){ x.items.forEach(function(c){ if(c!==s&&typeof c.ord==="number"){ all.push(c.ord); if(x===g) mine.push(c.ord); } }); });
+    var top=all.length?Math.max.apply(null,all):0;
+    if(!mine.length){ s.ord=top+10; return; }
+    var hi=Math.max.apply(null,mine), next=all.filter(function(v){ return v>hi; });
+    s.ord=next.length?(hi+Math.min.apply(null,next))/2:hi+10;
+  }
+  // hide or show; cal-gena is made the first time it is hidden
+  function calSetHidden(s,v){ if(s.id===CAL_GENA&&!calById(CAL_GENA)){ if(!v) return; S.calSources.push(s); } if(!!s.hidden!==!!v) s.hidden=!!v; }
+  // Remove: the calendar and its events (device-local) and this device's note of it
+  function calRemove(id){ S.events=S.events.filter(function(x){ return x.sourceId!==id; }); S.calSources=S.calSources.filter(function(x){ return x.id!==id; }); var p={}; p[id]=null; setCalStates(p); save(); }
   // the same feed entry gets the same id on every fetch, so a refresh that changes nothing changes nothing
   function subEventId(sid,e,used){ var id="sub-"+sid+"-"+hashCode((e.uid||e.title||"")+"|"+e.date), n=used[id]=(used[id]||0)+1; return n>1?id+"-"+n:id; }
   /* V6.2: every subscription is read through his relay (S.proxy, a synced setting, never in the source):
@@ -7753,17 +7919,21 @@ function GENA_MAIN() {
   }
   function refreshCalendars(cb,o){
     o=o||{};
-    var list=S.calSources.filter(function(s){return s.enabled&&s.url;});
-    calLastRefresh=Date.now();
+    var list=S.calSources.filter(function(s){return s.enabled&&s.url&&(!o.only||s.id===o.only);});
+    if(!o.only) calLastRefresh=Date.now();
     dropOrphanEvents();
     if(!list.length){ if(cb)cb(); return; }
     Promise.all(list.map(function(s){ return fetchFeed(s.url).then(function(r){ r.id=s.id; return r; }); })).then(function(res){
       function apply(){
-        res.forEach(function(r){ var s=S.calSources.find(function(x){ return x.id===r.id; }); if(!s) return;   // removed while it fetched
-          if(r.err){ s.error=r.err; return; }
+        // D5: nothing here writes onto a synced calendar item; D6: one-off events from 60 days back, no uid or colour stored
+        var st={}, from=addDays(today(),-60);
+        res.forEach(function(r){ var s=calById(r.id); if(!s) return;   // removed while it fetched
+          var was=calState(s.id);
+          if(r.err){ st[s.id]={count:was.count||0, lastSync:was.lastSync||null, error:r.err}; return; }
           S.events=S.events.filter(function(e){return e.sourceId!==s.id;});
-          var used={}; r.evs.forEach(function(e){ var ev={id:subEventId(s.id,e,used),uid:e.uid,title:e.title||"(event)",date:e.date,sourceId:s.id,color:s.color}; if(e.end) ev.end=e.end; if(e.at) ev.at=e.at; S.events.push(ev); });
-          s.count=r.evs.length; s.lastSync=Date.now(); s.error=null; });
+          var used={}, n=0; r.evs.forEach(function(e){ var id=subEventId(s.id,e,used); if(lastDay(e.date,e.end)<from) return; var ev={id:id,title:e.title||"(event)",date:e.date,sourceId:s.id}; if(e.end) ev.end=e.end; if(e.at) ev.at=e.at; S.events.push(ev); n++; });
+          st[s.id]={count:n, lastSync:Date.now(), error:null}; });
+        setCalStates(st);
         save(); if(cb)cb();
       }
       if(o.passive) whenIdle(apply); else apply();
@@ -7774,12 +7944,12 @@ function GENA_MAIN() {
 
   function openDayModal(ds){
     var tasks=tasksOn(ds);
-    var evs=S.events.filter(function(e){return evOnDay(e,ds) && sourceEnabled(e);});
+    var evs=S.events.filter(function(e){return evOnDay(e,ds) && calVisible(e);});
     var body='<h3>'+niceDate(ds)+'</h3>';
     body+='<div class="fld"><label>Tasks</label><ul class="tasks">'+
       (tasks.length?tasks.map(function(k){var p=proj(k.projectId);var mp=(p?'<span class="pill proj" style="'+cbg(p.color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+(k.at?'<span class="pill block">🕒 '+fmtTime(k.at)+'</span>':"")+(k.subs&&k.subs.length?'<span class="pill subs-n">'+subCountText(k.subs,k.day)+'</span>':"");return '<li class="task '+(k.status==="done"?"done":"")+'" data-id="'+esc(k.id)+'"><button class="chk '+(k.status==="done"?"done":"")+'" data-dact="toggle" aria-label="done" aria-pressed="'+(k.status==="done")+'"></button><div class="task-main"><div class="task-title">'+esc(k.title)+'</div>'+(mp?'<div class="task-meta">'+mp+'</div>':"")+'</div><button class="task-x" data-dact="deltask" style="opacity:1" aria-label="delete">✕</button></li>';}).join(""):'<div class="empty">No tasks</div>')+'</ul></div>';
     body+='<div class="fld"><label>Events &amp; milestones</label><ul class="tasks">'+
-      (evs.length?evs.map(function(e){return '<li class="task" data-id="'+esc(e.id)+'"><span class="dot" style="background:'+(e.color||projColor(e.projectId))+';border-color:transparent;cursor:default"></span><div class="task-main"'+(e.sourceId?' style="cursor:default"':' data-dact="editev" title="Tap to edit"')+'><div class="task-title">'+esc(e.title)+'</div>'+(e.sourceId?'<div class="task-meta"><span class="pill block">subscribed</span></div>':"")+'</div>'+'<button class="task-x" data-dact="evmore" style="opacity:1" aria-label="Add to a calendar" title="Add to a calendar">⋯</button>'+(e.sourceId?"":'<button class="task-x" data-dact="delev" style="opacity:1" aria-label="delete">✕</button>')+'</li>';}).join(""):'<div class="empty">No events</div>')+'</ul></div>';
+      (evs.length?evs.map(function(e){return '<li class="task" data-id="'+esc(e.id)+'"><span class="dot" style="background:'+(evColor(e)||projColor(e.projectId))+';border-color:transparent;cursor:default"></span><div class="task-main"'+(e.sourceId?' style="cursor:default"':' data-dact="editev" title="Tap to edit"')+'><div class="task-title">'+esc(e.title)+'</div>'+(e.sourceId?'<div class="task-meta"><span class="pill block">subscribed</span></div>':"")+'</div>'+'<button class="task-x" data-dact="evmore" style="opacity:1" aria-label="Add to a calendar" title="Add to a calendar">⋯</button>'+(e.sourceId?"":'<button class="task-x" data-dact="delev" style="opacity:1" aria-label="delete">✕</button>')+'</li>';}).join(""):'<div class="empty">No events</div>')+'</ul></div>';
     var fitems=S.focus[ds]||[];
     if(fitems.length) body+='<div class="fld"><label>Priority that day</label><ul class="tasks">'+fitems.map(function(f){ var ftxt=f.text, fdone=f.done, fsubs=f.subs;
       if(f.habitId){ var fhb=habitById(f.habitId); if(!fhb) return ""; ftxt=fhb.name; fdone=habitDoneOn(fhb,ds); }
@@ -7828,13 +7998,104 @@ function GENA_MAIN() {
     if(editing) document.getElementById("ev-del").onclick=function(){ confirmModal("Delete this event?","It disappears from the calendar.","Delete",function(){ S.events=S.events.filter(function(x){return x.id!==ev.id;}); save(); render(); }); };
   }
 
-  function openCalendarsModal(){
-    var color=COLORS[S.calSources.length%COLORS.length], renaming=null, colouring=null, relayMsg=null;   // each new calendar starts on the next colour
-    function synced(s){ var d=new Date(s.lastSync); return niceDate(fmt(d))+" "+fmtTime(String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")); }
-    function rowHtml(s){
-      var named=renaming===s.id
+  /* ---------- V6.2 Calendars filter: the Events left panel (F1 to F10) ---------- */
+  // the days the Events view on screen shows: a row's count is of these
+  function calRange(){
+    if(view==="day") return [viewDay,viewDay];
+    if(view==="week"){ var t=today(); return [t,addDays(t,6)]; }
+    var cv=S.calView||"month", a=calAnchorDate(), y=+a.slice(0,4);
+    if(cv==="month") return [a.slice(0,7)+"-01",fmt(new Date(y,+a.slice(5,7),0))];
+    if(cv==="year") return [y+"-01-01",y+"-12-31"];
+    var ds=spanDays(cv,a); return [ds[0],ds[ds.length-1]];
+  }
+  function calCounts(){ var r=calRange(), n={};
+    S.events.forEach(function(e){ if(!e.date||e.date>r[1]||lastDay(e.date,e.end)<r[0]) return; var k=e.sourceId||CAL_GENA; n[k]=(n[k]||0)+1; });
+    return n; }
+  function calSidebarHtml(){
+    var gs=calGroups(), n=calCounts(), st=calStates(), many=gs.length>1;
+    var tick=function(c){ return /^#/.test(c||"")?inkOn(c):"#fff"; };
+    var body=gs.map(function(g){
+      var shut=!!S.collapsed["sb-cal:"+g.key], on=g.items.filter(function(x){ return !x.hidden; }).length, tri=on===g.items.length?"true":(on?"mixed":"false");
+      var head='<div class="sb-row cal-acct" data-sb="calfold" data-key="'+esc(g.key)+'" draggable="true">'+
+        '<span class="cal-grip" title="Drag to move this account" aria-hidden="true">≡</span>'+
+        '<button class="sb-fold" data-sb="calfold" data-key="'+esc(g.key)+'" aria-expanded="'+!shut+'" aria-label="'+(shut?"Open ":"Fold ")+esc(g.key)+'">'+(shut?"▸":"▾")+'</button>'+
+        '<span class="sb-name">'+esc(g.key)+'</span>'+
+        (many?'<button class="sb-star" data-sb="calgmore" data-key="'+esc(g.key)+'" title="Move '+esc(g.key)+'" aria-label="Options for '+esc(g.key)+'">⋯</button>':'')+
+        '<button class="cal-chk" role="checkbox" aria-checked="'+tri+'" data-sb="calgchk" data-key="'+esc(g.key)+'" aria-label="Show '+esc(g.key)+'"></button></div>';
+      var rows=shut?"":g.items.map(function(x){
+        var c=x.own?"var(--terra)":(x.color||"var(--p0)"), err=!x.own&&st[x.id]&&st[x.id].error, off=!x.own&&x.enabled===false, nm=calName(x);
+        return '<div class="sb-row cal-row'+(err?" cal-err":"")+(off?" cal-off":"")+'" data-sb="calrow" data-cid="'+esc(x.id)+'" draggable="'+!x.own+'" style="--cal:'+esc(c)+';--calink:'+tick(c)+'"'+(err?' title="Couldn’t sync — see Settings → Calendars"':'')+'>'+
+          '<span class="cal-grip" aria-hidden="true">'+(x.own?"":"≡")+'</span>'+
+          '<button class="cal-chk" role="checkbox" aria-checked="'+!x.hidden+'" data-sb="calchk" data-cid="'+esc(x.id)+'" aria-label="Show '+esc(nm)+'"></button>'+
+          '<span class="sb-name" title="'+esc(nm)+'">'+esc(nm)+'</span>'+
+          (off?'<span class="cnt">off</span>':(n[x.id]?'<span class="cnt">'+(err?"⚠ ":"")+n[x.id]+'</span>':(err?'<span class="cnt">⚠</span>':'')))+
+          '<button class="sb-star" data-sb="calmore" data-cid="'+esc(x.id)+'" title="Options" aria-label="Options for '+esc(nm)+'">⋯</button></div>';
+      }).join("");
+      return '<div class="cal-grp" data-key="'+esc(g.key)+'">'+head+rows+'</div>';
+    }).join("");
+    if(!calFeeds().length) body+='<div class="sb-mini">No calendars yet — add one in Settings → Calendars <button class="chip" data-sb="caladd" style="margin-top:6px">🗓 Add a calendar</button></div>';
+    return sbSection("cals","Calendars",'<button class="sb-act" data-sb="calall">Show all</button>',body);
+  }
+  // one ⋯ sheet, the phone's row sheet
+  function calSheet(title,items,run){
+    var root=modal('<div class="sheet-grip"></div><div class="sheet-title">'+esc(title)+'</div>'+
+      items.map(function(it,i){ return '<button class="sheet-row'+(it[3]?" danger":"")+'" data-si="'+i+'" data-cs="'+it[0]+'"><span class="si">'+it[1]+'</span>'+esc(it[2])+'</button>'; }).join(""),"sheet");
+    document.getElementById("scrim").classList.add("sheet-scrim");
+    root.querySelector(".modal").onclick=function(e){ var b=e.target.closest("[data-si]"); if(!b) return; var it=items[+b.dataset.si]; close(); run(it[0]); };
+  }
+  function calOnly(id){ [calGena()].concat(calFeeds()).forEach(function(x){ calSetHidden(x,x.id!==id); }); }
+  // F4/F10: his own account name; empty = the detected provider. In his own order it moves to the end of its new block
+  function calSetAccount(s,v){ v=String(v||"").trim(); if(v===(s.account||"")) return false;
+    if(v) s.account=v; else delete s.account; calPlace(s); return true; }
+  function calRefreshOne(s){ toast("Syncing…"); refreshCalendars(function(){ render(); if(calState(s.id).error) toast("“"+calName(s)+"” couldn’t sync — see Settings → Calendars"); },{only:s.id}); }
+  function openCalSheet(id){
+    var s=id===CAL_GENA?calGena():calById(id); if(!s) return;
+    if(s.own){ calSheet(calName(s),[["vis",s.hidden?"☑":"☐",s.hidden?"Show":"Hide"]],function(){ calSetHidden(s,!s.hidden); save(); render(); }); return; }
+    var g=calGroupOf(calGroups(),id), i=g.items.indexOf(s), nm=calName(s);
+    var items=[["rename","✎","Rename"],["colour","🎨","Colour"],["account","👤","Account…"],["only","◉","Only this one"]];
+    if(i>0) items.push(["up","▲","Move up"]);
+    if(i<g.items.length-1) items.push(["down","▼","Move down"]);
+    items.push(["refresh","↻","Refresh now"],["toggle","⏻",s.enabled===false?"Turn on":"Turn off"],["settings","⚙","Edit in Settings…"],["remove","✕","Remove",1]);
+    calSheet(nm,items,function(a){
+      if(a==="rename") openCalRename(s);
+      else if(a==="colour") openCalColour(s);
+      else if(a==="account") openCalAccount(s);
+      else if(a==="only"){ calOnly(s.id); save(); render(); }
+      else if(a==="up"||a==="down"){ if(calMove(s.id,a==="up"?-1:1)){ save(); render(); } }
+      else if(a==="refresh") calRefreshOne(s);
+      else if(a==="toggle"){ s.enabled=s.enabled===false; save(); render(); if(s.enabled) calRefreshOne(s); }
+      else if(a==="settings") openCalendarsModal(s.id);
+      else if(a==="remove") confirmModal("Remove “"+nm+"”?","Its events go with it. You can add it again in Settings → Calendars.","Remove",function(){ calRemove(s.id); render(); });
+    });
+  }
+  function openCalGroupSheet(key){
+    var gs=calGroups(), i=gs.findIndex(function(g){ return g.key===key; }); if(i<0) return;
+    var items=[]; if(i>0) items.push(["up","▲","Move up"]); if(i<gs.length-1) items.push(["down","▼","Move down"]);
+    if(items.length) calSheet(key,items,function(a){ if(calMoveGroup(key,a==="up"?-1:1)){ save(); render(); } });
+  }
+  // a one-field window: rename, or his account name
+  function calFieldModal(title,sub,val,ph,label,onSave){
+    modal('<h3>'+esc(title)+'</h3>'+(sub?'<p class="sub">'+esc(sub)+'</p>':'')+'<div class="fld"><input id="cal-fld" value="'+esc(val)+'" placeholder="'+esc(ph)+'" aria-label="'+esc(label)+'"/></div>'+
+      '<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="cal-fld-ok">Save</button></div>');
+    var f=document.getElementById("cal-fld"), ok=function(){ if(onSave(f.value)!==false){ close(); render(); } };
+    document.querySelector("[data-x]").onclick=close; document.getElementById("cal-fld-ok").onclick=ok;
+    f.onkeydown=function(e){ if(e.key==="Enter"){ e.preventDefault(); ok(); } };
+  }
+  function openCalRename(s){ calFieldModal("Rename calendar","",s.name||"",calName(s),"Calendar name",function(v){ v=v.trim(); if(!v){ toast("A name, please"); return false; } if(v!==s.name){ s.name=v; save(); } }); }
+  function openCalAccount(s){ calFieldModal("Account","The group it sits under. Leave it empty for the one found in its link ("+calProvider(s)+").",s.account||"",calProvider(s),"Account",function(v){ if(calSetAccount(s,v)) save(); }); }
+  function openCalColour(s){
+    modal('<h3>Colour for “'+esc(calName(s))+'”</h3><div class="cp" id="cal-cp"></div><div class="modal-actions"><button class="btn ghost" data-x>Close</button></div>');
+    document.querySelector("[data-x]").onclick=close;
+    openColorPicker(document.getElementById("cal-cp"),{color:s.color},function(v){ s.color=v.color; save(); close(); render(); },{shapes:false});
+  }
+
+  function openCalendarsModal(focusId){
+    var color=COLORS[calFeeds().length%COLORS.length], renaming=null, colouring=null, relayMsg=null;   // each new calendar starts on the next colour
+    function synced(t){ var d=new Date(t); return niceDate(fmt(d))+" "+fmtTime(String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")); }
+    function rowHtml(s,i,n){
+      var st=calState(s.id), named=renaming===s.id
         ? '<input id="cs-rename" value="'+esc(s.name)+'" aria-label="Calendar name" style="flex:1;min-width:0"/><button class="chip" data-cact="rename-ok">Save</button>'
-        : '<b style="flex:1;overflow:hidden;text-overflow:ellipsis">'+esc(s.name)+'</b><button class="chip" data-cact="rename" aria-label="Rename" title="Rename">✎</button>';
+        : '<b style="flex:1;overflow:hidden;text-overflow:ellipsis" title="'+esc(s.name)+'">'+esc(calName(s))+'</b><button class="chip" data-cact="rename" aria-label="Rename" title="Rename">✎</button>';
       return '<div class="card cal-src" style="padding:12px;margin-bottom:8px" data-sid="'+esc(s.id)+'">'+
         '<div style="display:flex;align-items:center;gap:8px">'+
         '<button class="dot" data-cact="colour" aria-label="Colour" title="Colour" style="background:'+esc(s.color)+';border-color:transparent"></button>'+named+
@@ -7842,23 +8103,29 @@ function GENA_MAIN() {
         '<button class="chip" data-cact="refresh" aria-label="Refresh now" title="Refresh now">↻</button>'+
         '<button class="chip" data-cact="remove" aria-label="Remove" title="Remove">✕</button></div>'+
         '<div class="sub cal-src-status" style="margin:6px 0 0;font-size:11.5px">'+
-        (s.error?"⚠ "+esc(s.error):(s.lastSync?(s.count||0)+" events · synced "+esc(synced(s)):(s.enabled?"not synced yet":"off")))+'</div>'+
+        (st.error?"⚠ "+esc(st.error):(st.lastSync?(st.count||0)+" events · synced "+esc(synced(st.lastSync)):(s.enabled?"not synced yet":"off")))+(s.hidden?" · hidden in the Events list":"")+'</div>'+
+        // F10: his account name and the order, the same code as the Events list
+        '<div class="cal-src-more"><label class="sub" for="cs-acct-'+esc(s.id)+'">Account</label><input class="cs-acct" id="cs-acct-'+esc(s.id)+'" value="'+esc(s.account||"")+'" placeholder="'+esc(calProvider(s))+'" autocomplete="off"/>'+
+        '<button class="chip" data-cact="up" aria-label="Move up" title="Move up"'+(i>0?'':' disabled')+'>▲</button><button class="chip" data-cact="down" aria-label="Move down" title="Move down"'+(i<n-1?'':' disabled')+'>▼</button></div>'+
         (colouring===s.id?'<div class="cp" id="cs-recolour" style="margin-top:8px"></div>':'')+'</div>';
     }
+    // grouped by account, in the order the Events list shows
+    function listHtml(){ return calGroups().map(function(g){ var f=g.items.filter(function(x){ return !x.own; }); if(!f.length) return "";
+      return '<div class="cs-acct-h">'+esc(g.key)+'</div>'+f.map(function(x,i){ return rowHtml(x,i,f.length); }).join(""); }).join(""); }
     function body(){
       return '<h3>Calendars</h3>'+
         '<div class="fld"><label>Relay address</label><div style="display:flex;gap:8px">'+
         '<input id="cs-relay" value="'+esc(S.proxy||"")+'" placeholder="https://<your-relay>.workers.dev/?url=" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Relay address" style="flex:1;min-width:0"/>'+
         '<button class="btn" id="cs-relay-test" style="flex:none">Test</button></div>'+
         '<div class="sub" id="cs-relay-msg" style="font-size:11.5px;margin-top:6px">'+(relayMsg?esc(relayMsg):"Calendar feeds can't be read straight from the browser; your relay reads them for Gena. The address is kept with your data and syncs to your other devices.")+'</div></div>'+
-        '<div class="fld"><label>Subscriptions</label><div id="cal-list">'+(S.calSources.length?S.calSources.map(rowHtml).join(""):'<div class="empty">No calendars yet</div>')+'</div></div>'+
+        '<div class="fld"><label>Subscriptions</label><div id="cal-list">'+(calFeeds().length?listHtml():'<div class="empty">No calendars yet</div>')+'</div></div>'+
         '<div class="fld"><label>Add a calendar</label>'+
         '<input id="cs-name" placeholder="Name (e.g. Work, Family, School)" style="margin-bottom:8px"/>'+
         '<input id="cs-url" placeholder="https://…/basic.ics   or   webcal://…" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" style="margin-bottom:8px"/>'+
         '<div class="cp" id="cs-sw" style="margin-bottom:6px"></div>'+
         '<div class="sub" style="font-size:11px;margin-top:5px">Google: Settings → your calendar → “Secret address in iCal format”. Outlook: Settings → Calendar → Shared calendars → Publish → ICS. Apple: share the calendar publicly and copy the webcal:// link.'+(S.proxy?"":" "+esc(CAL_ERR.norelay))+'</div>'+
         '</div>'+
-        '<div class="modal-actions"><button class="btn ghost" data-x>Close</button><button class="btn" id="cs-import">⤓ Import file</button>'+(S.calSources.length?'<button class="btn" id="cs-refresh">↻ Refresh</button>':'')+'<button class="btn primary" id="cs-add">Add calendar</button></div>';
+        '<div class="modal-actions"><button class="btn ghost" data-x>Close</button><button class="btn" id="cs-import">⤓ Import file</button>'+(calFeeds().length?'<button class="btn" id="cs-refresh">↻ Refresh</button>':'')+'<button class="btn primary" id="cs-add">Add calendar</button></div>';
     }
     function synced2(){ rebuild(); render(); }
     // the relay's line changes in place: leaving the field fires change, and a rebuild there would eat the tap on Test
@@ -7868,7 +8135,7 @@ function GENA_MAIN() {
       var inp=document.getElementById("cs-relay"); if(!inp) return null;
       var n=relayNorm(inp.value); if(n.err){ say(n.err); return null; }
       inp.value=n.value;
-      if(n.value!==(S.proxy||"")){ S.proxy=n.value; save(); say(n.value?"Saved.":"Relay removed."); if(n.value&&S.calSources.length){ say("Saved. Reading your calendars…"); refreshCalendars(synced2); } }
+      if(n.value!==(S.proxy||"")){ S.proxy=n.value; save(); say(n.value?"Saved.":"Relay removed."); if(n.value&&calFeeds().length){ say("Saved. Reading your calendars…"); refreshCalendars(synced2); } }
       return n.value;
     }
     function wire(){
@@ -7887,25 +8154,30 @@ function GENA_MAIN() {
         if(!/^(https|webcals?):\/\/\S+$/i.test(url)){ toast("Use the calendar's https:// or webcal:// address");return; }
         var dup=S.calSources.find(function(x){ return feedTarget(x.url)===feedTarget(url); });
         if(dup){ toast("That calendar is already here, as “"+dup.name+"”"); return; }
-        S.calSources.push({id:uid(),name:name,url:url,color:color,enabled:true,count:0,lastSync:null,error:null});
-        document.getElementById("cs-name").value=""; document.getElementById("cs-url").value=""; color=COLORS[S.calSources.length%COLORS.length];
+        var ns={id:uid(),name:name,url:url,color:color,enabled:true}; S.calSources.push(ns); calPlace(ns);
+        document.getElementById("cs-name").value=""; document.getElementById("cs-url").value=""; color=COLORS[calFeeds().length%COLORS.length];
         save(); toast(S.proxy?"Added — syncing…":"Added. It syncs once your relay address is set"); rebuild(); refreshCalendars(synced2);
       };
       var imp=document.getElementById("cs-import"); if(imp) imp.onclick=function(){ close(); importICS(); };
       var rf=document.getElementById("cs-refresh"); if(rf) rf.onclick=function(){ toast("Syncing…"); refreshCalendars(synced2); };
       var rn=document.getElementById("cs-rename"); if(rn){ rn.focus(); rn.select(); rn.onkeydown=function(e){ if(e.key==="Enter"){ e.preventDefault(); rn.parentNode.querySelector('[data-cact="rename-ok"]').click(); } else if(e.key==="Escape"){ e.stopPropagation(); renaming=null; rebuild(); } }; }
       var rc=document.getElementById("cs-recolour"); if(rc){ var cs=S.calSources.find(function(x){ return x.id===colouring; });
-        if(cs) openColorPicker(rc,{color:cs.color},function(v){ cs.color=v.color; S.events.forEach(function(e){ if(e.sourceId===cs.id) e.color=v.color; }); colouring=null; save(); rebuild(); render(); },{shapes:false}); }
+        if(cs) openColorPicker(rc,{color:cs.color},function(v){ cs.color=v.color; colouring=null; save(); rebuild(); render(); },{shapes:false}); }
       var listEl=document.getElementById("cal-list");
       if(listEl) listEl.onclick=function(e){ var a=e.target.closest("[data-cact]"); if(!a)return; var host=e.target.closest("[data-sid]"); var sid=host.dataset.sid; var s=S.calSources.find(function(x){return x.id===sid;}); if(!s)return;
         var act=a.dataset.cact;
         if(act==="toggle"){ s.enabled=!s.enabled; save(); rebuild(); render(); if(s.enabled) refreshCalendars(synced2); }
-        else if(act==="refresh"){ toast("Syncing…"); refreshCalendars(synced2); }
+        else if(act==="refresh"){ toast("Syncing…"); refreshCalendars(synced2,{only:sid}); }
+        else if(act==="up"||act==="down"){ if(calMove(sid,act==="up"?-1:1)){ save(); rebuild(); render(); } }
         else if(act==="rename"){ renaming=sid; colouring=null; rebuild(); }
         else if(act==="rename-ok"){ var v=(document.getElementById("cs-rename").value||"").trim(); if(!v){ toast("A name, please"); return; } s.name=v; renaming=null; save(); rebuild(); render(); }
         else if(act==="colour"){ colouring=colouring===sid?null:sid; renaming=null; rebuild(); }
-        else if(act==="remove"){ S.events=S.events.filter(function(x){return x.sourceId!==sid;}); S.calSources=S.calSources.filter(function(x){return x.id!==sid;}); save(); rebuild(); render(); }
+        else if(act==="remove"){ calRemove(sid); rebuild(); render(); }
       };
+      // his account name saves when the field is left; no rebuild here, so a tap on ▲ or ✕ that follows still lands
+      if(listEl) listEl.onchange=function(e){ var f=e.target.closest(".cs-acct"); if(!f) return; var s=calById(f.closest("[data-sid]").dataset.sid); if(!s) return;
+        if(calSetAccount(s,f.value)){ save(); render(); } f.value=s.account||""; };
+      if(listEl) listEl.onkeydown=function(e){ if(e.key==="Enter"&&e.target.closest(".cs-acct")){ e.preventDefault(); e.target.blur(); } };
     }
     function rebuild(){ var m=document.querySelector(".modal"); if(!m||!document.getElementById("cal-list")) return;
       var y=m.scrollTop;                    // innerHTML= resets scroll, and these modals are long
@@ -7915,6 +8187,9 @@ function GENA_MAIN() {
       Object.keys(keep).forEach(function(id){ var f=document.getElementById(id); if(f) f.value=keep[id]; });
     }
     modal(body()); wire();
+    // F10: "Edit in Settings…" from the Events list opens here, at that calendar
+    var at=focusId&&[].filter.call(document.querySelectorAll("#cal-list [data-sid]"),function(x){ return x.dataset.sid===focusId; })[0];
+    if(at){ at.classList.add("cal-src-hl"); if(at.scrollIntoView) at.scrollIntoView({block:"center"}); }
   }
 
   /* ---------- optional sync file (File System Access — Chrome/Edge) ---------- */
@@ -8150,7 +8425,8 @@ function GENA_MAIN() {
       snap.tasks.push({t:k.title, d:k.day, b:k.block||null, at:k.at||null, p:k.priority?1:0, done:k.status==="done"?1:0, s:(k.subs||[]).map(function(s){return {t:s.text,done:s.done?1:0};}), pr:p?p.name:null, ef:ef?ef.name:null });
     });
     (S.focus[t]||[]).forEach(function(f){ var txt=f.taskId?(S.tasks.find(function(x){return x.id===f.taskId;})||{}).title:f.text; if(txt) snap.focus.push({t:txt, done:f.done?1:0}); });
-    S.events.filter(function(e){ return e.date && inRange(e.date); }).forEach(function(e){ snap.events.push({t:e.title, d:e.date}); });
+    // review finding 6 (A5): a subscribed calendar's events stay out of the link, and so do Gena's own when My events is hidden
+    S.events.filter(function(e){ return e.date && inRange(e.date) && !isSubEvent(e) && calVisible(e); }).forEach(function(e){ snap.events.push({t:e.title, d:e.date}); });
     return snap;
   }
   function openShareModal(){
@@ -8993,7 +9269,7 @@ function GENA_MAIN() {
       S.jobs.forEach(function(j){ if(rows.length<40 && (norm(j.company)+" "+norm(j.role)+" "+norm(j.notes)).indexOf(q)>=0) rows.push(row("job",j.id,j.company+(j.role?" — "+j.role:""),j.stage||"")); });
       S.projects.forEach(function(p){ if(rows.length<40 && (!scoped||inScope(p.id)) && (norm(p.name)+" "+norm(p.notes)).indexOf(q)>=0) rows.push(row("focus",p.id,p.name,"")); });
       (S.efforts||[]).forEach(function(e){ if(rows.length<40 && (!scoped||effortInScope(e)) && (norm(e.name)+" "+norm(e.notes)).indexOf(q)>=0) rows.push(row("project",e.id,e.name,stateLabel(e)||"")); });
-      S.events.forEach(function(ev){ if(rows.length<40 && sourceEnabled(ev) && within(ev) && norm(ev.title).indexOf(q)>=0) rows.push(row("event",ev.id,ev.title,ev.date?niceDate(ev.date):"")); });
+      S.events.forEach(function(ev){ if(rows.length<40 && calVisible(ev) && within(ev) && norm(ev.title).indexOf(q)>=0) rows.push(row("event",ev.id,ev.title,ev.date?niceDate(ev.date):"")); });
       S.emails.forEach(function(em){ if(rows.length<40 && (norm(em.subject)+" "+norm(em.sender)).indexOf(q)>=0) rows.push(row("email",em.id,em.subject,em.sender||"")); });
       (S.archive||[]).forEach(function(k){ if(rows.length<40 && within(k) && norm(k.title+" "+htmlToText(k.notes)).indexOf(q)>=0) rows.push(row("archived",k.id,k.title,"done "+(k.completedOn?niceDate(k.completedOn):""))); });
       Object.keys(S.notes).forEach(function(dk){ if(rows.length<40 && norm(S.notes[dk]).indexOf(q)>=0) rows.push(row("note",dk,S.notes[dk].slice(0,70),niceDate(dk))); });
