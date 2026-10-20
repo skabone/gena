@@ -717,6 +717,9 @@
   .subs-done{ margin:2px 0 0; }
   .subs-done-line{ background:transparent; border:none; padding:2px 0; font:inherit; font-size:12.5px; color:var(--ink-faint); cursor:pointer; }
   .subs-done-line:hover{ color:var(--terra-deep); }
+  .subs-more{ background:transparent; border:none; padding:2px 0; font:inherit; font-size:12.5px; color:var(--terra-deep); cursor:pointer; }
+  .subs-more:hover{ text-decoration:underline; }
+  li.sub.sub-more{ list-style:none; }
   .subs-done-line:disabled{ cursor:default; color:var(--ink-soft); }
   .subs-done-list{ list-style:none; margin:4px 0 0; padding:0; }
   .subs-done-list li{ display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13.5px; color:var(--ink-soft); }
@@ -1172,6 +1175,7 @@
   .ev-sws button[aria-pressed="true"]{ outline:2px solid var(--ink); outline-offset:2px; }
   .ev-sws .ev-sw-cal{ width:auto; border-radius:99px; padding:0 10px; font-family:inherit; font-size:11.5px; font-weight:650; color:var(--swink); }
   .ev-pats{ margin-bottom:8px; }
+  .modal.form .ev-pats{ flex-wrap:wrap; max-width:100%; } .modal.form .ev-pats button{ white-space:nowrap; }   /* V6.11 finding 9: a 280 px column at 1000x700 clipped Light fill */
   .ev-prev-wrap{ max-width:260px; }
   .evblock.ev-prev{ position:relative; min-height:42px; cursor:default; }
   .admore{ border:0; background:none; color:var(--terra-deep); font-family:inherit; font-size:11.5px; font-weight:650; text-align:left; padding:0 8px; cursor:pointer; position:relative; z-index:1; justify-self:start; }
@@ -1410,23 +1414,33 @@
 
   /* nesting, inline subtask add, @-autocomplete */
   .task.nest-over{ outline:2px solid var(--terra); outline-offset:-2px; background:var(--terra-bg); }
-  /* V6.8 W33: the Domain → Focus picker */
+  /* V6.8 W33, V6.10 W38: the Domain → Focus picker, open in place: bubbles styled as the Collections chips */
   select.dfp-src{ display:none !important; }
-  .dfp-chip{ display:inline-flex; align-items:center; gap:7px; max-width:100%; min-height:36px; padding:6px 10px; border:1.5px solid var(--line); border-radius:11px; background:var(--card); color:var(--ink); font:inherit; font-size:14px; cursor:pointer; text-align:left; }
-  .dfp-chip:hover{ border-color:var(--ink-faint); } .dfp-chip[aria-expanded="true"]{ border-color:var(--terra); }
-  .dfp-chip .dfp-sw{ width:10px; height:10px; border-radius:3px; flex:none; background:transparent; box-shadow:inset 0 0 0 1.5px var(--line); }
-  .dfp-chip .dfp-t{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .dfp-chip .dfp-car{ color:var(--ink-faint); font-size:11px; }
-  .capture .dfp-chip{ min-height:0; height:38px; font-size:13px; max-width:220px; }
-  .ie-row .dfp-chip, .rv-row .dfp-chip{ min-height:0; padding:4px 8px; font-size:13px; }
-  .dfp-panel{ position:fixed; z-index:80; background:var(--card); color:var(--ink); border:1px solid var(--line); border-radius:14px; box-shadow:0 14px 34px var(--shadow); padding:8px; display:flex; flex-direction:column; gap:6px; }
-  .dfp-panel[hidden], .sl-pop[hidden]{ display:none; }   /* the panel's own display would override [hidden] */
-  .dfp-row{ display:flex; flex-wrap:wrap; gap:4px; padding:3px; border-radius:11px; background:var(--line-soft); }
-  .dfp-row + .dfp-row{ margin-left:12px; }
-  .dfp-b{ position:relative; display:inline-flex; align-items:center; gap:6px; border:0; border-radius:8px; padding:6px 10px 6px 12px; background:transparent; color:var(--ink); font:inherit; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; }
-  .dfp-b .dfp-band{ position:absolute; left:3px; top:6px; bottom:6px; width:3px; border-radius:2px; background:var(--dfbg,transparent); }
-  .dfp-b:hover{ background:var(--card); } .dfp-b[aria-pressed="true"]{ background:var(--card); box-shadow:0 1px 3px rgba(0,0,0,.14), inset 0 0 0 1.5px var(--dfc,var(--terra)); }
-  .dfp-b.dfp-dom{ font-weight:700; } .dfp-b.dfp-none, .dfp-b.dfp-new{ color:var(--ink-soft); }
-  @media (max-width:600px){ .dfp-panel{ left:8px !important; right:8px; max-width:none !important; } .dfp-row + .dfp-row{ margin-left:0; } }
+  .sl-pop[hidden]{ display:none; }   /* the popover's own display would override [hidden] */
+  .dfp{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .form-cols .dfp{ padding-bottom:4px; }   /* a focus ring on the last row stays in its column (WebKit paints the overflow in the next) */
+  .dfp-row{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-width:0; }
+  .dfp-row + .dfp-row{ padding-left:10px; border-left:2px solid var(--line); }   /* a Domain's Focuses, a Focus's Projects */
+  .dfp-b{ display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .dfp-b .dfp-dot{ width:10px; height:10px; border-radius:3px; flex:none; }
+  .dfp-b.dfp-dom{ font-size:13px; font-weight:700; }   /* a Domain a step larger than its Focuses (W24) */
+  .dfp-b.dfp-has{ border-color:var(--slate); border-style:dashed; }   /* holds the pick while another Domain is open */
+  .chip.dfp-add{ min-width:34px; border-style:dashed; color:var(--ink-soft); }
+  .dfp-b:focus-visible, .chip.dfp-add:focus-visible{ outline:2px solid var(--terra); outline-offset:1px; }
+  .nb-add{ display:inline-flex; flex-wrap:wrap; gap:6px; align-items:center; max-width:100%; }
+  .nb-add input{ font:inherit; font-size:13px; padding:5px 10px; border:1.5px solid var(--terra); border-radius:999px; background:var(--card); color:var(--ink); min-width:0; }
+  .nb-add .nb-e{ width:48px; text-align:center; } .nb-add .nb-n{ width:170px; max-width:100%; }
+  .capture .dfp{ flex:1 0 100%; order:9; }   /* the quick-add's bubbles sit under its box */
+  /* on a fitted time grid (W16) they float under the box while he is in it, so 7 AM to 9 PM still fits without scrolling */
+  body.tg-on .capture{ position:relative; }
+  body.tg-on .capture .dfp{ display:none; position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:40; padding:8px; background:var(--sheet); border:1px solid var(--line); border-radius:14px; box-shadow:0 14px 34px var(--shadow); }
+  body.tg-on .capture.dfp-open .dfp{ display:flex; }
+  @media (max-width:760px){ .capture .dfp-row{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; } .capture .dfp-row::-webkit-scrollbar{ display:none; } }
+  /* V6.10 W38: Collections start folded: a small row with the picked count */
+  .colf-t{ display:inline-flex; align-items:center; gap:6px; border:0; background:none; padding:2px 0; margin:0 0 6px; font:inherit; font-size:12px; font-weight:700; color:var(--ink-soft); cursor:pointer; }
+  .colf-t:hover{ color:var(--ink); } .colf-chev{ font-size:10px; transition:transform .15s; } .colf.shut .colf-chev{ transform:rotate(-90deg); }
+  .colf-n{ font-size:11px; font-weight:700; padding:0 7px; border-radius:999px; background:var(--line-soft); color:var(--ink-soft); }
+  .colf.shut > .chips{ display:none; } .colf.shut .colf-t{ margin:0; }
   .m-subadd{ display:flex; gap:8px; align-items:center; } .m-subadd input{ flex:1; min-width:0; } .m-subadd .chip{ flex:none; }
   #rightbar .rb-subs{ display:block; flex:1 0 100%; margin:2px 0 0; padding:0 0 0 2px; } #rightbar .rb-subs .sub{ display:flex; align-items:center; gap:6px; font-size:12px; padding:1px 0; }
   #rightbar .rb-subs .sub-t{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } #rightbar .rb-subs .sub.done .sub-t{ text-decoration:line-through; color:var(--ink-faint); }
@@ -1975,7 +1989,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-10-19-V6.4";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-10-20-V6.5";   // set by ship.sh on every release — the footer is how you tell a surface is current
   // The day V5 shipped (tag gena-2026-10-05-V5): the closing-states cutoff, fixed, so a later build's stamp
   // never moves it (I-28). Above `var S = load()`, which reads it.
   var V5_SHIP_DAY = "2026-10-05";
@@ -2364,6 +2378,13 @@ function GENA_MAIN() {
     giveOrd(doms.filter(mine)); d.profiles=sortDoms(doms);
     giveOrd(d.projects.filter(mine)); d.projects=sortByOrd(d.projects);
     unD.forEach(bump); unF.forEach(function(p){ stamp(f0,p); });
+    // V6.11 finding 5: two devices can give a V6.3 Domain different neons (each picks from the Domains it holds) and on a stamp tie each keeps its
+    // own, so one could hold two Domains in one neon for good. On every pass a neon held twice stays with the newer edit (then the earlier in the
+    // order) and the other takes the first free neon, stamped old _m + 1: the same answer from the same Domains, so the copies meet
+    var by={}, used={}; d.profiles.forEach(function(pr){ if(/^#/.test(pr.color||"")) used[String(pr.color).toLowerCase()]=1; });
+    d.profiles.filter(mine).forEach(function(pr){ var c=String(pr.color||"").toLowerCase(); if(DOM_NEON.indexOf(c)>=0) (by[c]=by[c]||[]).push(pr); });
+    Object.keys(by).forEach(function(c){ var l=by[c]; if(l.length<2) return;
+      l.slice().sort(function(a,b){ return (b._m||0)-(a._m||0); }).slice(1).forEach(function(pr){ var pick=DOM_NEON.filter(function(x){ return !used[x]; })[0]; if(!pick) return; used[pick]=1; pr.color=pick; pr._m=(pr._m||0)+1; }); });
   }
   /* V5 closing states (GD-017): a note is open, shipped (built, not yet seen) or resolved (he looked).
      Under the old rule "shipped" closed a note, so a note marked shipped WITHOUT shippedIn, which every
@@ -3100,7 +3121,10 @@ function GENA_MAIN() {
       while(!free(next)) next++; take(i,next); });
     return out; }
   // a Domain's band: its colour, lifted toward neon when it is too dark to glow (JIK's Royal Purple reads as a light violet)
-  function domBand(c){ var x=famHex(c); if(!x) return c||"var(--ink-faint)"; var o=hexToHsl(x); return relLumHex(x)<0.12?hslToHex(o.h,Math.max(o.s,75),Math.max(o.l,62)):x; }
+  function domBand(c){ var x=famHex(c); if(!x) return c||"var(--ink-faint)"; var o=hexToHsl(x), y=relLumHex(x), l=o.l, n=0; if(y<0.12) return hslToHex(o.h,Math.max(o.s,75),Math.max(o.l,62));
+    // V6.11 finding 7, the mirror on the light card: a bright neon (#b8ff00, #00ff85, #ffd60a, #00e5ff) darkens until it reads (1.9:1 or better on white)
+    if(y>0.5&&!darkScheme()) while(y>0.5&&n++<60){ l-=1.5; x=hslToHex(o.h,o.s,l); y=relLumHex(x); }
+    return x; }
   /* One map a store: Focus and Project objects to their family colour ({color, pat}), Domains to theirs. Rebuilt when the store or its
      last save changes (every edit saves), so it never outlives an in-place edit; read through hueOf() by pk, pcVars, dotStyle and the
      few places that read a colour directly */
@@ -3242,6 +3266,7 @@ function GENA_MAIN() {
           } else k.carriedFrom=k.carriedFrom||k.day;
         }
       });
+      var goalF=foldGoalCopies(t,S.lastOpen);
       endExpiredHabitPauses(t);
       sweepRepeats(t);
       generateRecurring(t);
@@ -3250,6 +3275,7 @@ function GENA_MAIN() {
       dayStartFrom=S.lastOpen||null;
       migrateStartPriority(); var apWas=prioStamp(t), ap=autoPriority(t);
       S.lastOpen=t; save();
+      if(goalF.length){ goalF.forEach(function(x){ x.k._m=(x.was||0)+1; }); suppressUndo=true; save(); suppressUndo=false; }   // never "now": a real tick wins
       if(ap>0) backdatePriority(t,apWas);
     } else { sweepRepeats(t); generateRecurring(t); var mp=migrateStartPriority(), apWas2=prioStamp(t), ap2=autoPriority(t); if(ap2>=0||mp) save(); if(ap2>0) backdatePriority(t,apWas2); }
   }
@@ -3283,7 +3309,7 @@ function GENA_MAIN() {
       var exists=S.tasks.some(function(k){ return k.tplId===tp.id && k.day===day; });
       if(!exists){
         S.tasks.push({id:uid(),title:tp.title,projectId:tp.projectId,effortId:tp.effortId||undefined,status:"todo",day:day,
-          block:tp.block||null,priority:!!tp.priority,rollover:0,tplId:tp.id,created:day,subs:repeatCopySubs(tp,day)});
+          block:tp.block||null,priority:!!tp.priority,rollover:0,tplId:tp.id,created:day,subs:repeatCopySubs(tp,day),end:weeklyGoal(tp)?goalEnd(tp,day):undefined});
         if(tp.firstSubs) delete tp.firstSubs;   // the first copy took them
       }
     });
@@ -3329,7 +3355,7 @@ function GENA_MAIN() {
   function collapseRank(k){ return k.status==="done"?3:(k.status==="skipped"?(k.skippedOn===k.day?2.5:1):2); }
   function collapseRepeatCopies(){
     var groups={}, gone=0, from=addDays(today(),-1);
-    S.tasks.forEach(function(k){ if(k.tplId&&k.day&&k.day>=from){ var g=k.tplId+"|"+k.day; (groups[g]=groups[g]||[]).push(k); } });
+    S.tasks.forEach(function(k){ if(k.tplId&&k.day&&(k.day>=from||(lastDay(k.day,k.end)>=from&&goalRuleOf(k)))){ var g=k.tplId+"|"+k.day; (groups[g]=groups[g]||[]).push(k); } });   // V6.5 review 2: a goal copy while its week runs
     var drop={}, remap={};
     Object.keys(groups).forEach(function(g){ var arr=groups[g]; if(arr.length<2) return;
       arr.sort(function(a,b){ return collapseRank(b)-collapseRank(a)||(a.id<b.id?-1:(a.id>b.id?1:0)); });
@@ -3342,6 +3368,10 @@ function GENA_MAIN() {
         (o.subs||[]).forEach(function(sb){ var key=subKey(sb.text), m=keep.subs.find(function(x){ return subKey(x.text)===key; });
           if(m){ if(sb.done) m.done=true; } else keep.subs.push(subCopy(sb)); });
         drop[o.id]=1; remap[o.id]=keep.id; gone++; });
+      // V6.5 review finding 2: the done lines join (by text, keep's first), and an item either copy has done stays out of the open list
+      var doneKeys={}, sd=[];
+      arr.forEach(function(c){ (c.subsDone||[]).forEach(function(d){ var key=subKey(d.text); if(!doneKeys[key]){ doneKeys[key]=1; sd.push(clone(d)); } }); });
+      if(sd.length){ keep.subsDone=sd; keep.subs=keep.subs.filter(function(sb){ return !doneKeys[subKey(sb.text)]; }); }
       keep.subs.forEach(function(sb){ if(rule[subKey(sb.text)]) sb.kind="every"; else if(sb.kind==="every") sb.kind="once"; });
     });
     // a copy the rule's skip list says is cleared or moved away (🧹, → +7d, 📅) must not live on: the other
@@ -3394,9 +3424,21 @@ function GENA_MAIN() {
   function sweepRepeats(day){
     var n=0;
     S.tasks.forEach(function(k){
-      if(k.tplId && k.day && k.day<day && isOpen(k) && !k.unskipped){ k.status="skipped"; k.skippedOn=k.day; n++; }
+      if(!(k.tplId && k.day && k.day<day && isOpen(k) && !k.unskipped)) return;
+      var gt=!k.end&&goalRuleOf(k);
+      if(gt&&goalEnd(gt,k.day)>=day) k.end=goalEnd(gt,k.day);   // W39: a goal's copy made without its week (a device not yet on V6.12) takes it
+      if(lastDay(k.day,k.end)<day){ k.status="skipped"; k.skippedOn=k.day; n++; }
     });
     return n;
+  }
+  // W39: a new day folds what was checked on a running goal copy, dated the day it was last open, as the carry does a plain task's (C2)
+  // Returns the copies it folded with their old stamps: onOpen stamps each old _m + 1 (V6.5 review finding 1),
+  // so a tick made earlier today on another device, still to come in the first pull, wins the merge.
+  function foldGoalCopies(day,prev){
+    var out=[];
+    S.tasks.forEach(function(k){ var tp=k.tplId&&k.status==="todo"&&k.day<day&&goalRuleOf(k), was=k._m;   // before the sweep: a copy made by an older build has no `end` yet
+      if(tp&&(k.end||goalEnd(tp,k.day))>=day&&foldDoneSubs(k,prev&&prev<day&&prev>=k.day?prev:addDays(day,-1))) out.push({k:k,was:was}); });
+    return out;
   }
   // A lapsed repeat row is a record the app made, not work and not the user's own history: after 60 days
   // it joins the archive by itself, once a day (done rows still wait for a yes). Nothing is deleted — the
@@ -3429,6 +3471,28 @@ function GENA_MAIN() {
     if(tp.freq==="weekly") return (tp.weekdays||[]).indexOf(dow(day))>=0;
     if(tp.freq==="everyN"){ var base=tp.start||day; return diffDays(day,base)%(tp.interval||2)===0; }
     return false;
+  }
+  /* V6.12 W39: a weekly repeat with Every-time items that is marked a goal (`goal`, set only by Make this a weekly goal of 20) is a
+     weekly goal. Its copy stays on the list to the day before the rule's next day (`end`, so every view reads it as a span), each new
+     day shows only its open items (foldGoalCopies), and the next copy brings the fresh set. An unmarked weekly repeat with items (his
+     Trash Day) lapses overnight as before. The marker is a field on the rule item, so the per-item merge carries it. */
+  function weeklyGoal(tp){ return !!(tp&&tp.goal&&tp.freq==="weekly"&&(tp.subs||[]).length); }
+  function goalEnd(tp,day){ for(var i=1;i<7;i++){ if(ruleHits(tp,addDays(day,i))) return addDays(day,i-1); } return addDays(day,6); }
+  function goalRuleOf(k){ var tp=k&&k.tplId&&(S.templates||[]).find(function(x){ return x.id===k.tplId; }); return weeklyGoal(tp)?tp:null; }
+  /* W39 (c): one tap makes a repeat a weekly goal of 20: a new weekly rule (Mondays, twenty Every-time items) from today, with its
+     first copy now for the rest of this week; the old rule ends yesterday (Ended, in Repeats) and every copy it made stays as it is */
+  var GOAL_N=20;
+  function makeWeeklyGoal(tid){
+    var tp=S.templates.find(function(x){ return x.id===tid; }); if(!tp||weeklyGoal(tp)) return null;
+    var t=today(), g={}; for(var f in tp) g[f]=tp[f];
+    g.id=uid(); g.goal=true; g.freq="weekly"; g.weekdays=[1]; g.start=t; g.until=null; g.skip=[]; g.parent=tp.id; g.subs=[]; delete g.firstSubs; delete g.paused; delete g._m;
+    for(var i=1;i<=GOAL_N;i++) g.subs.push({id:uid(),text:i+" of "+GOAL_N});
+    tp.until=addDays(t,-1);
+    S.templates.push(g);
+    var k={id:uid(),title:g.title,projectId:g.projectId,effortId:g.effortId||undefined,status:"todo",day:t,end:goalEnd(g,t),
+      block:g.block||null,priority:!!g.priority,rollover:0,tplId:g.id,created:t,subs:repeatCopySubs(g,t)};
+    S.tasks.push(k);
+    return k;
   }
 
   /* ---------- helpers ---------- */
@@ -3529,12 +3593,34 @@ function GENA_MAIN() {
   function effOptsHtml(sel){ return (S.efforts||[]).filter(function(e){ return projActive(e)||e.id===sel; }).map(function(e){
     return '<option value="'+esc(e.id)+'"'+(e.id===sel?" selected":"")+'>'+esc((e.emoji?e.emoji+" ":"")+e.name)+'</option>'; }).join(""); }
   function effShort(e){ var n=String(e&&e.name||"").split(/ [—–-] /)[0].trim(); return n.length>30?n.slice(0,29)+"…":n; }
-  function colChipsHtml(cols,id){ cols=cols||[]; var all=colsSorted();
-    return '<div class="chips" id="'+(id||"m-cols")+'">'+(all.length?all.map(function(c){ return '<button type="button" class="chip" data-col="'+esc(c.id)+'" aria-pressed="'+(cols.indexOf(c.id)>=0)+'">'+esc(c.emoji||"🗂")+' '+esc(c.name)+'</button>'; }).join(""):'<span class="sub">No Collections</span>')+'</div>'; }
+  /* V6.10 W38: Collections start folded in every form: one small "Collections" row with the picked count opens to the chips and a +
+     that makes one in place. Folded or open is this device's (gena-ui-fold), and a save folds it again. `flat`: the chips alone. */
+  var COLF_KEY="form:cols";
+  function colChipList(cols){ return colsSorted().map(function(c){ return '<button type="button" class="chip" data-col="'+esc(c.id)+'" aria-pressed="'+(cols.indexOf(c.id)>=0)+'">'+esc(c.emoji||"🗂")+' '+esc(c.name)+'</button>'; }).join("")+
+    '<button type="button" class="chip dfp-add" data-coladd aria-label="New Collection">+</button>'; }
+  function colChipsHtml(cols,id,flat){ cols=cols||[]; id=id||"m-cols"; var shut=!flat&&uiFolded(COLF_KEY,true), n=colsSorted().filter(function(c){ return cols.indexOf(c.id)>=0; }).length;
+    return '<div class="colf'+(shut?' shut':'')+'">'+(flat?'':'<button type="button" class="colf-t" aria-expanded="'+!shut+'" aria-controls="'+id+'"><span class="colf-chev" aria-hidden="true">▾</span>Collections <span class="colf-n">'+n+'</span></button>')+
+      '<div class="chips" id="'+id+'">'+colChipList(cols)+'</div></div>'; }
+  function colFoldShut(){ uiSetFold(COLF_KEY,1); }
+  // the fold, the count and the + of one Collections row; pick(id) adds a new Collection to the picked list and returns that list
+  function colFoldWire(box,pick){ var f=box&&box.parentNode; if(!f||!f.classList.contains("colf")||f.__colf) return; f.__colf=1;
+    var t=f.querySelector(".colf-t"), n=f.querySelector(".colf-n"), count=function(){ if(n) n.textContent=box.querySelectorAll('[data-col][aria-pressed="true"]').length; };
+    if(typeof MutationObserver!=="undefined") new MutationObserver(count).observe(box,{subtree:true,childList:true,attributes:true,attributeFilter:["aria-pressed"]});
+    var back=function(){ var a=box.querySelector(".nb-add"); if(a) a.outerHTML='<button type="button" class="chip dfp-add" data-coladd aria-label="New Collection">+</button>'; var p=box.querySelector("[data-coladd]"); if(p) p.focus(); };
+    var go=function(){ var nm=box.querySelector(".nb-n"), em=box.querySelector(".nb-e"), c=dfCreate("col",nm&&nm.value,em&&em.value); if(!c){ if(nm) nm.focus(); return; }
+      box.innerHTML=colChipList(pick(c.id)); var b=box.querySelector('[data-col="'+esc(c.id)+'"]'); if(b) b.focus();
+      if(editorOpen()) renderSidebar(); else render(); toast("New Collection “"+c.name+"”"); };
+    f.addEventListener("click",function(e){
+      if(t&&e.target.closest(".colf-t")){ var shut=!f.classList.contains("shut"); f.classList.toggle("shut",shut); t.setAttribute("aria-expanded",!shut); uiSetFold(COLF_KEY,shut); return; }
+      if(e.target.closest("[data-coladd]")){ e.target.closest("[data-coladd]").outerHTML=dfAddHtml("New Collection"); box.querySelector(".nb-n").focus(); return; }
+      if(e.target.closest(".nb-ok")) go(); else if(e.target.closest(".nb-x")) back(); });
+    f.addEventListener("keydown",function(e){ if(!e.target.closest(".nb-add")) return;
+      if(e.key==="Enter"){ e.preventDefault(); e.stopPropagation(); go(); } else if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); back(); } }); }
   function wireColChips(cols,id){ var cur=(cols||[]).slice(), box=document.getElementById(id||"m-cols");
     if(box) box.onclick=function(e){ var b=e.target.closest("[data-col]"); if(!b) return; var id=b.dataset.col, i=cur.indexOf(id);
       if(i<0) cur.push(id); else cur.splice(i,1); b.setAttribute("aria-pressed",i<0); };
-    return function(){ return cur.slice(); }; }
+    colFoldWire(box,function(id){ cur.push(id); return cur; });
+    return function(){ colFoldShut(); return cur.slice(); }; }
   // write a member's Collections: an item that never had any is left without the field
   function setCols(x,c){ if(c.length||x.cols) x.cols=c; }
   function projColor(id){ var p=proj(id); return p?hueC(p):"var(--ink-faint)"; }
@@ -3681,7 +3767,7 @@ function GENA_MAIN() {
   // behind in `subsDone`, dated with the day they were carried from. Repeats (GD-029) and cycles (their
   // own reset) have their rules already. Idempotent: a second call finds nothing checked to move.
   function foldDoneSubs(k,day){
-    if(!k||k.tplId||k.cycle||k.status!=="todo"||!Array.isArray(k.subs)) return 0;
+    if(!k||(k.tplId&&!goalRuleOf(k))||k.cycle||k.status!=="todo"||!Array.isArray(k.subs)) return 0;   // W39: a weekly goal's copy folds
     var done=k.subs.filter(function(sb){ return sb&&sb.done; });
     if(!done.length) return 0;
     k.subsDone=(Array.isArray(k.subsDone)?k.subsDone:[]).concat(done.map(function(sb){ return {id:sb.id,text:sb.text,doneOn:day||null}; }));
@@ -3740,11 +3826,24 @@ function GENA_MAIN() {
     if(s.kind==="every"||s.kind==="once") o.kind=s.kind; if(s.skipDay) o.skipDay=s.skipDay; return o; }
   // R4: every "x / y" of sub-items comes from here; one skipped for its day (⏭) is excused, so not counted
   function subSkipped(sb,day){ return !!(sb&&sb.skipDay&&day&&sb.skipDay===day); }
-  function subCounts(subs,day){ var n=0,dn=0; (subs||[]).forEach(function(sb){ if(subSkipped(sb,day)) return; n++; if(sb.done) dn++; }); return {done:dn,total:n}; }
-  function subCountText(subs,day){ var c=subCounts(subs,day); return "☑ "+c.done+"/"+c.total; }
-  function subsPill(id,subs,day){
-    return '<span class="pill subs-n tap" data-act="subs-toggle" data-id="'+id+'" title="'+(subsCollapsed(id)?"Show":"Hide")+' subtasks">'+subCountText(subs,day)+'</span>';
+  // W40: a weekly goal's done line (`before`) counts as done, so 3 of 20 reads 3/20 all week; a carried plain task's count stays
+  // its open items (V5.4 C4)
+  function goalDone(k){ return goalRuleOf(k)?k.subsDone:null; }
+  function subCounts(subs,day,before){ var n=0,dn=0,b=(before||[]).length; (subs||[]).forEach(function(sb){ if(subSkipped(sb,day)) return; n++; if(sb.done) dn++; }); return {done:dn+b,total:n+b}; }
+  function subCountText(subs,day,before){ var c=subCounts(subs,day,before); return "☑ "+c.done+"/"+c.total; }
+  function subsPill(id,subs,day,before){
+    return '<span class="pill subs-n tap" data-act="subs-toggle" data-id="'+id+'" title="'+(subsCollapsed(id)?"Show":"Hide")+' subtasks">'+subCountText(subs,day,before)+'</span>';
   }
+  /* V6.12 W40: more than five sub-items fold to the first five open ones and "Show all N"; opened, all of them and "Show 5". The fold
+     is this device's, per task (`gena-ui-fold`), shut unless he opened it; a tick re-draws, so the next open one moves into view.
+     `keep` (the form) names items to show anyway: one just added stays in view. */
+  var SUBS_FOLD=5;
+  function subsVisible(id,subs,keep){ if(!id||(subs||[]).length<=SUBS_FOLD||!uiFolded("subs5:"+id,true)) return null; var on={}, n=0;
+    subs.forEach(function(sb,i){ if(keep&&keep[sb.id]) on[i]=1; else if(n<SUBS_FOLD&&!sb.done){ on[i]=1; n++; } }); return on; }
+  function subsFoldBtn(id,subs,attr){ var n=(subs||[]).length; if(!id||n<=SUBS_FOLD) return "";
+    var shut=uiFolded("subs5:"+id,true);
+    return '<button type="button" class="subs-more" '+(attr||'data-act="subs-5" data-id="'+esc(id)+'"')+' aria-expanded="'+!shut+'">'+(shut?"Show all "+n:"Show "+SUBS_FOLD)+'</button>'; }
+  function subsMoreLi(id,subs){ var b=subsFoldBtn(id,subs); return b?'<li class="sub sub-more">'+b+'</li>':""; }
   // C4: what a carry left behind (`subsDone`): one quiet line under the open sub-items; opened, a read-only
   // list with ↩ Bring back (onto the list again, unchecked). `act(w,i)` gives each caller its own wiring.
   function subsDoneHtml(list,open,act){
@@ -4268,6 +4367,10 @@ function GENA_MAIN() {
   function domFreeNeon(){ var used={}; S.profiles.forEach(function(x){ if(x.color) used[String(x.color).toLowerCase()]=1; }); return DOM_NEON.filter(function(c){ return !used[c]; })[0]||DOM_NEON[S.profiles.length%DOM_NEON.length]; }
   function ordBetween(a,b){ a=typeof a==="number"?a:null; b=typeof b==="number"?b:null; return a==null&&b==null?ORD_STEP:a==null?b-ORD_STEP:b==null?a+ORD_STEP:(a+b)/2; }
   function nextOrd(list){ var o=(list||[]).map(function(x){ return x.ord; }).filter(function(x){ return typeof x==="number"; }); return o.length?Math.max.apply(null,o)+ORD_STEP:ORD_STEP; }
+  // V6.10 W38: the editors' creation code, shared with the pickers' + bubbles. A Domain takes its own neon colour and goes last in
+  // the order; a Focus is shown in its Domain's next free shade (W27, hueOf) and goes last (W30)
+  function addDomain(name,emoji,color){ var d={id:uid(),name:name,emoji:emoji,color:color||domFreeNeon(),ord:nextOrd(S.profiles)}; S.profiles.push(d); S.profiles=sortDoms(S.profiles); return d; }
+  function addFocus(name,emoji,dom,color,pat,state){ var np={id:uid(),name:name,color:color||COLORS[S.projects.length%COLORS.length],emoji:emoji,notes:"",profileId:dom||null,state:state||null,ord:nextOrd(S.projects)}; if(pat) np.pat=pat; S.projects.push(np); return np; }
   function focusDomOf(f){ return f.profileId&&profileById(f.profileId)?f.profileId:null; }
   function moveDomain(id,refId,after){
     var pr=profileById(id); if(!pr||domPin(pr)<2) return false;
@@ -4275,7 +4378,7 @@ function GENA_MAIN() {
     var list=free.filter(function(x){ return x!==pr; }), ref=profileById(refId), i;
     if(ref&&domPin(ref)<2) i=0; else { i=list.indexOf(ref); if(i<0) return false; if(after) i++; }
     if(free.indexOf(pr)===i) return false;   // where it already is
-    var prev=i>0?list[i-1]:pins[pins.length-1], o=ordBetween(prev?prev.ord:null,list[i]?list[i].ord:null);
+    var o=ordBetween(i>0?list[i-1].ord:null,list[i]?list[i].ord:null);   // V6.11 finding 6: JIK and DRM sort first whatever their `ord`, so the first place has no lower bound
     pr.ord=o; S.profiles=sortDoms(S.profiles); return true; }
   function moveFocus(id,domId,refId,after){
     var f=proj(id); if(!f) return false; var d=domId&&profileById(domId)?domId:null;
@@ -4586,7 +4689,7 @@ function GENA_MAIN() {
           typeFieldsHtml("ie",k)+
           '<div class="ie-lbl">Focus</div><select id="ie-proj" aria-label="Focus"><option value="">None</option>'+projOpts+'<option value="__new">+ New Focus…</option></select>'+
           ((S.efforts||[]).length?'<div class="ie-lbl">Project</div><select id="ie-eff" aria-label="Project"><option value="">None</option>'+effOptsHtml(k.effortId)+'</select>':'')+
-          ((S.collections||[]).length?'<div class="ie-lbl">Collections</div>'+colChipsHtml(k.cols,"ie-cols"):'')+
+          colChipsHtml(k.cols,"ie-cols")+
           (S.people.length?'<div class="ie-lbl">People</div><div class="chips" id="ie-people">'+
             S.people.map(function(pp){return '<button type="button" class="chip" data-pid="'+esc(pp.id)+'" aria-pressed="'+((k.personIds||[]).indexOf(pp.id)>=0)+'">'+esc(pp.name)+'</button>';}).join("")+'</div>':'')+
           '<div class="ie-lbl">Day</div><input type="date" id="ie-day" value="'+esc(k.day||"")+'" aria-label="First day"/>'+
@@ -4648,8 +4751,9 @@ function GENA_MAIN() {
     }
     var subRows="";
     if(k.subs&&k.subs.length){
-      pills+=subsPill(k.id,k.subs,k.day);
-      subRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+(subSkipped(s,k.day)?" sub-skip":"")+'" draggable="true" data-subkind="sub" data-subof="'+esc(k.id)+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-sid="'+esc(s.id)+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subRepeatBits(k,s)+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("");
+      pills+=subsPill(k.id,k.subs,k.day,goalDone(k));
+      var vis=subsVisible(k.id,k.subs);
+      subRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){if(vis&&!vis[i]) return ""; return '<li class="sub '+(s.done?"done":"")+(subSkipped(s,k.day)?" sub-skip":"")+'" draggable="true" data-subkind="sub" data-subof="'+esc(k.id)+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-sid="'+esc(s.id)+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subRepeatBits(k,s)+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("")+subsMoreLi(k.id,k.subs);
     }
     if(ieOpensHere(k.id)) return inlineEditorLi(k);
     if(pendingSubAdd===k.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+esc(k.id)+'" value="'+esc(draftOf("sub:"+k.id))+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
@@ -4764,8 +4868,9 @@ function GENA_MAIN() {
         peoplePills(k);
       var lsubRows="";
       if(k.subs&&k.subs.length){
-        lpills+=subsPill(k.id,k.subs,k.day);
-        lsubRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){return '<li class="sub '+(s.done?"done":"")+(subSkipped(s,k.day)?" sub-skip":"")+'" draggable="true" data-subkind="sub" data-subof="'+esc(k.id)+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-tid="'+esc(k.id)+'" data-sid="'+esc(s.id)+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subRepeatBits(k,s)+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("");
+        lpills+=subsPill(k.id,k.subs,k.day,goalDone(k));
+        var lvis=subsVisible(k.id,k.subs);
+        lsubRows=subsCollapsed(k.id)?"":k.subs.map(function(s,i){if(lvis&&!lvis[i]) return ""; return '<li class="sub '+(s.done?"done":"")+(subSkipped(s,k.day)?" sub-skip":"")+'" draggable="true" data-subkind="sub" data-subof="'+esc(k.id)+'" data-si="'+i+'"><button class="chk '+(s.done?"done":"")+'" data-act="sub-toggle" data-tid="'+esc(k.id)+'" data-sid="'+esc(s.id)+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><span class="sub-t">'+esc(s.text)+'</span>'+subRepeatBits(k,s)+subMoveBtns(k.id,i,k.subs.length,"sub")+'</li>';}).join("")+subsMoreLi(k.id,k.subs);
       }
       if(pendingSubAdd===k.id) lsubRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+esc(k.id)+'" value="'+esc(draftOf("sub:"+k.id))+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
       var lsubsHtml=lsubRows?'<ul class="subs">'+lsubRows+'</ul>':'';
@@ -4930,9 +5035,9 @@ function GENA_MAIN() {
     return 'top:calc(var(--hh) * '+(b.s/60).toFixed(3)+' + 1px);height:max(18px, calc(var(--hh) * '+((b.e-b.s)/60).toFixed(3)+' - 3px));left:calc('+(b.col*w).toFixed(2)+'% + 1px);width:calc('+w.toFixed(2)+'% - 3px);'; }
   /* V6.8 W25: a task's subtasks in Plan's panel (its existing `subs`): tick one, remove one, or + subtask, which opens the task's form
      at its subtask entry (Enter adds the next) */
-  function rbSubsHtml(k){ var ss=k.subs||[];
-    return '<span class="rb-subs">'+ss.map(function(sb){ return '<span class="sub'+(sb.done?" done":"")+'"><button class="chk'+(sb.done?" done":"")+'" data-act="sub-toggle" data-tid="'+esc(k.id)+'" data-sid="'+esc(sb.id)+'" aria-label="Toggle subtask" aria-pressed="'+!!sb.done+'"></button><span class="sub-t">'+esc(sb.text)+'</span>'+
-      '<button type="button" class="rb-subx" data-act="rb-subrm" data-tid="'+esc(k.id)+'" data-sid="'+esc(sb.id)+'" aria-label="Remove subtask" title="Remove">✕</button></span>'; }).join("")+
+  function rbSubsHtml(k){ var ss=k.subs||[], vis=subsVisible(k.id,ss);
+    return '<span class="rb-subs">'+ss.map(function(sb,i){ if(vis&&!vis[i]) return ""; return '<span class="sub'+(sb.done?" done":"")+'"><button class="chk'+(sb.done?" done":"")+'" data-act="sub-toggle" data-tid="'+esc(k.id)+'" data-sid="'+esc(sb.id)+'" aria-label="Toggle subtask" aria-pressed="'+!!sb.done+'"></button><span class="sub-t">'+esc(sb.text)+'</span>'+
+      '<button type="button" class="rb-subx" data-act="rb-subrm" data-tid="'+esc(k.id)+'" data-sid="'+esc(sb.id)+'" aria-label="Remove subtask" title="Remove">✕</button></span>'; }).join("")+subsFoldBtn(k.id,ss)+
       '<span class="rb-subadd"><button type="button" class="pill tap" data-act="rb-subs" data-tid="'+esc(k.id)+'">+ subtask</button></span></span>'; }
   // a timed task: click to edit, drag to move, the strip at the bottom to resize (unchanged behaviour)
   function taskBlockHtml(b){
@@ -4940,7 +5045,7 @@ function GENA_MAIN() {
     // a white card with its Focus colour on the edge (a pattern draws its strip there); events are the filled blocks (D3)
     return '<div class="tblock tk'+(k.status==="done"?" done":"")+(p?"":" plain")+bd[0]+'" draggable="true" data-id="'+esc(k.id)+'" data-act="tb-edit" '+
       'style="'+tgPos(b)+'--c:'+esc(p?hueOf(p).color:"var(--terra)")+';" title="'+esc(k.title)+' · '+w+'">'+
-      '<span class="tb-title"><button type="button" class="tb-chk'+(k.status==="done"?" on":"")+'" data-act="toggle" aria-pressed="'+(k.status==="done")+'" aria-label="'+(k.status==="done"?"Mark not done":"Mark done")+'"></button>'+(k.priority?"★ ":"")+esc(k.title)+'</span><span class="tb-time">'+w+((k.subs||[]).length?' · '+subCountText(k.subs,k.day):'')+'</span>'+
+      '<span class="tb-title"><button type="button" class="tb-chk'+(k.status==="done"?" on":"")+'" data-act="toggle" aria-pressed="'+(k.status==="done")+'" aria-label="'+(k.status==="done"?"Mark not done":"Mark done")+'"></button>'+(k.priority?"★ ":"")+esc(k.title)+'</span><span class="tb-time">'+w+((k.subs||[]).length?' · '+subCountText(k.subs,k.day,goalDone(k)):'')+'</span>'+
       '<span class="tb-resize" title="Drag to change the length"></span></div>';
   }
   var selEvId=null;   // the event whose details are open (D1); this device, this session
@@ -5005,14 +5110,21 @@ function GENA_MAIN() {
   }
   /* V6.7 W19: in Week, Work week and 3 Days (and Plan Week's grid) a handle on each day's right border widens that day and
      narrows the others; once the others are at their narrowest the grid grows and scrolls sideways. The widths are this
-     device's, per tab, in px (localStorage["gena-ui-colw"]); a double-click on a handle makes the days equal again. A track is
-     minmax(w px, w fr), so a wider window shares its room in the same proportions; a phone has no handles and equal days */
+     device's, per tab (localStorage["gena-ui-colw"]); a double-click on a handle makes the days equal again. V6.11 finding 8: they are kept
+     as each day's share of the week (f) and how far the week ran past the window (s, 1 when it fit), not in px, so a day widened on a
+     big screen does not make the week scroll sideways on the laptop; px floors apply only while dragging. A track is minmax(44 px,
+     share fr); an old list of px widths reads as shares that fit. A phone has no handles and equal days */
   var COLW_KEY="gena-ui-colw", COLW_MIN=44;
   function colTab(){ var m=calMode(); return m==="week"||m==="workweek"||m==="3day"?view:(view==="week"&&planWeekMode()==="grid"?"week":null); }
   function colwAll(){ var o=null; try{ o=JSON.parse(localStorage.getItem(COLW_KEY)||"null"); }catch(e){} return o&&typeof o==="object"&&!Array.isArray(o)?o:{}; }
-  function colwFor(tab,n){ var w=tab?colwAll()[tab]:null; return Array.isArray(w)&&w.length===n&&w.every(function(x){ return typeof x==="number"&&x>=COLW_MIN&&x<=4000; })?w:null; }
-  function colwPut(tab,w){ var o=colwAll(); if(w) o[tab]=w.map(function(x){ return Math.round(x); }); else delete o[tab]; try{ localStorage.setItem(COLW_KEY,JSON.stringify(o)); }catch(e){} }
-  function colwStyle(w){ return w?"--colw:"+w.map(function(x){ return "minmax("+Math.round(x)+"px,"+Math.round(x)+"fr)"; }).join(" ")+";--colmin:"+Math.round(w.reduce(function(a,b){ return a+b; },0))+"px;":""; }
+  function colwFor(tab,n){ var w=tab?colwAll()[tab]:null;
+    if(Array.isArray(w)) return w.length===n&&w.every(function(x){ return typeof x==="number"&&x>=COLW_MIN&&x<=4000; })?colwShares(w,1):null;   // as V6.7 kept them, in px
+    return w&&Array.isArray(w.f)&&w.f.length===n&&w.f.every(function(x){ return typeof x==="number"&&x>0&&x<1; })&&typeof w.s==="number"&&w.s>=1&&w.s<=20?w:null; }
+  function colwShares(w,s){ var C=w.reduce(function(a,b){ return a+b; },0); return {f:w.map(function(x){ return Math.round(x/C*1e4)/1e4; }), s:s>1.005?Math.round(s*1000)/1000:1}; }
+  // w: the px widths a drag left; area: the room the days had in the window then (the week's share of it past 1 is s)
+  function colwPut(tab,w,area){ var o=colwAll(); if(w) o[tab]=colwShares(w,area>0?w.reduce(function(a,b){ return a+b; },0)/area:1); else delete o[tab]; try{ localStorage.setItem(COLW_KEY,JSON.stringify(o)); }catch(e){} }
+  function colwVars(cw){ return [cw.f.map(function(x){ return "minmax("+COLW_MIN+"px,"+x+"fr)"; }).join(" "), "max("+(cw.f.length*COLW_MIN)+"px, (100% - var(--gut)) * "+cw.s+")"]; }
+  function colwStyle(cw){ if(!cw) return ""; var v=colwVars(cw); return "--colw:"+v[0]+";--colmin:"+v[1]+";"; }
   // the widths after day i's right border moves dx px: it takes dx, the others share what is left as they were, none under COLW_MIN
   function colwDrag(w0,i,dx){ var C=w0.reduce(function(a,b){ return a+b; },0), t=Math.max(COLW_MIN,w0[i]+dx), others=C-w0[i], rest=C-t;
     return w0.map(function(x,j){ return j===i?t:Math.max(COLW_MIN,others>0?x*rest/others:COLW_MIN); }); }
@@ -5072,7 +5184,7 @@ function GENA_MAIN() {
     runs.forEach(function(r,i){ var a=i?runs[i-1][1]:null, b=r[0];
       if(tdy&&nm>=b) return;
       if(tdy&&(a===null||a<=nm)) out+=mk(nm,b,true);
-      else if(a!==null) out+=mk(a,b,false); });
+      else if(a!==null) out+=mk(Math.max(a,VIEW_FROM*60),Math.min(b,VIEW_TO*60),false); });   // V6.11 finding 13: a gap between blocks counts only the hours in view (7 to 9), not the night
     return out;
   }
   // a column head or a month day: that day, in the module he is in
@@ -5097,6 +5209,9 @@ function GENA_MAIN() {
     [].forEach.call(m.querySelectorAll(".mod-note"),function(n){ over-=n.getBoundingClientRect().height+10; });   // an empty day's note may sit below the hours
     if(over>0&&h>160){ h=Math.max(160,h-over); sc.style.height=h+"px"; }
     var hh=tgHourPx(h,hoursCfg().zoom); g.style.setProperty("--hh",hh+"px");
+    // V6.11 finding 4: below about 900 px an hour keeps its 36 px floor and Fit cannot show 7 to 9, so its button stops promising it
+    var fb=document.querySelector('.mod-zoom [data-z="fit"]'), fl=ZOOMS[0][1]+(h<(VIEW_TO-VIEW_FROM)*ZOOMS[0][3]?"":" "+(VIEW_FROM%12||12)+" to "+(VIEW_TO%12||12));
+    if(fb&&fb.textContent!==fl){ fb.textContent=fl; fb.title=fl===ZOOMS[0][1]?"A taller window shows "+(VIEW_FROM%12||12)+" AM to "+(VIEW_TO%12||12)+" PM whole":""; }
     return {h:h, hh:hh, full:full};
   }
   function tgPlaceScroll(m){
@@ -5262,10 +5377,16 @@ function GENA_MAIN() {
     return true;
   }
   // apply, save, draw; then the card he typed in gets its field back (the popout, the panel or the sheet)
+  // V6.11 finding 10: a change fired by the blur of a mouse press is saved at once, but its redraw waits for the release, so the click
+  // still reaches the event it was aimed at (a redraw at mousedown replaced it, and the click went nowhere)
+  var evPress=false;
   function evQuickApply(id,f,v,card){
     var e=evById(id); if(!e||!evQuick(e,f,v)) return false;
     var where=card&&card.dataset.where, focusF=document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.f;
-    save(); render();
+    save();
+    if(evPress){ var t=0, go=function(){ if(t) return; t=1; document.removeEventListener("pointerup",up,true); document.removeEventListener("pointercancel",up,true); render(); }, up=function(){ setTimeout(go,0); };
+      document.addEventListener("pointerup",up,true); document.addEventListener("pointercancel",up,true); setTimeout(go,1500); return true; }
+    render();
     if(where==="sheet"){ var m=document.querySelector("#modal-root .evc"); if(m){ var tmp=document.createElement("div"); tmp.innerHTML=evDetailsHtml(evById(id)||e,"sheet"); m.replaceWith(tmp.firstChild); } }
     if(focusF){ var c=document.querySelector(where==="pop"?"#evpop .evc":(where==="sheet"?"#modal-root .evc":"#rightbar .evc")), el=c&&c.querySelector('[data-f="'+focusF+'"]'); if(el&&el.tagName!=="BUTTON") el.focus({preventScroll:true}); }
     return true;
@@ -5274,6 +5395,7 @@ function GENA_MAIN() {
     document.addEventListener("change",function(ev){ var el=ev.target, card=el.closest&&el.closest(".evc"); if(!card||!el.dataset.f) return;
       evQuickApply(el.dataset.eid,el.dataset.f,el.type==="checkbox"?el.checked:el.value,card); });
     document.addEventListener("keydown",function(ev){ var el=ev.target; if(ev.key!=="Enter"||!el.closest||!el.closest(".evc")||el.tagName!=="INPUT"||!el.dataset.f) return; ev.preventDefault(); el.blur(); },true);
+    document.addEventListener("pointerdown",function(){ evPress=true; },true); document.addEventListener("pointerup",function(){ evPress=false; },true); document.addEventListener("pointercancel",function(){ evPress=false; },true);
     // V6.11 finding 2: a field a redraw put back (restoreUi) was refocused with his text already in it, so leaving it fires no change; apply it here
     // (after a real change the card is redrawn, so this field is gone, and a second apply of the same value is a no-op)
     document.addEventListener("focusout",function(ev){ var el=ev.target, card=el&&el.closest&&el.closest(".evc"); if(!card||!el.isConnected||el.tagName!=="INPUT"||el.type==="checkbox"||!el.dataset.f||el.value===el.defaultValue) return;
@@ -5793,7 +5915,7 @@ function GENA_MAIN() {
         '<textarea id="tc-in" rows="2" placeholder="e.g. Send Chris the write-up @priority\nBook the next session @tomorrow"></textarea></div>'+
       '<div class="modal-actions"><button class="btn ghost" id="tc-none">'+(touch?"Nothing to add":"Cancel")+'</button><button class="btn primary" id="tc-go">Save</button></div>',"form");
     var box=document.getElementById("tc-items");
-    function addRow(){ var d=document.createElement("div"); d.className="tc-item"; d.innerHTML=captureItemHtml(p); box.appendChild(d); var t=d.querySelector(".tc-title"); if(t) t.focus(); }
+    function addRow(){ var d=document.createElement("div"); d.className="tc-item"; d.innerHTML=captureItemHtml(p); box.appendChild(d); dfEnhance(d); var t=d.querySelector(".tc-title"); if(t) t.focus(); }   // V6.10 W38: a row added later gets its picker too
     box.onclick=function(e){ var x=e.target.closest("[data-tcx]"); if(x){ x.closest(".tc-item").remove(); } };
     document.getElementById("tc-add").onclick=addRow;
     if(!touch) addRow(); else { var tn=document.getElementById("tc-notes"); if(tn) tn.focus(); }
@@ -6285,7 +6407,7 @@ function GENA_MAIN() {
   function backlogRow(k){
     var p=proj(k.projectId);
     var pills=(k.priority?'<span class="pill imp">★</span>':"")+((k.rollover||0)>=1?'<span class="pill aged'+(k.rollover>=7?" hot":"")+'">carried '+k.rollover+'d</span>':"")+(p?'<span class="pill proj'+pk(p)+'" style="'+pcVars(p)+'"><i class="pdot"></i>'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+
-      (k.subs&&k.subs.length?'<span class="pill subs-n">'+subCountText(k.subs,k.day)+'</span>':"");
+      (k.subs&&k.subs.length?'<span class="pill subs-n">'+subCountText(k.subs,k.day,goalDone(k))+'</span>':"");
     var chips='<button data-act="sched" data-id="'+esc(k.id)+'" data-d="'+today()+'">📅 Today</button>'+
       '<button data-act="sched" data-id="'+esc(k.id)+'" data-d="'+addDays(today(),1)+'">→ Tomorrow</button>';
     var nm=nextDow(1); chips+='<button data-act="sched" data-id="'+esc(k.id)+'" data-d="'+nm+'">⏭ Mon '+(+nm.slice(8))+'</button>';
@@ -6376,7 +6498,7 @@ function GENA_MAIN() {
       h+='<ul class="tasks">'+(list.length?list.map(function(k){ var kf=proj(k.projectId);
         return '<li class="task" data-id="'+esc(k.id)+'"><button class="chk" data-act="toggle" aria-label="done" aria-pressed="false"></button>'+
           '<div class="task-main" data-act="edit"><div class="task-title">'+esc(k.title)+'</div>'+
-          '<div class="task-meta"><span class="pill block">'+(k.day?niceDate(k.day):"someday")+'</span>'+(kf&&kf.id!==e.projectId?'<span class="pill block">'+esc(kf.name)+'</span>':'')+(k.subs&&k.subs.length?'<span class="pill subs-n">'+subCountText(k.subs,k.day)+'</span>':'')+'</div></div></li>';
+          '<div class="task-meta"><span class="pill block">'+(k.day?niceDate(k.day):"someday")+'</span>'+(kf&&kf.id!==e.projectId?'<span class="pill block">'+esc(kf.name)+'</span>':'')+(k.subs&&k.subs.length?'<span class="pill subs-n">'+subCountText(k.subs,k.day,goalDone(k))+'</span>':'')+'</div></div></li>';
       }).join(""):'<div class="empty">'+(!all.length?"No steps yet":(done===all.length?"Every step done 🎉":"No open steps"))+'</div>')+'</ul>';
       if(open.length>6) h+='<div class="cal-more">+'+(open.length-6)+' more</div>';
       h+=richTextHtml("pj:"+e.id,e.notes||"","Project notes…",70,null,"rte-compact");
@@ -6427,7 +6549,7 @@ function GENA_MAIN() {
       html+='<ul class="tasks">'+(openTasks.length?openTasks.map(function(k){
         return '<li class="task" data-id="'+esc(k.id)+'"><button class="chk" data-act="toggle" aria-label="done" aria-pressed="false"></button>'+
           '<div class="task-main" data-act="edit"><div class="task-title">'+esc(k.title)+'</div>'+
-          '<div class="task-meta"><span class="pill block">'+(k.day?niceDate(k.day):"someday")+'</span>'+(k.subs&&k.subs.length?'<span class="pill subs-n">'+subCountText(k.subs,k.day)+'</span>':'')+'</div></div></li>';
+          '<div class="task-meta"><span class="pill block">'+(k.day?niceDate(k.day):"someday")+'</span>'+(k.subs&&k.subs.length?'<span class="pill subs-n">'+subCountText(k.subs,k.day,goalDone(k))+'</span>':'')+'</div></div></li>';
       }).join(""):'<div class="empty">No open tasks 🎉</div>');
       if(ts.filter(function(k){return k.status==="todo";}).length>6) html+='<div class="cal-more">+'+(ts.filter(function(k){return k.status==="todo";}).length-6)+' more</div>';
       html+='</ul>';
@@ -6587,7 +6709,8 @@ function GENA_MAIN() {
         (gone?'<span class="pill block">ended '+esc(niceDate(tp.until))+'</span>':(tp.paused?'<span class="pill block">💤 paused</span>':(nx?'<span class="pill block">next '+esc(nx===t?"today":niceDate(nx))+'</span>':'')))+
         '<span class="pill '+(st.done?"good":"block")+'" title="Distinct days, over the last 14">'+st.done+' done · '+st.skipped+' skipped in 14 days</span>'+
         '<span class="pill block">'+(last?"last done "+esc(niceDate(last)):"never done")+'</span></div>'+
-        (repeatHint(tp,st)?'<button class="chip rep-hint" data-act="tpl-hint" data-tid="'+esc(tp.id)+'">Turn into a habit or pause?</button>':'')+'</div>'+
+        (repeatHint(tp,st)?'<button class="chip rep-hint" data-act="tpl-hint" data-tid="'+esc(tp.id)+'">Turn into a habit or pause?</button>'+
+          (weeklyGoal(tp)?'':'<button class="chip rep-hint" data-act="tpl-goal" data-tid="'+esc(tp.id)+'" title="A weekly repeat of 20 items: what you check off one day is gone the next; a fresh 20 each Monday">Make this a weekly goal of 20</button>'):'')+'</div>'+
         (gone?'':'<button class="chip" data-act="tpl-pause" data-tid="'+esc(tp.id)+'">'+(tp.paused?"Resume":"Pause")+'</button>')+
         '<button class="task-x" data-act="tpl-del" data-tid="'+esc(tp.id)+'" style="opacity:1" aria-label="Stop repeating" title="Stop repeating">✕</button></li>';
     }
@@ -7110,7 +7233,7 @@ function GENA_MAIN() {
         t.title=(document.getElementById("ie-title").value||"").trim()||t.title;
         t.projectId=document.getElementById("ie-proj").value||null;
         var ieEf=document.getElementById("ie-eff"); if(ieEf){ if(ieEf.value) t.effortId=ieEf.value; else delete t.effortId; }
-        if(ieKeep.cols) setCols(t,ieKeep.cols.slice());
+        if(ieKeep.cols) setCols(t,ieKeep.cols.slice()); colFoldShut();   // V6.10 W38: a save folds Collections again
         t.personIds=iePeople.slice();
         var dv=document.getElementById("ie-day").value||null;
         var evv=(document.getElementById("ie-end")||{}).value||null;
@@ -7143,6 +7266,7 @@ function GENA_MAIN() {
       });
       var ieProjSel=document.getElementById("ie-proj"), ieEffSel=document.getElementById("ie-eff");
       if(ieProjSel) dfEnhance(ieProjSel.parentNode);   // V6.8 W33
+      colFoldWire(document.getElementById("ie-cols"),function(id){ ieKeep.cols.push(id); return ieKeep.cols; });   // V6.10 W38
       // J2: choosing a Project with a Focus fills the Focus when it is empty
       if(ieEffSel) ieEffSel.onchange=function(){ var e=effortById(ieEffSel.value); if(e&&e.projectId&&ieProjSel&&!ieProjSel.value&&proj(e.projectId)) ieProjSel.value=e.projectId; };
       if(ieProjSel) ieProjSel.onchange=function(){
@@ -7492,6 +7616,7 @@ function GENA_MAIN() {
         else if(wk==="person"){ view="people"; syncNav(); render(); var pc=document.querySelector('.proj-card [data-act="editperson"][data-id="'+wid+'"]'); if(pc) pc.scrollIntoView({block:"center"}); }
         else { var wt=S.tasks.find(function(x){return x.id===wid;}); if(wt){ if(wt.day){ viewDay=wt.day; view="today"; } syncNav(); render(); toast("Jumped to “"+wt.title.slice(0,40)+"”"); } } }
       else if(act==="subs-toggle"){ toggleSubs(a.dataset.id||id||anyId); }
+      else if(act==="subs-5"){ var s5="subs5:"+a.dataset.id; uiSetFold(s5,!uiFolded(s5,true)); render(); }   // V6.12 W40: this device only
       // subtask reordering — arrows here, drag handled alongside the task drag code
       else if(act==="sub-up"||act==="sub-down"){ var mt=S.tasks.find(function(x){return x.id===(a.dataset.id||id||anyId);});
         if(mt&&mt.subs){ var mi=+a.dataset.i, mj=act==="sub-up"?mi-1:mi+1;
@@ -7635,10 +7760,11 @@ function GENA_MAIN() {
           bulkApply(function(k){ k.day=dv; if(!dv) k.block=null; k.rollover=0; }, dv?"{n} moved to "+niceDate(dv):"{n} moved to Someday"); }; }
       else if(act==="bulk-project"){ var bids2=bulkSelected(); if(!bids2.length){ toast("Tap tasks to select them first"); return; }
         modal('<h3>Tag '+bids2.length+' task'+(bids2.length===1?"":"s")+'</h3>'+
-          '<div class="fld"><label>Focus</label><div class="chips" id="bp-list"><button class="chip" data-pid="">No Focus</button>'+S.projects.map(function(p){return '<button class="chip" data-pid="'+esc(p.id)+'">'+esc(p.name)+'</button>';}).join("")+'</div></div>'+
+          '<div class="fld"><label for="bp-proj">Focus</label><select id="bp-proj" aria-label="Focus"><option value="__keep"></option><option value="">No Focus</option>'+S.projects.map(function(p){return '<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>';}).join("")+'</select></div>'+
           '<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button></div>');
         document.querySelector("[data-x]").onclick=close;
-        document.getElementById("bp-list").onclick=function(e2){ var b2=e2.target.closest(".chip"); if(!b2) return; var pid2=b2.dataset.pid||null; close();
+        // V6.10 W38: the shared picker; a Focus (or No focus, or a new Focus from +) tags them at once
+        document.getElementById("bp-proj").onchange=function(){ if(this.value==="__keep") return; var pid2=this.value||null; close();
           bulkApply(function(k){ k.projectId=pid2; },"{n} tagged"); }; }
       else if(act==="bulk-delete"){ var bids3=bulkSelected(); if(!bids3.length){ toast("Tap tasks to select them first"); return; }
         confirmModal("Delete "+bids3.length+" task"+(bids3.length===1?"":"s")+"?","They disappear from every list.","Delete",function(){
@@ -7706,6 +7832,7 @@ function GENA_MAIN() {
       else if(act==="effortstep"){ var es=effortById(a.dataset.pid); if(es) openTaskModal({projectId:es.projectId&&proj(es.projectId)?es.projectId:null, effortId:es.id}); }   // J2: a step in the Project's Focus
       else if(act==="tidytpl"){ openTidyRepeatsModal(); }
       else if(act==="tpl-hint"){ openRepeatHintModal(a.dataset.tid); }
+      else if(act==="tpl-goal"){ if(makeWeeklyGoal(a.dataset.tid)){ save(); render(); toast("Now a weekly goal of 20: this week's copy is on today"); } }   // V6.12 W39 (c)
       else if(act==="tpl-edit"){ var te=S.templates.find(function(x){return x.id===a.dataset.tid;});
         // a repeat is edited through one of its copies (the modal edits the series): today's, else the latest
         var tcs=te?S.tasks.filter(function(x){ return x.tplId===te.id; }).sort(function(x,y){ return (y.day===today())-(x.day===today())||String(y.day||"").localeCompare(String(x.day||"")); }):[];
@@ -8130,91 +8257,126 @@ function GENA_MAIN() {
   var lastFocus=null, onModalDismiss=null;
   /* dismissing a modal (click-away / Escape) runs its auto-save if one is set; the explicit Cancel button still discards */
   function dismissModal(){ if(onModalDismiss){ var f=onModalDismiss; onModalDismiss=null; try{ f(); }catch(e){ close(); } } else close(); }
-  /* V6.8 W33: one Domain-then-Focus picker for every place that chose a Focus or a Domain from a dropdown. The <select> stays in the
-     page as the source of truth (hidden): the picker reads its options, writes its value and fires its change event, so every save
-     and every onchange works as before. A chip shows the choice ("JIK › Prayer"); a tap opens a panel of Domain buttons (segmented,
-     in each Domain's colour, JIK and DRM first); a Domain pops out its Focus buttons (their W27 shades) and, where the form has a
-     Project select, a Focus its Projects. Arrows move along a row, Up and Down between rows, Escape closes; a phone stacks the rows. */
-  var DFP_FOCUS="select#q-proj,select#ie-proj,select#m-proj,select#h-proj,select#ev-p,select#pe-foc,select.tc-foc,select#ef-foc,select.rv-proj", DFP_DOM="select#p-prof,select#ef-dom,select#pe-dom", DFP_EFF={"ie-proj":"ie-eff","m-proj":"m-eff"};
+  /* V6.8 W33, V6.10 W38: one Domain-then-Focus picker for every place that chose a Focus or a Domain from a dropdown, open in place
+     (W38: no click to open). The <select> stays in the page as the source of truth (hidden): the picker reads its options, writes its
+     value and fires its change event, so every save and every onchange works as before. A row of Domain bubbles (styled as the
+     Collections chips, JIK and DRM first); a Domain pops out its Focus bubbles right after it (their W27 shades) and, where the form
+     has a Project select, a Focus its Projects. A picked bubble stays highlighted and a second tap clears it; No focus is a bubble.
+     A + bubble ends the Domain row and the Focus row: it asks for a name (and emoji) in place and makes a Domain, or a Focus in the
+     open Domain, with the editors' own creation code, then picks it. Arrows move along a row, Up and Down between rows. */
+  var DFP_FOCUS="select#q-proj,select#ie-proj,select#m-proj,select#h-proj,select#ev-p,select#pe-foc,select.tc-foc,select#ef-foc,select.rv-proj,select#bp-proj", DFP_DOM="select#p-prof,select#ef-dom,select#pe-dom", DFP_EFF={"ie-proj":"ie-eff","m-proj":"m-eff"};
   function dfEnhance(root){ if(!root||!root.querySelectorAll) return; [].forEach.call(root.querySelectorAll(DFP_FOCUS+","+DFP_DOM),function(sel){ if(!sel.__dfp) dfAttach(sel,sel.matches(DFP_DOM)?"dom":"focus"); }); }
   var DFP_VALUE=typeof HTMLSelectElement!=="undefined"?Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,"value"):null;
+  var DFP_INDEX=typeof HTMLSelectElement!=="undefined"?Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,"selectedIndex"):null;   // V6.11 finding 14: restoreUi sets this one
   dfEnhance(document.querySelector(".capture"));   // the quick-add Focus (here, below the constants: the hoisting trap)
+  // V6.10 W38: on a fitted time grid the quick-add's bubbles open while the box (or a bubble) has the focus. A tap on a bubble keeps
+  // the caret where it is: WebKit gives a clicked button no focus, so the box would lose it and the bubbles close under the tap
+  (function(){ var cap=document.querySelector(".capture"), box=cap&&cap.querySelector(".dfp"); if(!box) return;
+    cap.addEventListener("focusin",function(){ cap.classList.add("dfp-open"); });
+    cap.addEventListener("focusout",function(e){ if(!e.relatedTarget||!cap.contains(e.relatedTarget)) cap.classList.remove("dfp-open"); });
+    box.addEventListener("mousedown",function(e){ if(document.body.classList.contains("tg-on")&&e.target.closest("button")) e.preventDefault(); }); })();
   function dfAttach(sel,kind){
-    var chip=document.createElement("button"); chip.type="button"; chip.className="dfp-chip"; chip.setAttribute("aria-haspopup","dialog"); chip.setAttribute("aria-expanded","false");
+    var box=document.createElement("div"); box.className="dfp"; box.setAttribute("role","group");
     var lab=sel.getAttribute("aria-label")||(sel.labels&&sel.labels[0]?sel.labels[0].textContent.replace(/\(.*\)/,"").trim():"")||(kind==="dom"?"Domain":"Focus");
-    sel.__dfp={kind:kind, chip:chip, label:lab}; sel.classList.add("dfp-src"); sel.setAttribute("tabindex","-1"); sel.parentNode.insertBefore(chip,sel.nextSibling);
+    sel.__dfp={kind:kind, box:box, label:lab, dom:null, v:null, add:null, html:""}; sel.classList.add("dfp-src"); sel.setAttribute("tabindex","-1"); sel.parentNode.insertBefore(box,sel.nextSibling);
+    box.setAttribute("aria-label",lab);
     if(DFP_VALUE) Object.defineProperty(sel,"value",{configurable:true, get:function(){ return DFP_VALUE.get.call(this); }, set:function(v){ DFP_VALUE.set.call(this,v); dfPaint(this); }});
+    if(DFP_INDEX) Object.defineProperty(sel,"selectedIndex",{configurable:true, get:function(){ return DFP_INDEX.get.call(this); }, set:function(v){ DFP_INDEX.set.call(this,v); dfPaint(this); }});
     if(typeof MutationObserver!=="undefined") new MutationObserver(function(){ dfPaint(sel); }).observe(sel,{childList:true});
     sel.addEventListener("change",function(){ dfPaint(sel); });
-    chip.onclick=function(){ if(dfOpenSel===sel) dfClose(); else dfOpen(sel); };
+    var eff=DFP_EFF[sel.id]&&document.getElementById(DFP_EFF[sel.id]); if(eff) eff.addEventListener("change",function(){ dfPaint(sel); });
+    box.onclick=function(e){ var b=e.target.closest("button"); if(b) dfPick(sel,b); };
+    box.onkeydown=function(e){ dfKey(sel,e); };
     dfPaint(sel);
   }
   function dfOpts(sel){ return [].map.call(sel.options,function(o){ return o.value; }); }
   function dfFocusDom(f){ return f&&f.profileId&&profileById(f.profileId)?f.profileId:""; }
   function dfName(x){ return x?(x.emoji?x.emoji+" ":"")+x.name:""; }
-  function dfPaint(sel){ var st=sel.__dfp; if(!st) return; var v=sel.value, t;
-    if(st.kind==="dom"){ var d=profileById(v); t=d?dfName(d):(v?"":"None"); }
-    else if(v==="__new") t="+ New Focus…";
-    else { var f=proj(v); t=f?(dfFocusDom(f)?profileById(f.profileId).name+" › ":"")+dfName(f):"No focus";
-      var eff=DFP_EFF[sel.id]&&document.getElementById(DFP_EFF[sel.id]), e=eff&&effortById(eff.value); if(f&&e) t+=" › "+dfName(e); }
-    var h=st.kind==="dom"?hueOf(profileById(v)):hueOf(proj(v)), c=v&&h&&h.color?(st.kind==="dom"?domBand(h.color):h.color):"";
-    var html='<i class="dfp-sw" aria-hidden="true"'+(c?' style="background:'+esc(patBg(c,h.pat,0.5,"strip"))+'"':'')+'></i><span class="dfp-t">'+esc(t)+'</span><span class="dfp-car" aria-hidden="true">▾</span>';
-    if(st.chip.innerHTML!==html) st.chip.innerHTML=html;
-    st.chip.setAttribute("aria-label",st.label+": "+t+". Change"); }
-  var dfOpenSel=null, dfState=null;
-  function dfPanelEl(){ var p=document.getElementById("dfp-panel"); if(p) return p;
-    p=document.createElement("div"); p.id="dfp-panel"; p.className="dfp-panel"; p.setAttribute("role","dialog"); p.hidden=true; document.body.appendChild(p);
-    p.onclick=function(e){ var b=e.target.closest("button"); if(!b||!dfOpenSel) return; dfPick(b); };
-    p.onkeydown=function(e){ var b=e.target.closest("button"); if(!b) return; var row=b.parentNode, bs=[].slice.call(row.querySelectorAll("button")), i=bs.indexOf(b), rows=[].slice.call(p.querySelectorAll(".dfp-row")), r=rows.indexOf(row);
-      if(e.key==="ArrowRight"||e.key==="ArrowLeft"){ e.preventDefault(); var n=bs[(i+(e.key==="ArrowRight"?1:-1)+bs.length)%bs.length]; if(n) n.focus(); }
-      else if(e.key==="ArrowDown"||e.key==="ArrowUp"){ e.preventDefault(); var to=rows[r+(e.key==="ArrowDown"?1:-1)]; if(to){ var t=to.querySelector('[aria-pressed="true"]')||to.querySelector("button"); if(t) t.focus(); } }
-      else if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); var c=dfOpenSel&&dfOpenSel.__dfp.chip; dfClose(); if(c) c.focus(); } };
-    document.addEventListener("click",function(e){ if(dfOpenSel&&!e.target.closest("#dfp-panel")&&e.target!==dfOpenSel.__dfp.chip&&!dfOpenSel.__dfp.chip.contains(e.target)) dfClose(); },true);
-    window.addEventListener("resize",function(){ if(dfOpenSel) dfClose(); });
-    document.addEventListener("scroll",function(e){ if(dfOpenSel&&!(e.target&&e.target.closest&&e.target.closest("#dfp-panel"))) dfPlace(); },true);
-    return p; }
-  function dfOpen(sel){ var st=sel.__dfp, v=sel.value; dfOpenSel=sel;
-    dfState={dom:st.kind==="dom"?v:(proj(v)?dfFocusDom(proj(v)):null), fc:st.kind==="focus"&&proj(v)?v:null};
-    if(st.kind==="focus"&&dfState.fc===null&&v==="") dfState.dom=null;
-    st.chip.setAttribute("aria-expanded","true"); dfDraw(); var p=dfPanelEl(); p.hidden=false; dfPlace();
-    var t=p.querySelector('.dfp-row:last-child [aria-pressed="true"]')||p.querySelector('[aria-pressed="true"]')||p.querySelector("button"); if(t) t.focus(); }
-  function dfClose(){ var p=document.getElementById("dfp-panel"); if(p) p.hidden=true; if(dfOpenSel) dfOpenSel.__dfp.chip.setAttribute("aria-expanded","false"); dfOpenSel=null; dfState=null; }
-  function dfPlace(){ var p=document.getElementById("dfp-panel"); if(!p||p.hidden||!dfOpenSel) return; var r=dfOpenSel.__dfp.chip.getBoundingClientRect();
-    if(!r.width&&!r.height){ dfClose(); return; }
-    var w=Math.min(window.innerWidth-16,560); p.style.maxWidth=w+"px"; var pw=p.offsetWidth, ph=p.offsetHeight, left=Math.max(8,Math.min(window.innerWidth-pw-8,r.left)), top=r.bottom+6;
-    if(top+ph>window.innerHeight-8&&r.top-ph-6>8) top=r.top-ph-6;
-    p.style.left=Math.round(left)+"px"; p.style.top=Math.round(Math.max(8,top))+"px"; }
-  function dfBtn(attr,label,on,color,pat,cls){ return '<button type="button" class="dfp-b'+(cls?" "+cls:"")+'" '+attr+' aria-pressed="'+!!on+'"'+(color?' style="--dfc:'+esc(color)+';--dfbg:'+esc(patBg(color,pat,0.5,"strip"))+'"':'')+'><i class="dfp-band" aria-hidden="true"></i>'+esc(label)+'</button>'; }
-  function dfDraw(){
-    var sel=dfOpenSel, st=sel.__dfp, p=dfPanelEl(), ov=dfOpts(sel), h="";
-    if(st.kind==="dom"){
-      h='<div class="dfp-row" role="group" aria-label="'+esc(st.label)+'">'+(ov.indexOf("")>=0?dfBtn('data-none="1"',"None",sel.value==="",null):'')+
-        S.profiles.filter(function(d){ return ov.indexOf(d.id)>=0; }).map(function(d){ return dfBtn('data-d="'+esc(d.id)+'"',dfName(d),sel.value===d.id,domBand(d.color),null,"dfp-dom"); }).join("")+'</div>';
-    } else {
-      var fcs=ov.map(function(id){ return proj(id); }).filter(Boolean), byDom={}; fcs.forEach(function(f){ (byDom[dfFocusDom(f)]=byDom[dfFocusDom(f)]||[]).push(f); });
-      h='<div class="dfp-row" role="group" aria-label="Domain">'+S.profiles.filter(function(d){ return byDom[d.id]; }).map(function(d){ return dfBtn('data-d="'+esc(d.id)+'"',dfName(d),dfState.dom===d.id,domBand(d.color),null,"dfp-dom"); }).join("")+
-        (byDom[""]?dfBtn('data-d=""',"No Domain",dfState.dom==="",null,null,"dfp-dom"):'')+
-        (ov.indexOf("")>=0?dfBtn('data-none="1"',"No focus",sel.value===""&&dfState.dom===null,null,null,"dfp-none"):'')+'</div>';
-      if(dfState.dom!==null&&byDom[dfState.dom]){ var dn=dfState.dom?profileById(dfState.dom).name:"No Domain";
-        h+='<div class="dfp-row dfp-fcs" role="group" aria-label="Focus in '+esc(dn)+'">'+byDom[dfState.dom].map(function(f){ var u=hueOf(f); return dfBtn('data-f="'+esc(f.id)+'"',dfName(f),sel.value===f.id,u&&u.color,u&&u.pat); }).join("")+
-          (ov.indexOf("__new")>=0?dfBtn('data-new="1"',"+ New Focus",false,null,null,"dfp-new"):'')+'</div>'; }
-      else if(ov.indexOf("__new")>=0&&!fcs.length) h+='<div class="dfp-row" role="group" aria-label="Focus">'+dfBtn('data-new="1"',"+ New Focus",false,null,null,"dfp-new")+'</div>';
-      var eff=DFP_EFF[sel.id]&&document.getElementById(DFP_EFF[sel.id]);
-      if(eff&&dfState.fc){ var es=dfOpts(eff).map(function(id){ return effortById(id); }).filter(function(e){ return e&&e.projectId===dfState.fc; });
-        if(es.length) h+='<div class="dfp-row dfp-pjs" role="group" aria-label="Project">'+dfBtn('data-p=""',"No project",eff.value==="",null)+es.map(function(e){ var u=hueOf(e); return dfBtn('data-p="'+esc(e.id)+'"',"◆ "+dfName(e),eff.value===e.id,u&&u.color,u&&u.pat); }).join("")+'</div>'; }
-    }
-    p.innerHTML=h; p.setAttribute("aria-label",st.label);
+  function dfB(attr,label,on,color,pat,cls,aria){ return '<button type="button" class="chip dfp-b'+(cls?" "+cls:"")+'" '+attr+' aria-pressed="'+!!on+'"'+(aria?' aria-label="'+esc(aria)+'"':'')+'>'+
+    (color?'<i class="dfp-dot" aria-hidden="true" style="background:'+esc(patBg(color,pat,0.5,"strip"))+'"></i>':'')+esc(label)+'</button>'; }
+  // the + bubble's place: a name (and an emoji) asked in place; Enter or Add makes it, Escape or ✕ puts the + back
+  function dfAddHtml(what){ return '<span class="nb-add" data-noenter role="group" aria-label="'+esc(what)+'"><input class="nb-e" maxlength="4" placeholder="🙂" aria-label="'+esc(what)+': emoji"/>'+
+    '<input class="nb-n" placeholder="'+esc(what)+'" aria-label="'+esc(what)+': name"/><button type="button" class="chip nb-ok">Add</button><button type="button" class="chip nb-x" aria-label="Cancel">✕</button></span>'; }
+  // the rows for a select: kind, its option values, its value, the open Domain (null: none; "": No Domain), the Project select
+  // ({opts, v}) where the form has one, the label, and which + is asking for a name ("dom", "fc" or null)
+  function dfHtml(kind,ov,v,dom,eff,label,add){
+    var row=function(lab,inner,cls){ return '<div class="dfp-row'+(cls?" "+cls:"")+'" role="group" aria-label="'+esc(lab)+'">'+inner+'</div>'; },
+      plus=function(k,what){ return add===k?dfAddHtml(what):dfB('data-add="'+k+'"',"+",false,null,null,"dfp-add",what); };
+    if(kind==="dom") return row(label,(ov.indexOf("")>=0?dfB('data-none="1"',"None",v==="",null):'')+
+      S.profiles.filter(function(d){ return ov.indexOf(d.id)>=0; }).map(function(d){ return dfB('data-d="'+esc(d.id)+'"',dfName(d),v===d.id,domBand(d.color),null,"dfp-dom"); }).join("")+plus("dom","New Domain"));
+    var fcs=ov.map(function(id){ return proj(id); }).filter(Boolean), byDom={}, vf=proj(v), vd=vf?dfFocusDom(vf):null;
+    fcs.forEach(function(f){ (byDom[dfFocusDom(f)]=byDom[dfFocusDom(f)]||[]).push(f); });
+    // every Domain shows (a + makes its first Focus); the one holding the pick is marked while another is open
+    var h=row("Domain",S.profiles.map(function(d){ return dfB('data-d="'+esc(d.id)+'"',dfName(d),dom===d.id,domBand(d.color),null,"dfp-dom"+(vd===d.id&&dom!==d.id?" dfp-has":"")); }).join("")+
+      (byDom[""]?dfB('data-d=""',"No Domain",dom==="",null,null,"dfp-dom"+(vd===""&&dom!==""?" dfp-has":"")):'')+
+      (ov.indexOf("")>=0?dfB('data-none="1"',"No focus",v===""&&dom===null,null,null,"dfp-none"):'')+plus("dom","New Domain"));
+    if(dom!==null&&(byDom[dom]||profileById(dom))){ var dn=dom?profileById(dom).name:"No Domain";
+      h+=row("Focus in "+dn,(byDom[dom]||[]).map(function(f){ var u=hueOf(f); return dfB('data-f="'+esc(f.id)+'"',dfName(f),v===f.id,u&&u.color,u&&u.pat); }).join("")+
+        (dom?plus("fc","New Focus in "+dn):''),"dfp-fcs"); }
+    if(eff&&vf&&dom===vd){ var es=eff.opts.map(function(id){ return effortById(id); }).filter(function(e){ return e&&e.projectId===v; });
+      if(es.length) h+=row("Project",dfB('data-p=""',"No project",eff.v==="",null)+es.map(function(e){ var u=hueOf(e); return dfB('data-p="'+esc(e.id)+'"',"◆ "+dfName(e),eff.v===e.id,u&&u.color,u&&u.pat); }).join(""),"dfp-pjs"); }
+    return h;
   }
+  // what a tap does: {v: the select's new value (undefined: unchanged), dom: the open Domain, p: the Project select's new value}
+  function dfNext(kind,v,dom,d,none,pv){
+    if(d.none) return {v:"",dom:null};
+    if(kind==="dom") return d.d===undefined?{dom:dom}:{v:d.d===v?(none?"":v):d.d, dom:dom};
+    if(d.d!==undefined){ if(d.d!==dom) return {dom:d.d};   // a Domain opens its Focuses; the pick stays until a Focus is tapped
+      var f=proj(v); return {dom:null, v:f&&dfFocusDom(f)===dom?"":undefined}; }   // tapped again it closes, clearing a pick inside it
+    if(d.f!==undefined) return {dom:dom, v:d.f===v?"":d.f};
+    if(d.p!==undefined) return {dom:dom, p:d.p===pv?"":d.p};
+    return {dom:dom};
+  }
+  function dfKeyOf(b){ var a=["data-d","data-f","data-p","data-none","data-add"].filter(function(n){ return b.hasAttribute(n); })[0]; return a?"["+a+'="'+b.getAttribute(a)+'"]':null; }
+  // one tab stop per row (the picked bubble, else the first); the arrows move within it
+  function dfRove(box){ [].forEach.call(box.querySelectorAll(".dfp-row"),function(r){ var bs=[].filter.call(r.children,function(x){ return x.tagName==="BUTTON"; }), on=bs.filter(function(x){ return x.getAttribute("aria-pressed")==="true"; })[0]||bs[0];
+    bs.forEach(function(x){ x.tabIndex=x===on?0:-1; }); }); }
+  function dfPaint(sel,want){ var st=sel.__dfp; if(!st) return; var v=sel.value, f=st.kind==="focus"&&proj(v);
+    if(f&&v!==st.v) st.dom=dfFocusDom(f);   // a new pick (by a tap or by any code) opens its Domain; browsing another keeps it
+    st.v=v;
+    var eff=DFP_EFF[sel.id]&&document.getElementById(DFP_EFF[sel.id]);
+    var html=dfHtml(st.kind,dfOpts(sel),v,st.dom,eff?{opts:dfOpts(eff),v:eff.value}:null,st.label,st.add);
+    if(html===st.html){ if(want){ var w0=st.box.querySelector(want); if(w0) w0.focus(); } return; }
+    var a=document.activeElement, had=a&&st.box.contains(a), key=had&&a.tagName==="BUTTON"?dfKeyOf(a):null, typed=[].map.call(st.box.querySelectorAll(".nb-add input"),function(x){ return x.value; });
+    st.box.innerHTML=html; st.html=html; dfRove(st.box);
+    [].forEach.call(st.box.querySelectorAll(".nb-add input"),function(x,i){ if(typed[i]) x.value=typed[i]; });   // a redraw never drops what he is typing
+    var to=want?st.box.querySelector(want):had?(key&&st.box.querySelector(key))||st.box.querySelector(".nb-n")||st.box.querySelector('button[tabindex="0"]'):null;
+    if(to) to.focus(); }
   function dfSet(sel,v){ if(sel.value===v&&v!=="__new") return; sel.value=v; sel.dispatchEvent(new Event("change",{bubbles:true})); }
-  function dfPick(b){ var sel=dfOpenSel, st=sel.__dfp, d=b.dataset;
-    if(d.none){ dfSet(sel,""); dfClose(); return; }
-    if(d.d!==undefined){ if(st.kind==="dom"){ dfSet(sel,d.d); dfClose(); return; } dfState.dom=d.d; dfState.fc=null; dfDraw(); dfPlace(); var f=document.querySelector("#dfp-panel .dfp-fcs button"); if(f) f.focus(); return; }
-    if(d.new){ dfClose(); dfSet(sel,"__new"); return; }
-    if(d.f!==undefined){ dfSet(sel,d.f); var eff=DFP_EFF[sel.id]&&document.getElementById(DFP_EFF[sel.id]);
-      if(eff&&dfOpts(eff).some(function(id){ var e=effortById(id); return e&&e.projectId===d.f; })){ dfState.fc=d.f; dfDraw(); dfPlace(); var pb=document.querySelector("#dfp-panel .dfp-pjs button"); if(pb) pb.focus(); return; }
-      dfClose(); return; }
-    if(d.p!==undefined){ var ef=document.getElementById(DFP_EFF[sel.id]); if(ef){ ef.value=d.p; ef.dispatchEvent(new Event("change",{bubbles:true})); } dfPaint(sel); dfClose(); }
+  function dfPick(sel,b){ var st=sel.__dfp, d=b.dataset;
+    if(b.classList.contains("nb-ok")){ dfAddGo(sel); return; }
+    if(b.classList.contains("nb-x")){ var k=st.add; st.add=null; dfPaint(sel,'[data-add="'+k+'"]'); return; }
+    if(d.add){ st.add=d.add; dfPaint(sel,".nb-n"); return; }
+    var eff=DFP_EFF[sel.id]&&document.getElementById(DFP_EFF[sel.id]), r=dfNext(st.kind,sel.value,st.dom,d,dfOpts(sel).indexOf("")>=0,eff?eff.value:"");
+    if(st.add&&r.dom!==st.dom) st.add=null;
+    st.dom=r.dom;
+    if(r.v!==undefined) dfSet(sel,r.v);
+    if(r.p!==undefined&&eff){ eff.value=r.p; eff.dispatchEvent(new Event("change",{bubbles:true})); }
+    dfPaint(sel,d.d!==undefined&&st.dom===d.d?".dfp-fcs button":null);
   }
+  function dfKey(sel,e){ var st=sel.__dfp, t=e.target;
+    if(t.closest(".nb-add")){ if(e.key==="Enter"){ e.preventDefault(); e.stopPropagation(); dfAddGo(sel); }
+      else if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); var k=st.add; st.add=null; dfPaint(sel,'[data-add="'+k+'"]'); } return; }
+    var b=t.closest("button"); if(!b||!b.parentNode.classList.contains("dfp-row")) return;
+    var bs=[].filter.call(b.parentNode.children,function(x){ return x.tagName==="BUTTON"; }), i=bs.indexOf(b), rows=[].slice.call(st.box.querySelectorAll(".dfp-row")), r=rows.indexOf(b.parentNode), n=null;
+    if(e.key==="ArrowRight"||e.key==="ArrowLeft") n=bs[(i+(e.key==="ArrowRight"?1:-1)+bs.length)%bs.length];
+    else if(e.key==="Home"||e.key==="End") n=bs[e.key==="Home"?0:bs.length-1];
+    else if(e.key==="ArrowDown"||e.key==="ArrowUp"){ var to=rows[r+(e.key==="ArrowDown"?1:-1)]; n=to&&(to.querySelector('[aria-pressed="true"]')||to.querySelector("button")); }
+    if(!n) return; e.preventDefault(); e.stopPropagation(); n.focus(); }
+  // + makes a Domain, a Focus in the open Domain, or a Collection, with the editors' own creation code; an empty name makes nothing
+  function dfCreate(kind,name,emoji,dom){ name=String(name||"").trim(); emoji=String(emoji||"").trim(); if(!name) return null;
+    var x=kind==="dom"?addDomain(name,emoji):kind==="col"?addCollection(name,emoji):addFocus(name,emoji,dom&&profileById(dom)?dom:null); save(); return x; }
+  function dfAddGo(sel){ var st=sel.__dfp, n=st.box.querySelector(".nb-n"), em=st.box.querySelector(".nb-e"); if(!n) return;
+    var k=st.add, x=dfCreate(k,n.value,em&&em.value,st.dom); if(!x){ n.focus(); return; }
+    st.add=null; dfOptAdd(k,x);
+    if(k==="dom"&&st.kind==="focus"){ st.dom=x.id; dfPaint(sel,'[data-add="fc"]'); }   // its Focus row opens on its + (a new Domain has none yet)
+    else { dfSet(sel,x.id); dfPaint(sel,k==="dom"?'[data-d="'+esc(x.id)+'"]':'[data-f="'+esc(x.id)+'"]'); }
+    if(editorOpen()) renderSidebar(); else render();
+    toast((k==="dom"?"New Domain “":"New Focus “")+x.name+"”"); }
+  // a new Domain or Focus is listed by every picker on screen (the quick-add's list is rebuilt)
+  function dfOptAdd(k,x){ if(k==="fc") fillProjSelect();
+    [].forEach.call(document.querySelectorAll("select.dfp-src"),function(s){ if(!s.__dfp||s.__dfp.kind!==(k==="dom"?"dom":"focus")||dfOpts(s).indexOf(x.id)>=0) return;
+      var nw=[].filter.call(s.options,function(o){ return o.value==="__new"; })[0]; s.insertBefore(new Option(dfName(x),x.id),nw||null); }); }
   /* V6.8 W34: one form layout for every editor. The form takes the window's width (less a margin) and its fields flow into 2 to 4
      balanced columns, in the order the form lists them (what, when, where it lives, extras, subtasks), so it fits without scrolling
      and scrolls only once the width is used up; Save and Cancel stay pinned at the bottom; a phone gets one column in a bottom
@@ -8238,7 +8400,7 @@ function GENA_MAIN() {
     root.innerHTML='<div class="scrim" id="scrim"><div class="modal'+(cls?" "+cls:"")+'" role="dialog" aria-modal="true">'+inner+'</div></div>';
     wireRTE(root);
     wireEmojiPickers(root);
-    dfClose(); dfEnhance(root);   // V6.8 W33
+    dfEnhance(root);   // V6.8 W33, V6.10 W38
     if(/(^| )form( |$)/.test(cls||"")) formLayout(root.querySelector(".modal"));   // V6.8 W34
     document.getElementById("scrim").onclick=function(e){ if(e.target.id==="scrim") dismissModal(); };
     var m=root.querySelector(".modal");
@@ -8254,7 +8416,7 @@ function GENA_MAIN() {
       setTimeout(function(){ var f=m.querySelector("input,select")||m.querySelector("button"); if(f) f.focus(); },0);
     return root;
   }
-  function close(){ onModalDismiss=null; dfClose(); var root=document.getElementById("modal-root"); root.innerHTML=""; root.onkeydown=null;
+  function close(){ onModalDismiss=null; var root=document.getElementById("modal-root"); root.innerHTML=""; root.onkeydown=null;
     if(lastFocus && document.contains(lastFocus)){ try{ lastFocus.focus(); }catch(e){} } lastFocus=null; }
   function confirmModal(title,msg,label,onYes){
     // Most confirms here are destructive, but a few ("Load it", "Restore") are not — so the button
@@ -8444,10 +8606,11 @@ function GENA_MAIN() {
         '<div class="fld"><label>Time</label>'+timeInputHtml("m-time",base.at)+'</div>'+
         '<div class="fld"><label>Repeat</label><div class="chips" id="m-freq">'+
           [["once","Once"],["daily","Daily"],["weekly","Weekly"],["everyN","Every N days"]].map(function(f){return '<button class="chip" data-f="'+f[0]+'" aria-pressed="'+(f[0]===freq)+'">'+f[1]+'</button>';}).join("")+'</div>'+
-          '<div id="m-ropts" style="margin-top:10px"></div>'+(etp?'<div class="sub" style="font-size:11px;margin-top:6px">This task repeats — changes here update the whole series. Pick “Once” to stop it repeating.</div>':(ed?'<div class="sub" style="font-size:11px;margin-top:6px">Pick a repeat to turn this into a recurring task going forward.</div>':""))+'</div>'+
+          '<div id="m-ropts" style="margin-top:10px"></div>'+(etp?'<div class="sub" style="font-size:11px;margin-top:6px">This task repeats — changes here update the whole series. Pick “Once” to stop it repeating.</div>'+
+            (weeklyGoal(etp)?'':'<button type="button" class="chip" id="m-goal" style="margin-top:6px" title="A weekly repeat of 20 items: what you check off one day is gone the next; a fresh 20 each Monday. Copies already made stay as they are">Make this a weekly goal of 20</button>'):(ed?'<div class="sub" style="font-size:11px;margin-top:6px">Pick a repeat to turn this into a recurring task going forward.</div>':""))+'</div>'+
         '<div class="fld"><label>Focus</label><select id="m-proj"><option value="">None</option>'+projOpts+'<option value="__new">+ New Focus…</option></select></div>'+
         ((S.efforts||[]).length?'<div class="fld"><label>Project</label><select id="m-eff"><option value="">None</option>'+effOptsHtml(base.effortId)+'</select></div>':'')+
-        ((S.collections||[]).length?'<div class="fld"><label>Collections</label>'+colChipsHtml(base.cols)+'</div>':'')+
+        '<div class="fld">'+colChipsHtml(base.cols)+'</div>'+
         (S.people.length?'<div class="fld"><label>People</label><div class="chips" id="m-people">'+S.people.map(function(pp){return '<button type="button" class="chip" data-pid="'+esc(pp.id)+'" aria-pressed="'+(selPeople.indexOf(pp.id)>=0)+'">'+esc(pp.name)+'</button>';}).join("")+'</div><div class="sub" style="font-size:11px;margin-top:6px">Tagged people see this task on their card in People.</div></div>':'')+
         '<div class="fld"><label>Importance</label><div class="chips" id="m-imp">'+
           '<button class="chip" data-i="0" aria-pressed="'+(!priorityV)+'">Normal</button>'+
@@ -8482,21 +8645,24 @@ function GENA_MAIN() {
     var ms=document.getElementById("m-subs"), msn=document.getElementById("m-sub-new");
     // repeat context (GD-029): the rule's editor (a new repeat, or a task being made one) or a day's copy
     function subCtx(){ return etp?"copy":(freq!=="once"?"rule":null); }
+    var subsAt={}; subs.forEach(function(s){ subsAt[s.id]=1; });   // W40: a subtask added in this form stays in view while the list is folded
     function renderSubs(fi,which){
-      var ctx=subCtx();
-      ms.innerHTML=subs.map(function(s,i){return '<div class="msub'+(ctx==="copy"&&subSkipped(s,ed&&ed.day)?" sub-skip":"")+'"><button type="button" class="chk '+(s.done?"done":"")+'" data-si="'+i+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><input value="'+esc(s.text)+'" data-st="'+i+'"/>'+
+      var subsAdded={}; subs.forEach(function(s){ if(!subsAt[s.id]) subsAdded[s.id]=1; });
+      var ctx=subCtx(), vis=ed?subsVisible(ed.id,subs,subsAdded):null;
+      ms.innerHTML=subs.map(function(s,i){if(vis&&!vis[i]) return ""; return '<div class="msub'+(ctx==="copy"&&subSkipped(s,ed&&ed.day)?" sub-skip":"")+'"><button type="button" class="chk '+(s.done?"done":"")+'" data-si="'+i+'" aria-label="Toggle subtask" aria-pressed="'+!!s.done+'"></button><input value="'+esc(s.text)+'" data-st="'+i+'"/>'+
         (ctx?subKindBtn(s,ctx,'data-sk="'+i+'"'):'')+
         '<span class="sub-move"><button type="button" class="sub-mv" data-sm="up" data-smi="'+i+'" '+(i===0?'disabled':'')+' aria-label="Move up" title="Move up">▴</button>'+
         '<button type="button" class="sub-mv" data-sm="down" data-smi="'+i+'" '+(i===subs.length-1?'disabled':'')+' aria-label="Move down" title="Move down">▾</button></span>'+
         (ed?'<button type="button" class="chip" data-sp="'+i+'" title="Promote to its own task" style="padding:3px 8px;flex:none">⤴ task</button>':'')+'<button type="button" class="task-x" style="opacity:1" data-sx="'+i+'" aria-label="Remove subtask">✕</button></div>'+
-        (i===askRm?subRmAsk('data-srm'):'');}).join("");
+        (i===askRm?subRmAsk('data-srm'):'');}).join("")+(ed?subsFoldBtn(ed.id,subs,'data-sfold="1"'):"");
       if(fi===undefined) return;
       var pick=ms.querySelector('[data-sm="'+which+'"][data-smi="'+fi+'"]');
       if(!pick||pick.disabled) pick=ms.querySelector('[data-sm="'+(which==="up"?"down":"up")+'"][data-smi="'+fi+'"]');
       if(pick&&!pick.disabled) pick.focus();
     }
     renderSubs();
-    ms.onclick=function(e){ var b=e.target.closest("[data-si],[data-sx],[data-sp],[data-sm],[data-sk],[data-srm]"); if(!b)return;
+    ms.onclick=function(e){ var b=e.target.closest("[data-si],[data-sx],[data-sp],[data-sm],[data-sk],[data-srm],[data-sfold]"); if(!b)return;
+      if(b.dataset.sfold!==undefined){ uiSetFold("subs5:"+ed.id,!uiFolded("subs5:"+ed.id,true)); renderSubs(); return; }
       if(b.dataset.sk!==undefined){ var sk0=subs[+b.dataset.sk]; sk0.kind=subKindIsEvery(sk0,subCtx())?"once":"every"; renderSubs(); return; }
       if(b.dataset.srm!==undefined){ var rs=subs[askRm]; askRm=-1;
         if(rs&&b.dataset.srm==="today"){ rs.skipDay=(ed&&ed.day)||today(); }
@@ -8525,7 +8691,8 @@ function GENA_MAIN() {
         ? "With Repeat = Once, this makes one copy per day from Day through Until."
         : "The repeat stops after this date. Leave empty to run indefinitely."; }
     untilHint();
-    var mf=document.getElementById("m-freq"), ro=document.getElementById("m-ropts");
+    var mf=document.getElementById("m-freq"), ro=document.getElementById("m-ropts"), mg=document.getElementById("m-goal");
+    if(mg) mg.onclick=function(){ if(!makeWeeklyGoal(etp.id)) return; save(); close(); render(); toast("Now a weekly goal of 20: this week's copy is on today"); };   // V6.12 W39 (c): makes the rule only, the edits in this form are not kept
     if(mf) mf.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; freq=b.dataset.f; [].forEach.call(mf.children,function(c){c.setAttribute("aria-pressed",c===b);}); renderRopts(); untilHint(); renderSubs(); };
     function renderRopts(){
       if(freq==="weekly"){ ro.innerHTML='<label>On</label><div class="wd" id="m-wd">'+DOWNAMES.map(function(d,i){return '<button data-w="'+i+'" aria-pressed="'+(weekdays.indexOf(i)>=0)+'">'+d[0]+'</button>';}).join("")+'</div>';
@@ -8581,7 +8748,7 @@ function GENA_MAIN() {
       (pt.personIds||[]).forEach(function(id){ if(selPeople.indexOf(id)<0) selPeople.push(id); });
       if(pt.day) day=(pt.day==="someday")?null:pt.day;
       if(!(day&&endD&&endD>day)) endD=null;
-      if(freq!=="once") endD=null;   // a repeat fires on single days; a span there is meaningless
+      if(freq!=="once") endD=(freq==="weekly"&&weeklyGoal(etp)&&ed&&ed.end)||null;   // a repeat fires on single days; a weekly goal's copy keeps its week (W39)
       if(pt.block) chosen=[pt.block];
       if(pt.at&&(!tv||tv===(base.at||null))) tv=pt.at;
       if(freq==="weekly"&&!weekdays.length){ if(dismiss){freq="once";} else {toast("Pick at least one weekday");return;} }
@@ -8679,7 +8846,7 @@ function GENA_MAIN() {
       emojiPickerHtml("p-emoji")+
       '<div class="fld"><label>Color</label><div class="cp" id="p-sw"></div></div>'+
       '<div class="row"><div class="fld"><label>Domain</label><select id="p-prof">'+profOpts+'</select></div>'+
-      '</div><div class="fld"><label>Collections</label>'+colChipsHtml(p.cols)+'</div>'+
+      '</div><div class="fld">'+colChipsHtml(p.cols)+'</div>'+
       '<div class="fld"><label>State</label><div class="chips" id="p-state">'+[["active","Active"],["off","💤 Pause"],["ended","Ended"]].map(function(st){
         return '<button type="button" class="chip" data-st="'+st[0]+'" aria-pressed="'+((p.state||"active")===st[0])+'">'+st[1]+'</button>'; }).join("")+'</div>'+
         '<div class="sub" style="font-size:11px;margin-top:6px">Ended: greyed and shelved, nothing deleted, dated tasks still show on their day. Pause: shelved until you resume it.</div></div>'+
@@ -8703,7 +8870,7 @@ function GENA_MAIN() {
       var emojiV=(document.getElementById("p-emoji")||{}).value||"";
       // V6.8 W35: a Focus's stored season is left exactly as it is (never asked, never cleared)
       if(editing){ p.name=name; p.color=color; if(patV) p.pat=patV; else delete p.pat; p.emoji=emojiV.trim(); p.profileId=profV; setCols(p,colsOf()); p.state=stateV==="active"?null:stateV; if(stateV==="ended") p.pinned=false; }
-      else { var np={id:uid(),name:name,color:color,emoji:emojiV.trim(),notes:"",profileId:profV,state:stateV==="active"?null:stateV,ord:nextOrd(S.projects)}; if(patV) np.pat=patV; setCols(np,colsOf()); S.projects.push(np); createdId=np.id; }
+      else { var np=addFocus(name,emojiV.trim(),profV,color,patV,stateV==="active"?null:stateV); setCols(np,colsOf()); createdId=np.id; }
       save(); fillProjSelect(); close(); render(); if(onDone&&createdId) onDone(createdId); };
     if(editing){ document.getElementById("p-del").onclick=function(){ confirmModal("Delete this Focus?","Its tasks stay but lose their tag.","Delete",function(){
       S.tasks.forEach(function(k){ if(k.projectId===p.id)k.projectId=null; }); (S.efforts||[]).forEach(function(e){ if(e.projectId===p.id) e.projectId=null; }); S.projects=S.projects.filter(function(x){return x.id!==p.id;}); S.filterProjects=S.filterProjects.filter(function(x){return x!==p.id;}); save(); fillProjSelect(); render(); }); }; }
@@ -8712,7 +8879,7 @@ function GENA_MAIN() {
   /* K1: a sidebar row's ⋯ — which Collections a Domain, Focus or Project is in */
   function openColsModal(kind,id){
     var x=kind==="dom"?profileById(id):kind==="fc"?proj(id):effortById(id); if(!x) return;
-    modal('<h3>Collections</h3><p class="sub">'+esc((x.emoji?x.emoji+" ":"")+x.name)+' — a Collection pulls up everything inside it.</p>'+colChipsHtml(x.cols)+
+    modal('<h3>Collections</h3><p class="sub">'+esc((x.emoji?x.emoji+" ":"")+x.name)+' — a Collection pulls up everything inside it.</p>'+colChipsHtml(x.cols,null,true)+
       '<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>');
     var colsOf=wireColChips(x.cols);
     document.querySelector("[data-x]").onclick=close;
@@ -8736,9 +8903,10 @@ function GENA_MAIN() {
     document.getElementById("m-save").onclick=function(){ var n=document.getElementById("cl-name").value.trim(); if(!n){ toast("Name it"); return; }
       var em=document.getElementById("cl-emoji").value.trim();
       if(editing){ var live=colById(c.id)||c; live.name=n; live.emoji=em; }
-      else { var l=colsSorted(); S.collections=S.collections||[]; S.collections.push({id:uid(),name:n,emoji:em,ord:l.length?(l[l.length-1].ord||l.length)+1:1}); }
+      else addCollection(n,em);
       save(); close(); render(); };
   }
+  function addCollection(n,em){ var l=colsSorted(), c={id:uid(),name:n,emoji:em,ord:l.length?(l[l.length-1].ord||l.length)+1:1}; S.collections=S.collections||[]; S.collections.push(c); return c; }
   function colMembers(){ return S.profiles.concat(S.projects,S.efforts||[],S.people,S.tasks,S.archive||[]); }
   function deleteCollection(id){
     var ix=(S.collections||[]).findIndex(function(c){ return c.id===id; }); if(ix<0) return null;
@@ -8778,7 +8946,7 @@ function GENA_MAIN() {
         '<select id="ef-wto"><option value="">to…</option>'+MONTHS.map(function(m,i){return '<option value="'+(i+1)+'"'+((base.window||{}).to===i+1?" selected":"")+'>'+m+'</option>';}).join("")+'</select></div></div>'+
       '<div class="fld"><label>Phases</label><div id="ef-phs">'+phRows()+'</div>'+
         '<div class="cyc-row" style="margin-top:6px"><input id="ef-pht" placeholder="New phase, e.g. Draft" style="flex:1"/><input id="ef-phs0" type="date" value="'+today()+'"/><input id="ef-phe0" type="date" value="'+addDays(today(),14)+'"/><button type="button" class="chip" id="ef-phadd">+ phase</button></div></div>'+
-      '<div class="fld"><label>Collections</label>'+colChipsHtml(base.cols)+'</div>'+
+      '<div class="fld">'+colChipsHtml(base.cols)+'</div>'+
       '<div class="fld"><label>Notes</label>'+richTextHtml(null,base.notes||"","What it is, where it stands…",56,"ef-notes","rte-compact")+'</div>'+
       '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="ef-del" style="margin-right:auto">Delete</button>':'')+
       '<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>',"form");
@@ -8834,7 +9002,7 @@ function GENA_MAIN() {
       '<div class="fld"><label>Name</label><input id="pf-n" value="'+esc(base.name)+'" placeholder="e.g. School"/></div></div>'+
       emojiPickerHtml("pf-e")+
       '<div class="fld"><label>Colour</label><div class="cp" id="pf-sw"></div></div>'+
-      '<div class="fld"><label>Collections</label>'+colChipsHtml(base.cols)+'</div>'+
+      '<div class="fld">'+colChipsHtml(base.cols)+'</div>'+
       '<div class="fld"><label>Focuses in this Domain</label><div class="chips" id="pf-projs">'+
         (S.projects.length?S.projects.map(function(p){return '<button type="button" class="chip" data-pid="'+esc(p.id)+'" aria-pressed="'+!!assigned[p.id]+'">'+esc(p.name)+'</button>';}).join(""):'<span class="sub">No Focuses yet</span>')+'</div>'+
       (editing?'':'<div class="sub" style="font-size:11px;margin-top:6px">Tip: a Focus lives in one Domain at a time.</div>')+'</div>'+
@@ -8874,7 +9042,7 @@ function GENA_MAIN() {
       var emoji=document.getElementById("pf-e").value.trim();
       var target=pr;
       var pfColor=(window.__pfColor!==undefined)?window.__pfColor:base.color;
-      if(!editing){ target={id:uid(),name:name,emoji:emoji,color:pfColor||domFreeNeon(),ord:nextOrd(S.profiles)}; S.profiles.push(target); S.profiles=sortDoms(S.profiles); }   // V6.8: its own neon colour, last in the order
+      if(!editing) target=addDomain(name,emoji,pfColor);   // V6.8: its own neon colour, last in the order
       else { target.name=name; target.emoji=emoji; target.color=pfColor; }
       setCols(target,pfCols());
       S.projects.forEach(function(p){
@@ -9549,7 +9717,7 @@ function GENA_MAIN() {
     var evs=S.events.filter(function(e){return evOnDay(e,ds) && calVisible(e);});
     var body='<h3>'+niceDate(ds)+'</h3>';
     body+='<div class="fld"><label>Tasks</label><ul class="tasks">'+
-      (tasks.length?tasks.map(function(k){var p=proj(k.projectId);var mp=(p?'<span class="pill proj" style="'+cbg(hueOf(p).color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+(k.at?'<span class="pill block">🕒 '+fmtTime(k.at)+'</span>':"")+(k.subs&&k.subs.length?'<span class="pill subs-n">'+subCountText(k.subs,k.day)+'</span>':"");return '<li class="task '+(k.status==="done"?"done":"")+'" data-id="'+esc(k.id)+'"><button class="chk '+(k.status==="done"?"done":"")+'" data-dact="toggle" aria-label="done" aria-pressed="'+(k.status==="done")+'"></button><div class="task-main"><div class="task-title">'+esc(k.title)+'</div>'+(mp?'<div class="task-meta">'+mp+'</div>':"")+'</div><button class="task-x" data-dact="deltask" style="opacity:1" aria-label="delete">✕</button></li>';}).join(""):'<div class="empty">No tasks</div>')+'</ul></div>';
+      (tasks.length?tasks.map(function(k){var p=proj(k.projectId);var mp=(p?'<span class="pill proj" style="'+cbg(hueOf(p).color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+(k.at?'<span class="pill block">🕒 '+fmtTime(k.at)+'</span>':"")+(k.subs&&k.subs.length?'<span class="pill subs-n">'+subCountText(k.subs,k.day,goalDone(k))+'</span>':"");return '<li class="task '+(k.status==="done"?"done":"")+'" data-id="'+esc(k.id)+'"><button class="chk '+(k.status==="done"?"done":"")+'" data-dact="toggle" aria-label="done" aria-pressed="'+(k.status==="done")+'"></button><div class="task-main"><div class="task-title">'+esc(k.title)+'</div>'+(mp?'<div class="task-meta">'+mp+'</div>':"")+'</div><button class="task-x" data-dact="deltask" style="opacity:1" aria-label="delete">✕</button></li>';}).join(""):'<div class="empty">No tasks</div>')+'</ul></div>';
     body+='<div class="fld"><label>Events &amp; milestones</label><ul class="tasks">'+
       (evs.length?evs.map(function(e){return '<li class="task" data-id="'+esc(e.id)+'"><span class="dot" style="background:'+(evColor(e)||projColor(e.projectId))+';border-color:transparent;cursor:default"></span><div class="task-main" data-dact="evdet" title="Details"><div class="task-title">'+esc(evTitle(e))+'</div>'+(e.sourceId?'<div class="task-meta"><span class="pill block">subscribed</span></div>':"")+'</div>'+'<button class="task-x" data-dact="evmore" style="opacity:1" aria-label="Add to a calendar" title="Add to a calendar">⋯</button>'+(e.sourceId?"":'<button class="task-x" data-dact="delev" style="opacity:1" aria-label="delete">✕</button>')+'</li>';}).join(""):'<div class="empty">No events</div>')+'</ul></div>';
     var fitems=S.focus[ds]||[];
@@ -9613,10 +9781,11 @@ function GENA_MAIN() {
   function migrateOwnTimes(){
     var raw=null, m=null, n=0; try{ raw=localStorage.getItem(EVTIMES_KEY); }catch(e){} if(raw===null) return 0;
     try{ m=JSON.parse(raw); }catch(e){}
-    if(m&&typeof m==="object"&&!Array.isArray(m)) S.events.forEach(function(e){ var t=m[e.id];
+    var moved=[]; if(m&&typeof m==="object"&&!Array.isArray(m)) S.events.forEach(function(e){ var t=m[e.id];
       if(e.sourceId||!t||!/^\d{2}:\d{2}$/.test(t.at||"")||/^\d{2}:\d{2}$/.test(e.at||"")) return;
-      e.at=t.at; if(/^\d{2}:\d{2}$/.test(t.to||"")) e.to=t.to; else delete e.to; n++; });
-    if(n){ var su=suppressUndo; suppressUndo=true; try{ save(); } finally{ suppressUndo=su; } }
+      moved.push([e,(e._m||0)+1]); e.at=t.at; if(/^\d{2}:\d{2}$/.test(t.to||"")) e.to=t.to; else delete e.to; n++; });
+    // V6.11 finding 11: stamped old _m + 1, not now (a save stamps now), so an edit made elsewhere since, newer than this device's copy, still wins
+    if(n){ var su=suppressUndo; suppressUndo=true; try{ save(); moved.forEach(function(x){ x[0]._m=x[1]; }); save(); } finally{ suppressUndo=su; } }
     try{ localStorage.removeItem(EVTIMES_KEY); }catch(e){}
     return n;
   }
@@ -10540,7 +10709,7 @@ function GENA_MAIN() {
       '<div class="row"><div class="fld"><label>Usual Focus</label><select id="pe-foc"><option value="">None</option>'+focusSelectOpts(p.focusId)+'</select></div></div>'+
       '<div class="row"><div class="fld"><label>Main Domain</label><select id="pe-dom"><option value="">None</option>'+S.profiles.map(function(d){ return '<option value="'+esc(d.id)+'"'+(d.id===p.profileId?" selected":"")+'>'+esc((d.emoji?d.emoji+" ":"")+d.name)+'</option>'; }).join("")+'</select></div></div>'+
       '<div class="fld"><label>Also in</label><div class="chips" id="pe-doms">'+S.profiles.map(function(d){ return '<button type="button" class="chip" data-dom="'+esc(d.id)+'" aria-pressed="'+((p.profileIds||[]).indexOf(d.id)>=0)+'">'+esc((d.emoji?d.emoji+" ":"")+d.name)+'</button>'; }).join("")+'</div></div>'+
-      '<div class="fld"><label>Collections</label>'+colChipsHtml(p.cols)+'</div>'+
+      '<div class="fld">'+colChipsHtml(p.cols)+'</div>'+
       '<div class="fld"><label class="check-row"><input type="checkbox" id="pe-sp"'+(p.startPriority?" checked":"")+'/> Start in Priority <span class="sub" style="display:block;font-weight:400;text-transform:none;letter-spacing:0">The day the follow-up is due, it starts in Priority</span></label></div>'+
       '<div class="fld"><label>Notes</label>'+richTextHtml(null,p.notes||"","How you know them, what to remember, what to ask next…",64,"pe-notes","rte-compact")+'</div>'+
       '<div class="fld"><label>Color</label><div class="cp" id="pe-sw"></div></div>'+
@@ -11994,7 +12163,10 @@ function GENA_MAIN() {
     // the minute tick: attributes only, markup only when the kind changes. Green has to mean "checked and current", and an idle tab
     // used to check only when it came back into view: while it is shown and its last round trip is 4 minutes old, the tick runs the
     // same pull a return to the tab runs (ghPull: read, merge, push only on a difference). ghSync and the merge are unchanged.
-    setInterval(function(){ updateSyncStatus(); if(!document.hidden&&GH&&GH.token&&GH.gistId&&!ghSyncing&&(!ghLastSync||Date.now()-ghLastSync>=SYNC_IDLE_CHECK)) ghPull(); },60000);
+    // V6.11 finding 12: while a sync error stands (a revoked token, offline) the idle re-check backs off: 1, 2, 4, 8, then every 15 minutes
+    var idleBack=0, idleAt=0;
+    setInterval(function(){ updateSyncStatus(); var now=Date.now(); if(!ghError) idleBack=0;
+      if(!document.hidden&&GH&&GH.token&&GH.gistId&&!ghSyncing&&(!ghLastSync||now-ghLastSync>=SYNC_IDLE_CHECK)&&(!ghError||now-idleAt>=Math.min(15,Math.pow(2,idleBack))*60000-1000)){ if(ghError) idleBack++; idleAt=now; ghPull(); } },60000);
   })(document.getElementById("sync-status"));
 
   /* ---------- insights ---------- */
@@ -12228,7 +12400,7 @@ function GENA_MAIN() {
   })();
   (function colResize(){   // V6.7 W19: drag a day's right border; Escape puts it back; a double-click makes the days equal
     var cr=null;
-    function apply(g,w){ g.style.setProperty("--colw",colwStyle(w).replace(/^--colw:([^;]*);--colmin:([^;]*);$/,"$1")); g.style.setProperty("--colmin",Math.round(w.reduce(function(a,b){ return a+b; },0))+"px"); g.classList.add("tg-cw-on"); }
+    function apply(g,w){ g.style.setProperty("--colw",w.map(function(x){ return "minmax("+Math.round(x)+"px,"+Math.round(x)+"fr)"; }).join(" ")); g.style.setProperty("--colmin",Math.round(w.reduce(function(a,b){ return a+b; },0))+"px"); g.classList.add("tg-cw-on"); }   // px while dragging
     document.addEventListener("pointerdown",function(e){
       var h=e.target.closest&&e.target.closest(".tg-cw"); if(!h||e.button>0||window.innerWidth<=600) return;
       var g=h.closest(".tg"); if(!g||!g.dataset.colw) return;
@@ -12239,7 +12411,8 @@ function GENA_MAIN() {
     },true);
     document.addEventListener("pointermove",function(e){ if(!cr) return; if(!(e.buttons&1)){ end(); return; }
       cr.w=colwDrag(cr.w0,cr.i,e.clientX-cr.x0); apply(cr.g,cr.w); });
-    function end(){ if(!cr) return; if(Math.abs(cr.w[cr.i]-cr.w0[cr.i])>=1) colwPut(cr.tab,cr.w);
+    function end(){ if(!cr) return; if(Math.abs(cr.w[cr.i]-cr.w0[cr.i])>=1){ var x=cr.g.parentNode, gut=parseFloat(getComputedStyle(cr.g).getPropertyValue("--gut"))||54;
+        colwPut(cr.tab,cr.w,x?x.clientWidth-gut:0); var cw=colwFor(cr.tab,cr.w.length); if(cw){ var v=colwVars(cw); cr.g.style.setProperty("--colw",v[0]); cr.g.style.setProperty("--colmin",v[1]); } }   // V6.11 finding 8: as a reload draws it
       cr.h.classList.remove("on"); document.body.classList.remove("col-resizing"); cr=null; }
     document.addEventListener("pointerup",end); document.addEventListener("pointercancel",end);
     document.addEventListener("keydown",function(e){ if(cr&&e.key==="Escape"){ e.stopPropagation(); cr.w=cr.w0;
