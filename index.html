@@ -1989,7 +1989,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-10-20-V6.5";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-10-20-V6.5.1";   // set by ship.sh on every release — the footer is how you tell a surface is current
   // The day V5 shipped (tag gena-2026-10-05-V5): the closing-states cutoff, fixed, so a later build's stamp
   // never moves it (I-28). Above `var S = load()`, which reads it.
   var V5_SHIP_DAY = "2026-10-05";
@@ -3472,21 +3472,30 @@ function GENA_MAIN() {
     if(tp.freq==="everyN"){ var base=tp.start||day; return diffDays(day,base)%(tp.interval||2)===0; }
     return false;
   }
-  /* V6.12 W39: a weekly repeat with Every-time items that is marked a goal (`goal`, set only by Make this a weekly goal of 20) is a
+  /* V6.12 W39: a weekly repeat with Every-time items that is marked a goal (`goal`, set only by Make this a weekly goal) is a
      weekly goal. Its copy stays on the list to the day before the rule's next day (`end`, so every view reads it as a span), each new
      day shows only its open items (foldGoalCopies), and the next copy brings the fresh set. An unmarked weekly repeat with items (his
      Trash Day) lapses overnight as before. The marker is a field on the rule item, so the per-item merge carries it. */
   function weeklyGoal(tp){ return !!(tp&&tp.goal&&tp.freq==="weekly"&&(tp.subs||[]).length); }
   function goalEnd(tp,day){ for(var i=1;i<7;i++){ if(ruleHits(tp,addDays(day,i))) return addDays(day,i-1); } return addDays(day,6); }
   function goalRuleOf(k){ var tp=k&&k.tplId&&(S.templates||[]).find(function(x){ return x.id===k.tplId; }); return weeklyGoal(tp)?tp:null; }
-  /* W39 (c): one tap makes a repeat a weekly goal of 20: a new weekly rule (Mondays, twenty Every-time items) from today, with its
-     first copy now for the rest of this week; the old rule ends yesterday (Ended, in Repeats) and every copy it made stays as it is */
+  /* W39 (c): one tap makes a repeat a weekly goal: a new weekly rule from today, with its first copy now until the rule's next day;
+     the old rule ends yesterday (Ended, in Repeats) and every copy it made stays as it is. V6.5.1 (V65 review finding 4): the goal
+     keeps the old rule's day(s) and its own Every-time items (goalDays, goalN); only a rule with no items gets "1 of 20" to "20 of 20".
+     A goal made by V6.5 (Mondays, twenty) is left as it is. */
   var GOAL_N=20;
+  // a weekly rule keeps its weekdays, an every-N rule on whole weeks its start's weekday; daily and every 2 days (his Apply to Jobs) get Monday
+  function goalDays(tp){ var wd=tp.freq==="weekly"?(tp.weekdays||[]).slice().sort(function(a,b){ return a-b; }):[];
+    if(!wd.length&&tp.freq==="everyN"&&tp.start&&(tp.interval||2)%7===0) wd=[dow(tp.start)];
+    return wd.length?wd:[1]; }
+  function goalN(tp){ return (tp.subs||[]).length||GOAL_N; }
+  function goalTip(tp){ var n=goalN(tp); return "A weekly repeat of "+n+" item"+(n===1?"":"s")+": what you check off one day is gone the next; a fresh "+n+" each "+goalDays(tp).map(function(w){ return DOWNAMES[w]; }).join(" and "); }
   function makeWeeklyGoal(tid){
     var tp=S.templates.find(function(x){ return x.id===tid; }); if(!tp||weeklyGoal(tp)) return null;
     var t=today(), g={}; for(var f in tp) g[f]=tp[f];
-    g.id=uid(); g.goal=true; g.freq="weekly"; g.weekdays=[1]; g.start=t; g.until=null; g.skip=[]; g.parent=tp.id; g.subs=[]; delete g.firstSubs; delete g.paused; delete g._m;
-    for(var i=1;i<=GOAL_N;i++) g.subs.push({id:uid(),text:i+" of "+GOAL_N});
+    g.id=uid(); g.goal=true; g.freq="weekly"; g.weekdays=goalDays(tp); g.start=t; g.until=null; g.skip=[]; g.parent=tp.id; g.subs=[]; delete g.firstSubs; delete g.paused; delete g._m;
+    if((tp.subs||[]).length) g.subs=tp.subs.map(function(sb){ return {id:uid(),text:sb.text}; });   // his own items, a deep copy (review E5)
+    else for(var i=1;i<=GOAL_N;i++) g.subs.push({id:uid(),text:i+" of "+GOAL_N});
     tp.until=addDays(t,-1);
     S.templates.push(g);
     var k={id:uid(),title:g.title,projectId:g.projectId,effortId:g.effortId||undefined,status:"todo",day:t,end:goalEnd(g,t),
@@ -6710,7 +6719,7 @@ function GENA_MAIN() {
         '<span class="pill '+(st.done?"good":"block")+'" title="Distinct days, over the last 14">'+st.done+' done · '+st.skipped+' skipped in 14 days</span>'+
         '<span class="pill block">'+(last?"last done "+esc(niceDate(last)):"never done")+'</span></div>'+
         (repeatHint(tp,st)?'<button class="chip rep-hint" data-act="tpl-hint" data-tid="'+esc(tp.id)+'">Turn into a habit or pause?</button>'+
-          (weeklyGoal(tp)?'':'<button class="chip rep-hint" data-act="tpl-goal" data-tid="'+esc(tp.id)+'" title="A weekly repeat of 20 items: what you check off one day is gone the next; a fresh 20 each Monday">Make this a weekly goal of 20</button>'):'')+'</div>'+
+          (weeklyGoal(tp)?'':'<button class="chip rep-hint" data-act="tpl-goal" data-tid="'+esc(tp.id)+'" title="'+esc(goalTip(tp))+'">Make this a weekly goal of '+goalN(tp)+'</button>'):'')+'</div>'+
         (gone?'':'<button class="chip" data-act="tpl-pause" data-tid="'+esc(tp.id)+'">'+(tp.paused?"Resume":"Pause")+'</button>')+
         '<button class="task-x" data-act="tpl-del" data-tid="'+esc(tp.id)+'" style="opacity:1" aria-label="Stop repeating" title="Stop repeating">✕</button></li>';
     }
@@ -7832,7 +7841,7 @@ function GENA_MAIN() {
       else if(act==="effortstep"){ var es=effortById(a.dataset.pid); if(es) openTaskModal({projectId:es.projectId&&proj(es.projectId)?es.projectId:null, effortId:es.id}); }   // J2: a step in the Project's Focus
       else if(act==="tidytpl"){ openTidyRepeatsModal(); }
       else if(act==="tpl-hint"){ openRepeatHintModal(a.dataset.tid); }
-      else if(act==="tpl-goal"){ if(makeWeeklyGoal(a.dataset.tid)){ save(); render(); toast("Now a weekly goal of 20: this week's copy is on today"); } }   // V6.12 W39 (c)
+      else if(act==="tpl-goal"){ var gk=makeWeeklyGoal(a.dataset.tid); if(gk){ save(); render(); toast("Now a weekly goal of "+goalN(goalRuleOf(gk))+": this week's copy is on today"); } }   // V6.12 W39 (c)
       else if(act==="tpl-edit"){ var te=S.templates.find(function(x){return x.id===a.dataset.tid;});
         // a repeat is edited through one of its copies (the modal edits the series): today's, else the latest
         var tcs=te?S.tasks.filter(function(x){ return x.tplId===te.id; }).sort(function(x,y){ return (y.day===today())-(x.day===today())||String(y.day||"").localeCompare(String(x.day||"")); }):[];
@@ -8607,7 +8616,7 @@ function GENA_MAIN() {
         '<div class="fld"><label>Repeat</label><div class="chips" id="m-freq">'+
           [["once","Once"],["daily","Daily"],["weekly","Weekly"],["everyN","Every N days"]].map(function(f){return '<button class="chip" data-f="'+f[0]+'" aria-pressed="'+(f[0]===freq)+'">'+f[1]+'</button>';}).join("")+'</div>'+
           '<div id="m-ropts" style="margin-top:10px"></div>'+(etp?'<div class="sub" style="font-size:11px;margin-top:6px">This task repeats — changes here update the whole series. Pick “Once” to stop it repeating.</div>'+
-            (weeklyGoal(etp)?'':'<button type="button" class="chip" id="m-goal" style="margin-top:6px" title="A weekly repeat of 20 items: what you check off one day is gone the next; a fresh 20 each Monday. Copies already made stay as they are">Make this a weekly goal of 20</button>'):(ed?'<div class="sub" style="font-size:11px;margin-top:6px">Pick a repeat to turn this into a recurring task going forward.</div>':""))+'</div>'+
+            (weeklyGoal(etp)?'':'<button type="button" class="chip" id="m-goal" style="margin-top:6px" title="'+esc(goalTip(etp))+'. Copies already made stay as they are">Make this a weekly goal of '+goalN(etp)+'</button>'):(ed?'<div class="sub" style="font-size:11px;margin-top:6px">Pick a repeat to turn this into a recurring task going forward.</div>':""))+'</div>'+
         '<div class="fld"><label>Focus</label><select id="m-proj"><option value="">None</option>'+projOpts+'<option value="__new">+ New Focus…</option></select></div>'+
         ((S.efforts||[]).length?'<div class="fld"><label>Project</label><select id="m-eff"><option value="">None</option>'+effOptsHtml(base.effortId)+'</select></div>':'')+
         '<div class="fld">'+colChipsHtml(base.cols)+'</div>'+
@@ -8692,7 +8701,7 @@ function GENA_MAIN() {
         : "The repeat stops after this date. Leave empty to run indefinitely."; }
     untilHint();
     var mf=document.getElementById("m-freq"), ro=document.getElementById("m-ropts"), mg=document.getElementById("m-goal");
-    if(mg) mg.onclick=function(){ if(!makeWeeklyGoal(etp.id)) return; save(); close(); render(); toast("Now a weekly goal of 20: this week's copy is on today"); };   // V6.12 W39 (c): makes the rule only, the edits in this form are not kept
+    if(mg) mg.onclick=function(){ var gk=makeWeeklyGoal(etp.id); if(!gk) return; save(); close(); render(); toast("Now a weekly goal of "+goalN(goalRuleOf(gk))+": this week's copy is on today"); };   // V6.12 W39 (c): makes the rule only, the edits in this form are not kept
     if(mf) mf.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; freq=b.dataset.f; [].forEach.call(mf.children,function(c){c.setAttribute("aria-pressed",c===b);}); renderRopts(); untilHint(); renderSubs(); };
     function renderRopts(){
       if(freq==="weekly"){ ro.innerHTML='<label>On</label><div class="wd" id="m-wd">'+DOWNAMES.map(function(d,i){return '<button data-w="'+i+'" aria-pressed="'+(weekdays.indexOf(i)>=0)+'">'+d[0]+'</button>';}).join("")+'</div>';
