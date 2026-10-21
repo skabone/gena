@@ -27,6 +27,17 @@ if `swiftc` isn't found).
   sync once (⋯ menu) and your tasks follow you in.
 - Native menus: ⌘C/⌘V/⌘X/⌘A editing, ⌘R reload, ⌘M minimize, ⌘Q quit.
 - Links to other sites open in your real browser, not inside the app.
+- **Mac Calendar (V6.9):** Gena can show and edit the calendars in the Mac's
+  Calendar app (Google, iCloud, Outlook, On My Mac) through EventKit. macOS
+  asks once ("Gena shows and edits the events in your calendars"); the answer
+  can be changed in System Settings → Privacy & Security → Calendars. Only the
+  hosted Gena page, in the main frame, can reach the calendars, through a
+  narrow bridge in `Gena.swift`; the app keeps no event data of its own. The
+  website, the PWA and the phone stay read-only (subscriptions).
+
+`./build.sh` first runs the calendar bridge's self-check (the same file built with
+`-D GENA_SELFCHECK`: its page gate and request checks, no window and no calendar)
+and stops if a check fails.
 
 ## Notes
 
@@ -41,7 +52,7 @@ if `swiftc` isn't found).
 
 ## Files
 
-- `Gena.swift` — the app (window + WKWebView + menus).
+- `Gena.swift` — the app (window + WKWebView + menus) and the calendar bridge (EventKit).
 - `makeicon.swift` — draws the app icon with Core Graphics.
 - `build.sh` — compiles, generates the icon, and assembles `Gena.app`.
 

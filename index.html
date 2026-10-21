@@ -182,6 +182,21 @@
   .sb-row:hover .cal-grip{ opacity:1; }
   @media (hover:none){ .cal-grip{ display:none; } }
   .cal-row.cal-err .sb-name, .cal-row.cal-off .sb-name{ opacity:.55; }
+  /* Mac Calendar (V6.9): the group's head and spinner, its accounts, the M6 line, a read-only row */
+  .mac-grp{ margin-top:4px; }
+  .mac-h .mac-spin{ width:10px; height:10px; flex:none; border-radius:50%; border:1.5px solid var(--line); border-top-color:var(--ink-soft); visibility:hidden; }
+  .mac-h.busy .mac-spin{ visibility:visible; animation:macspin .8s linear infinite; }
+  @keyframes macspin{ to{ transform:rotate(360deg); } }
+  @media (prefers-reduced-motion:reduce){ .mac-h.busy .mac-spin{ animation:none; border-top-color:var(--terra); } }
+  .mac-acct{ font-size:11px; color:var(--ink-faint); padding:4px 8px 1px 26px; }
+  .mac-msg .chip{ margin-top:6px; }
+  .sb-mini.mac-dup{ padding:0 8px 4px 50px; }
+  .sb-mini.mac-dup .chip{ margin-top:3px; font-size:11px; padding:2px 8px; }
+  .cnt.mac-tag{ font-size:10px; border:1px solid var(--line); border-radius:6px; padding:0 4px; }
+  .mac-pdot{ display:inline-block; width:12px; height:12px; border-radius:50%; vertical-align:middle; }   /* GD-072 (4): a Mac calendar's colour in the pairing sheet */
+  .mac-row.mac-ro .cnt:first-of-type{ opacity:.7; }
+  .evc-loc, .evc-notes{ width:100%; box-sizing:border-box; font:inherit; font-size:13px; }
+  .evd-ro{ font-size:12px; color:var(--ink-soft); margin:6px 0 0; }
   .cal-drop-before{ box-shadow:inset 0 2px 0 var(--terra); } .cal-drop-after{ box-shadow:inset 0 -2px 0 var(--terra); }
   .cs-acct-h{ font-size:12px; font-weight:700; color:var(--ink-soft); margin:10px 2px 6px; }
   .cal-src-more{ display:flex; align-items:center; gap:8px; margin-top:8px; }
@@ -1989,7 +2004,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-10-20-V6.5.1";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-10-21-V6.6";   // set by ship.sh on every release — the footer is how you tell a surface is current
   // The day V5 shipped (tag gena-2026-10-05-V5): the closing-states cutoff, fixed, so a later build's stamp
   // never moves it (I-28). Above `var S = load()`, which reads it.
   var V5_SHIP_DAY = "2026-10-05";
@@ -4020,8 +4035,10 @@ function GENA_MAIN() {
   }
   function render(){
     ensureOrd();
+    MAC.ix=null;   // Mac Calendar: the Mac calendars' items follow the subscriptions as they are now
     IX=buildIx();
     try{ renderNow(); } finally{ IX=null; }
+    macEnsure();   // Mac Calendar: the Mac app reads the range on screen when it is not loaded yet (nothing without the bridge)
   }
   function renderNow(){
     navRecord();
@@ -4262,7 +4279,7 @@ function GENA_MAIN() {
   var sbMonthAt=null;   // "YYYY-MM" the picker shows after ‹ ›; null follows the day in view
   function sbMonthDays(ym){
     var y=+ym.slice(0,4), mo=+ym.slice(5,7)-1, n=new Date(y,mo+1,0).getDate(), first=ym+"-01", last=ym+"-"+String(n).padStart(2,"0"), has={};
-    S.events.forEach(function(e){
+    evAll().forEach(function(e){
       var end=e.end&&e.end>e.date?e.end:e.date;   // evOnDay's range: one day, or date to end
       if(!e.date||e.date>last||end<first||!calVisible(e)||(e.projectId&&!inScope(e))) return;
       for(var d=e.date<first?first:e.date, to=end>last?last:end; d<=to; d=addDays(d,1)) has[d]=1;
@@ -4352,10 +4369,18 @@ function GENA_MAIN() {
     else if(t==="calchk"||t==="calrow"){ var cs=a.dataset.cid===CAL_GENA?calGena():calById(a.dataset.cid); if(cs){ calSetHidden(cs,!cs.hidden); save(); render(); } }
     else if(t==="calgchk"){ var cg=calGroups().find(function(g){ return g.key===a.dataset.key; }); if(cg){ var hide=cg.items.every(function(x){ return !x.hidden; }); cg.items.forEach(function(x){ calSetHidden(x,hide); }); save(); render(); } }
     else if(t==="calfold"){ var fk="sb-cal:"+a.dataset.key; S.collapsed[fk]=!S.collapsed[fk]; save(); renderSidebar(); }
-    else if(t==="calall"){ [calGena()].concat(calFeeds()).forEach(function(x){ calSetHidden(x,false); }); save(); render(); }
+    else if(t==="calall"){ [calGena()].concat(calFeeds(),macShown()).forEach(function(x){ calSetHidden(x,false); }); save(); render(); }
     else if(t==="calmore"){ openCalSheet(a.dataset.cid); }
     else if(t==="calgmore"){ openCalGroupSheet(a.dataset.key); }
     else if(t==="caladd"){ openCalendarsModal(); }
+    // Mac Calendar: show or hide (this device), ⋯, access, a read again, and the M6 choice on a subscription
+    else if(t==="macchk"||t==="macrow"){ var mc=macCal("mac:"+a.dataset.mcid); if(mc){ calSetHidden(mc,!mc.hidden); if(mc.link) save(); render(); } }   // a moved subscription's hidden syncs
+    else if(t==="macmore"){ openMacSheet(a.dataset.mcid); }
+    else if(t==="macallow"){ macAllow(); }
+    else if(t==="macsettings"){ macCall("openSettings"); }
+    else if(t==="macrefresh"){ macEnsure(true); }
+    else if(t==="macuse"){ macUse(a.dataset.mcid); }
+    else if(t==="mackeep"){ macKeep(a.dataset.mcid); }
   };
   /* F9: drag a calendar within its account, or an account as a block; the order saves once per drop. The
      handlers are properties so a test can call them with a fake event (synthetic drag events do not work) */
@@ -4553,7 +4578,7 @@ function GENA_MAIN() {
   function leftText(sec){ var m=Math.max(1,Math.ceil(sec/60)); return (m>=60?Math.floor(m/60)+" h"+(m%60?" "+(m%60)+" m":""):m+" m")+" left"; }
   function upNextState(n){
     var t=fmt(n), nm=n.getHours()*60+n.getMinutes()+n.getSeconds()/60, cur=null, nxt=null;
-    S.events.forEach(function(e){ if(!e.date||e.date>t||!calVisible(e)) return; var sg=evSegOn(evSpanT(e),t); if(!sg) return;
+    evAll().forEach(function(e){ if(!e.date||e.date>t||!calVisible(e)) return; var sg=evSegOn(evSpanT(e),t); if(!sg) return;
       if(sg.s<=nm&&nm<sg.e){ if(!cur||sg.e<cur.e) cur={ev:e, s:sg.s, e:sg.e}; }
       else if(sg.s>nm&&(!nxt||sg.s<nxt.s||(sg.s===nxt.s&&evTitle(e)<evTitle(nxt.ev)))) nxt={ev:e, s:sg.s, e:sg.e}; });
     return {day:t, cur:cur, nxt:nxt};
@@ -5144,7 +5169,7 @@ function GENA_MAIN() {
     var key=view+"|"+d0+"|"+n; if(key!==tgAdKey){ tgAdKey=key; tgAdOpen=false; }
     var per=days.map(function(d){ return {d:d, items:[], loose:[], marks:[]}; }), ad=[];
     // E4: one pass over the events; calVisible decides for every calendar and for Gena's own (no sourceId)
-    if(show.ev!==false) S.events.forEach(function(e){
+    if(show.ev!==false) evAll().forEach(function(e){
       if(!e.date||e.date>dN||!calVisible(e)||(plan&&e.projectId&&!inScope(e))) return;
       var tt=evSpanT(e);
       if(!tt){ if(lastDay(e.date,e.end)>=d0) ad.push(e); return; }
@@ -5236,7 +5261,7 @@ function GENA_MAIN() {
   /* ---------- V6.4 event details (D1): any event opens its details at the top of the right panel; a sheet on a phone ----------
      Everything from a feed is text: escaped, with http(s) links made into links that open a new tab. A subscribed event
      cannot be edited in Gena: its button names where it lives and opens that calendar's own web app, never the feed link. */
-  function evById(id){ for(var i=0;i<S.events.length;i++) if(S.events[i].id===id) return S.events[i]; return null; }
+  function evById(id){ var a=evAll(); for(var i=0;i<a.length;i++) if(a[i].id===id) return a[i]; return null; }
   function shortDate(s){ var p=parse(s); return DOWNAMES[p.getDay()]+", "+MONTHS[p.getMonth()].slice(0,3)+" "+p.getDate(); }
   // "7 PM – 9 PM · Sat, Oct 17", "All day · Sat, Oct 17", "All day · Oct 19 – 21", or both ends for a timed event across days
   function evWhenText(e){
@@ -5256,13 +5281,25 @@ function GENA_MAIN() {
   }
   // where a subscribed event is edited: its calendar's own web app, by provider (never the feed link)
   function evEditHome(e){
+    if(e.mac) return {name:"the Calendar app", url:null};   // Mac Calendar: a writable one edits here; a read-only one stays as Calendar has it
     var s=calById(e.sourceId), p=s?calProvider(s):"Other", h=(/^[a-z]+:\/\/([^\/?#:]+)/i.exec(feedTarget(s&&s.url))||[])[1]||"";
     if(p==="Google") return {name:"Google Calendar", url:"https://calendar.google.com/calendar/r/day/"+e.date.replace(/-/g,"/")};
     if(p==="Outlook") return {name:"Outlook", url:/live\.com$/i.test(h)?"https://outlook.live.com/calendar/":"https://outlook.office.com/calendar/"};
     if(p==="Apple") return {name:"Apple Calendar", url:"https://www.icloud.com/calendar/"};
     return {name:"the calendar it comes from", url:null};
   }
-  function evCalLabel(e){ var s=e.sourceId?calById(e.sourceId):calGena(); return s?(s.own?"Gena · "+calName(s):calAccount(s)+" · "+calName(s)):"Gena"; }
+  function evCalLabel(e){ var s=e.sourceId?calById(e.sourceId):calGena(); return s?(s.own?"Gena · "+calName(s):(s.mac?"Mac Calendar · ":"")+calAccount(s)+" · "+calName(s)):"Gena"; }
+  /* the card's calendar list (Mac Calendar M4, M5): his own events can move to a writable Mac calendar; a writable Mac event to another
+     one (a repeating one as a whole series); subscriptions and read-only calendars are listed, not choosable */
+  function evCalOpts(e){
+    var mine=e.sourceId||CAL_GENA, mw=!!(e.mac&&!macRO(e)), mine2=null;
+    var o=function(id,label,sel,dis){ if(sel) mine2=id; return '<option value="'+esc(id)+'"'+(sel?' selected':'')+(dis?' disabled':'')+'>'+esc(label)+'</option>'; };
+    var h=o(CAL_GENA,calName(calGena())+" (Gena)",mine===CAL_GENA,!!e.sourceId);
+    macWritable().forEach(function(c){ h+=o(c.id,"Mac · "+c.account+" · "+c.name,mine===c.id,!!e.sourceId&&!mw); });
+    calFeeds().forEach(function(c){ if(macPaused(c.id)) return; var me=mine===c.id; h+=o(c.id,calAccount(c)+" · "+calName(c)+(me?"":" · read-only"),me,!me); });
+    if(!mine2&&e.mac){ var s=calById(e.sourceId); if(s) h+=o(s.id,"Mac · "+s.account+" · "+s.name+" · read-only",true,false); }
+    return h;
+  }
   /* V6.7 W22: one click on an event opens it twice, as a popout card beside the event and in the right panel (a phone: the bottom
      sheet only). Each is one card: the basic fields edit in place (title, emoji, date, start and end, all day, calendar, colour,
      pattern) and apply at once: Gena's own events write the item, a subscribed one the W13 override with ✎ and Reset. A More
@@ -5274,35 +5311,42 @@ function GENA_MAIN() {
   function evDetailsHtml(e,where){
     where=where||"panel";
     var sub=!!e.sourceId, s=sub?calById(e.sourceId):calGena(), home=sub?evEditHome(e):null, id=esc(e.id), t=evSpanT(e), ed=evEdited(e), more=evMoreOn();
+    var mw=!!(e.mac&&!macRO(e)), mro=!!(e.mac&&!mw);   // Mac Calendar: a writable Mac event edits in place, through the bridge
     var hue=esc(evHue(e)), calHue=sub?((s&&s.color)||"var(--p0)"):(calGena().color||"var(--terra)"), cur=sub&&!ed?"":(e.color||"");
     var fa=function(k,extra){ return 'data-f="'+k+'" data-eid="'+id+'"'+(extra?" "+extra:""); };
     var b=function(k,label){ return '<button type="button" class="evd-b" data-act="evd" data-k="'+k+'" data-eid="'+id+'">'+label+'</button>'; };
-    var cals='<option value="'+CAL_GENA+'"'+(sub?' disabled':' selected')+'>'+esc(calName(calGena()))+' (Gena)</option>'+calFeeds().map(function(c){ var mine=sub&&c.id===e.sourceId;
-      return '<option value="'+esc(c.id)+'"'+(mine?' selected':' disabled')+'>'+esc(calAccount(c)+" · "+calName(c))+(mine?'':' · read-only')+'</option>'; }).join("");
+    var cals=evCalOpts(e);
     var pals=FAMILIES.map(function(f){ return f[1][2]; });
     var sws='<button type="button" class="ev-sw-cal" '+fa("color",'data-v=""')+' style="--sw:'+esc(calHue)+';--swink:'+(/^#/.test(calHue)?inkOn(calHue):"#fff")+'" aria-pressed="'+!cur+'" title="The calendar’s colour">Calendar</button>'+
       pals.map(function(c){ return '<button type="button" '+fa("color",'data-v="'+c+'"')+' style="--sw:'+c+'" aria-pressed="'+(cur===c)+'" aria-label="'+c+'" title="'+c+'"></button>'; }).join("");
     var pats=EV_PATS.map(function(x){ return '<button type="button" '+fa("pat",'data-v="'+x[0]+'"')+' aria-pressed="'+((e.pat||"")===x[0])+'">'+x[1]+'</button>'; }).join("");
     var rows="";
-    if(e.loc) rows+='<dt>Where</dt><dd>'+linkText(e.loc)+'</dd>';
-    if(e.desc) rows+='<dt>Notes</dt><dd>'+linkText(e.desc)+'</dd>';
+    // a writable Mac event: Where is a textarea, which keeps a place's line break (V9 review finding 1); notes too long for the bridge are read-only (finding 2)
+    if(mw) rows+=(e.mac.locCut?'<dt>Where</dt><dd>'+linkText(e.mac.loc)+'…<div class="evd-ro mac-cut">This place is longer than Gena shows. Change it in the Calendar app.</div></dd>':
+      '<dt>Where</dt><dd><textarea class="evc-loc" '+fa("loc")+' rows="2" maxlength="500" placeholder="Add a place" aria-label="Where">'+esc(e.mac.loc)+'</textarea></dd>')+
+      (e.mac.notesCut?'<dt>Notes</dt><dd>'+linkText(e.desc||"")+'…<div class="evd-ro mac-cut">These notes are longer than Gena shows. Change them in the Calendar app.</div></dd>':
+      '<dt>Notes</dt><dd><textarea class="evc-notes" '+fa("notes")+' rows="3" maxlength="5000" placeholder="Add notes" aria-label="Notes">'+esc(e.mac.notes)+'</textarea></dd>');
+    else { if(e.loc) rows+='<dt>Where</dt><dd>'+linkText(e.loc)+'</dd>';
+    if(e.desc) rows+='<dt>Notes</dt><dd>'+linkText(e.desc)+'</dd>'; }
     if(e.who&&e.who.length) rows+='<dt>Guests</dt><dd>'+e.who.slice(0,8).map(esc).join(", ")+'</dd>';
     var url=(/https?:\/\/[^\s<>"'`]+/.exec((e.loc||"")+" "+(e.desc||""))||[])[0];
     if(url) rows+='<dt>Link</dt><dd>'+linkText(url.replace(/[.,;:!?\]]+$/,""))+'</dd>';
-    var edit=!sub?b("edit","Edit"):b("gedit","Edit in Gena")+(home.url?'<a class="evd-b" href="'+esc(home.url)+'" target="_blank" rel="noopener noreferrer" title="Gena shows it; you change it there">Edit in '+esc(home.name)+'</a>':b("where","Edit in "+esc(home.name)));
+    var edit=!sub||mw?b("edit","Edit"):b("gedit","Edit in Gena")+(home.url?'<a class="evd-b" href="'+esc(home.url)+'" target="_blank" rel="noopener noreferrer" title="Gena shows it; you change it there">Edit in '+esc(home.name)+'</a>':b("where","Edit in "+esc(home.name)));
     return '<div class="evd evc" data-eid="'+id+'" data-where="'+where+'"><div class="evd-cal"><span class="evd-dot'+evPatCls(e)+'" style="'+(evPatCls(e)?'background-color:'+hue+';--c:'+hue:'background:'+hue)+'"></span>'+esc(evCalLabel(e))+'</div>'+
       '<h4 class="evc-h">'+esc(evTitle(e))+'</h4><div class="evd-when">'+esc(evWhenText(e))+'</div>'+
-      '<div class="evc-f"><div class="evc-trow"><input class="evc-emo" '+fa("emoji")+' value="'+esc(e.emoji||"")+'" maxlength="16" placeholder="🙂" aria-label="Emoji" title="Emoji: type or paste one (Ctrl+Cmd+Space for all emoji)"/>'+
-        '<input class="evc-t" '+fa("title")+' value="'+esc(e.title)+'" aria-label="Title"/></div>'+
+      '<div class="evc-f"><div class="evc-trow">'+(mw?'':'<input class="evc-emo" '+fa("emoji")+' value="'+esc(e.emoji||"")+'" maxlength="16" placeholder="🙂" aria-label="Emoji" title="Emoji: type or paste one (Ctrl+Cmd+Space for all emoji)"/>')+
+        (mw&&e.mac.titleCut?'<div class="evd-ro mac-cut">This title is longer than Gena shows. Change it in the Calendar app.</div>':'<input class="evc-t" '+fa("title")+' value="'+esc(e.title)+'" aria-label="Title"/>')+'</div>'+
         '<div class="evc-row"><input type="date" class="evc-d" '+fa("date")+' value="'+esc(e.date)+'" aria-label="Date"/><label class="ev-ad evc-ad"><input type="checkbox" role="switch" '+fa("allday")+(t?'':' checked')+'/> All day</label></div>'+
         (t?'<div class="evc-row"><input class="evc-tm" '+fa("at",'list="evc-tl"')+' value="'+esc(inClock(e.at))+'" aria-label="Start" autocomplete="off"/><span class="evc-to">to</span><input class="evc-tm" '+fa("to",'list="evc-tl"')+' value="'+esc(inClock(hhmm(t.e)))+'" aria-label="End" autocomplete="off"/></div>':'')+
-        '<div class="evc-row"><select class="evc-cal" '+fa("cal")+(sub?' disabled':'')+' aria-label="Calendar">'+cals+'</select></div>'+
-        '<div class="ev-sws evc-sws" role="group" aria-label="Colour">'+sws+'</div>'+
-        '<div class="seg seg-mini ev-pats evc-pats" role="group" aria-label="Pattern">'+pats+'</div></div>'+
+        '<div class="evc-row"><select class="evc-cal" '+fa("cal")+(sub&&!mw?' disabled':'')+' aria-label="Calendar">'+cals+'</select></div>'+
+        (mw?'':'<div class="ev-sws evc-sws" role="group" aria-label="Colour">'+sws+'</div>'+
+        '<div class="seg seg-mini ev-pats evc-pats" role="group" aria-label="Pattern">'+pats+'</div>')+'</div>'+
+      (mw&&e.mac.rec?'<div class="evd-ro mac-rep">↻ Repeats. A change asks: this event, this and following, or all.</div>':'')+
+      (mro&&!ed?(e.mac.guests?'<div class="evd-ro mac-guests">Has guests: change it in the Calendar app.</div>':'<div class="evd-ro">🔒 '+esc(calName(s))+' is read-only in Calendar. Edit in Gena keeps a change on this device.</div>'):'')+
       (ed?'<div class="evd-ed">✎ Edited here, on this device. '+esc(home.name.replace(/^the /,"The "))+' keeps the original. '+b("reset","Reset to original")+'</div>':'')+
       '<button type="button" class="evc-more" data-act="evmore" aria-expanded="'+more+'">More '+(more?"▴":"▾")+'</button>'+
       '<div class="evc-mb"'+(more?'':' hidden')+'>'+(rows?'<dl class="evd-dl">'+rows+'</dl>':'')+
-      '<div class="evd-acts">'+edit+b("addto","Add to another calendar")+b("copy","Copy details")+(s?b("hide","Hide "+esc(calName(s))):"")+(sub?'':b("del","Delete"))+'</div></div></div>';
+      '<div class="evd-acts">'+edit+b("addto","Add to another calendar")+b("copy","Copy details")+(s?b("hide","Hide "+esc(calName(s))):"")+(sub&&!mw?'':b("del","Delete"))+'</div></div></div>';
   }
   function evDetailsSection(){
     var e=selEvId?evById(selEvId):null; if(!e||!calVisible(e)) return "";
@@ -5390,9 +5434,13 @@ function GENA_MAIN() {
   // still reaches the event it was aimed at (a redraw at mousedown replaced it, and the click went nowhere)
   var evPress=false;
   function evQuickApply(id,f,v,card){
-    var e=evById(id); if(!e||!evQuick(e,f,v)) return false;
+    var e=evById(id); if(!e) return false;
+    if(!e.sourceId&&f==="cal"&&/^mac:/.test(v||"")){ render(); macMoveOwn(e,v.slice(4)); return false; }   // M5: his own event moves to a Mac calendar (asks first)
+    var mw=!!(e.mac&&!macRO(e));
+    if(mw?!macQuick(e,f,v):!evQuick(e,f,v)) return false;
     var where=card&&card.dataset.where, focusF=document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.f;
-    save();
+    if(mw&&document.querySelector("#modal-root .mac-span")){ render(); return true; }   // a repeating Mac event is asking which events
+    if(!mw) save();
     if(evPress){ var t=0, go=function(){ if(t) return; t=1; document.removeEventListener("pointerup",up,true); document.removeEventListener("pointercancel",up,true); render(); }, up=function(){ setTimeout(go,0); };
       document.addEventListener("pointerup",up,true); document.addEventListener("pointercancel",up,true); setTimeout(go,1500); return true; }
     render();
@@ -5403,11 +5451,11 @@ function GENA_MAIN() {
   (function evCardWire(){
     document.addEventListener("change",function(ev){ var el=ev.target, card=el.closest&&el.closest(".evc"); if(!card||!el.dataset.f) return;
       evQuickApply(el.dataset.eid,el.dataset.f,el.type==="checkbox"?el.checked:el.value,card); });
-    document.addEventListener("keydown",function(ev){ var el=ev.target; if(ev.key!=="Enter"||!el.closest||!el.closest(".evc")||el.tagName!=="INPUT"||!el.dataset.f) return; ev.preventDefault(); el.blur(); },true);
+    document.addEventListener("keydown",function(ev){ var el=ev.target; if(ev.key!=="Enter"||!el.closest||!el.closest(".evc")||(el.tagName!=="INPUT"&&!(el.classList.contains("evc-loc")&&!ev.shiftKey))||!el.dataset.f) return; ev.preventDefault(); el.blur(); },true);   // Where commits on Enter too (Shift+Enter: a new line)
     document.addEventListener("pointerdown",function(){ evPress=true; },true); document.addEventListener("pointerup",function(){ evPress=false; },true); document.addEventListener("pointercancel",function(){ evPress=false; },true);
     // V6.11 finding 2: a field a redraw put back (restoreUi) was refocused with his text already in it, so leaving it fires no change; apply it here
     // (after a real change the card is redrawn, so this field is gone, and a second apply of the same value is a no-op)
-    document.addEventListener("focusout",function(ev){ var el=ev.target, card=el&&el.closest&&el.closest(".evc"); if(!card||!el.isConnected||el.tagName!=="INPUT"||el.type==="checkbox"||!el.dataset.f||el.value===el.defaultValue) return;
+    document.addEventListener("focusout",function(ev){ var el=ev.target, card=el&&el.closest&&el.closest(".evc"); if(!card||!el.isConnected||!/^(INPUT|TEXTAREA)$/.test(el.tagName)||el.type==="checkbox"||!el.dataset.f||el.value===el.defaultValue) return;
       evQuickApply(el.dataset.eid,el.dataset.f,el.value,card); },true);
     document.addEventListener("click",function(ev){ var el=ev.target.closest&&ev.target.closest(".evc button[data-f]"); if(el){ evQuickApply(el.dataset.eid,el.dataset.f,el.dataset.v,el.closest(".evc")); return; }
       var p=document.getElementById("evpop"); if(!p||p.hidden) return;
@@ -5422,8 +5470,10 @@ function GENA_MAIN() {
     var e=evById(id);
     if(k==="close"){ closeEvDetails(); return; }
     if(!e) return;
-    if(k==="edit"&&!e.sourceId){ evPopClose(); openEventModal(e.date,e); }
-    else if(k==="gedit"&&e.sourceId){ evPopClose(); openEventModal(e.date,e); }
+    var mw=!!(e.mac&&!macRO(e));
+    if(k==="edit"&&(!e.sourceId||mw)){ evPopClose(); openEventModal(e.date,e); }
+    else if(k==="gedit"&&e.sourceId&&!mw){ evPopClose(); openEventModal(e.date,e); }
+    else if(k==="del"&&mw) macDelete(e);   // M4: asks first; a repeating one then asks which
     else if(k==="reset"){ evResetEdit(e); save(); render(); toast("Back to the original"); }
     else if(k==="where") toast("Gena shows this calendar; change the event in "+evEditHome(e).name);
     else if(k==="addto") openAddToSheet(e);
@@ -5435,7 +5485,7 @@ function GENA_MAIN() {
   // Calendar's panel (D5): what comes next, from now; a row opens its details
   function upNextEvents(n){
     var t=today(), now=new Date(), nm=now.getHours()*60+now.getMinutes(), out=[];
-    S.events.forEach(function(e){ if(!e.date||!calVisible(e)) return; var tt=evSpanT(e);
+    evAll().forEach(function(e){ if(!e.date||!calVisible(e)) return; var tt=evSpanT(e);
       if(tt){ if(tt.d1<t||(tt.d1===t&&tt.e<=nm)) return; } else if(lastDay(e.date,e.end)<t) return;
       out.push({e:e, d:e.date<t?t:e.date, at:tt?(e.date<t?"00:00":e.at):""}); });
     return out.sort(function(a,b){ return a.d<b.d?-1:a.d>b.d?1:(a.at<b.at?-1:a.at>b.at?1:0); }).slice(0,n);
@@ -5488,7 +5538,7 @@ function GENA_MAIN() {
   function modWarnHtml(t){ return t?'<div class="mod-warn" role="status">⚠ '+esc(t)+'</div>':''; }
   function planInfo(show){
     var f=calFails(), off=!show.ev||!show.tasks, r=calRange();
-    var none=!show.tasks&&(!show.ev||!S.events.some(function(e){ return e.date&&e.date<=r[1]&&lastDay(e.date,e.end)>=r[0]&&calVisible(e); }));
+    var none=!show.tasks&&(!show.ev||!evAll().some(function(e){ return e.date&&e.date<=r[1]&&lastDay(e.date,e.end)>=r[0]&&calVisible(e); }));
     var body='<div>Events and tasks together.</div>'+(show.ev?'<div><i style="background:var(--p4,#5b7fa6)"></i>Events from your calendars</div>':'')+(show.tasks?'<div><i class="tk"></i>Your tasks, as time blocks</div>':'')+
       (off?'<div class="mod-pop-w">'+(!show.tasks&&!show.ev?"Tasks and events are":(!show.tasks?"Tasks are":"Events are"))+' off in Show (left)</div>':'')+f.html;
     return {i:modInfoHtml(body,off||f.n>0), warn:modWarnHtml(none?"Tasks are off in Show (left), and nothing else is on "+(view==="day"?"this day":"these days")+".":(f.all?"None of your calendars could sync. See Settings → Calendars.":""))};
@@ -5511,7 +5561,7 @@ function GENA_MAIN() {
     var tray=show.tasks?'<div class="day-unsched"><div class="day-unsched-h">Unscheduled ('+unsched.length+')<span class="hint"> — drag onto an hour to time-block</span></div>'+
       (unsched.length?'<ul class="tasks day-tray" data-unsched="1">'+unsched.map(taskLi).join("")+'</ul>'
                      :'<div class="day-tray empty-tray" data-unsched="1">Nothing unscheduled — drop a task here to clear its time.</div>')+'</div>':'';
-    var none=!all.length&&!S.events.some(function(e){ return evOnDay(e,d)&&calVisible(e); })&&!evSpanAcross(d);   // D9: an empty day says so
+    var none=!all.length&&!evAll().some(function(e){ return evOnDay(e,d)&&calVisible(e); })&&!evSpanAcross(d);   // D9: an empty day says so
     return head+'<div class="day-split'+(show.tasks?'':' no-tray')+'"><div class="day-gridwrap">'+timeGridHtml([d],{plan:true,show:show})+
       (none?'<p class="mod-note">Nothing planned on '+esc(shortDate(d))+' yet. Add a task above, or drag one from Unscheduled onto an hour.</p>':'')+'</div>'+tray+'</div>';
   }
@@ -5781,7 +5831,7 @@ function GENA_MAIN() {
     /* H4: Today (the day's events) and Coming due open at the top; the rest below, folded until he opens one.
        Every panel section folds on this device (data-uifold, A1). The old synced panel-* keys are no longer read:
        an open <details> wrote false into them on every draw, so "folded by default" could never apply through them. */
-    var evs=S.events.filter(function(e){ return evOnDay(e,vd)&&calVisible(e)&&!(e.projectId&&!inScope(e)); }).sort(evByTime);
+    var evs=evAll().filter(function(e){ return evOnDay(e,vd)&&calVisible(e)&&!(e.projectId&&!inScope(e)); }).sort(evByTime);
     var evBody=evs.length?evs.map(function(e){ return rbEvRow(e,null,vd); }).join(""):'<div class="empty">No events '+(vd===today()?"today":"this day")+'</div>';
     var cd=comingDueTasks();
     var cdBody=cd.length?cd.map(function(k){ var p=k.projectId?proj(k.projectId):null;
@@ -5903,7 +5953,7 @@ function GENA_MAIN() {
     var due=S.tasks.filter(function(k){ return isOpen(k) && k.due===day && inScope(k); });
     var phaseEnds=S.phases.filter(function(ph){ return ph.end===day && !(ph.projectId&&!ph.effortId) && inScope(ph); });   // V6.8 W35: a Focus's phase is hidden
     var phaseStarts=S.phases.filter(function(ph){ return ph.start===day && !(ph.projectId&&!ph.effortId) && inScope(ph); });
-    var events=S.events.filter(function(ev){ return evOnDay(ev,day) && calVisible(ev) && inScope(ev); });
+    var events=evAll().filter(function(ev){ return evOnDay(ev,day) && calVisible(ev) && inScope(ev); });
     return {day:day, tasks:tasks, habits:habits, followups:followups, checkbacks:checkbacks, due:due,
             phaseEnds:phaseEnds, phaseStarts:phaseStarts, events:events,
             count: tasks.length+habits.length+followups.length+checkbacks.length};
@@ -6398,7 +6448,7 @@ function GENA_MAIN() {
       var open=show.tasks?orderTasks(dayTodo(d).filter(function(k){return isOpen(k)&&inScope(k);}),false):[];
       var load=dayLoad(d);
       var done=S.tasks.filter(function(k){return k.status==="done"&&k.completedOn===d&&inScope(k);}).length;
-      var evs=S.events.filter(function(e){return evOnDay(e,d)&&calVisible(e)&&!(e.projectId&&!inScope(e));});
+      var evs=evAll().filter(function(e){return evOnDay(e,d)&&calVisible(e)&&!(e.projectId&&!inScope(e));});
       // H3: every day folds (kept per date on this device); a day with nothing on it starts folded (A5)
       var rail=landingRailHtml(d,show), wk="wk:"+d, shut=uiFolded(wk,!open.length&&!evs.length&&!rail);
       html+='<div class="card gwrap wk-day'+(shut?' closed':'')+'"><div class="wk-day-head"><h3><button type="button" class="gfold wk-fold" data-act="gfold" data-g="'+wk+'" aria-expanded="'+!shut+'"><span class="gchev" aria-hidden="true">▾</span>'+(i===0?"Today":(i===1?"Tomorrow":WDFULL[dow(d)]))+'</button></h3><span class="sub">'+MONTHS[+d.slice(5,7)-1].slice(0,3)+' '+(+d.slice(8))+(shut&&!open.length&&!evs.length&&!rail?' · nothing yet':'')+'</span>'+foldProg(done,open.length+done)+
@@ -6811,10 +6861,10 @@ function GENA_MAIN() {
     if(mode==="month") return lg+monthGridHtml(a);
     if(mode==="year") return lg+yearGridHtml(+a.slice(0,4));
     var days=calDays(mode,a);
-    return lg+timeGridHtml(days)+(mode==="day"&&!S.events.some(function(e){ return evOnDay(e,a)&&calVisible(e); })&&!evSpanAcross(a)?'<p class="mod-note">Nothing on '+esc(niceDate(a))+'.</p>':'');
+    return lg+timeGridHtml(days)+(mode==="day"&&!evAll().some(function(e){ return evOnDay(e,a)&&calVisible(e); })&&!evSpanAcross(a)?'<p class="mod-note">Nothing on '+esc(niceDate(a))+'.</p>':'');
   }
   // a timed event from the day before that runs into this one
-  function evSpanAcross(d){ var p=addDays(d,-1); return S.events.some(function(e){ return e.date===p&&calVisible(e)&&evSegOn(evSpanT(e),d); }); }
+  function evSpanAcross(d){ var p=addDays(d,-1); return evAll().some(function(e){ return e.date===p&&calVisible(e)&&evSegOn(evSpanT(e),d); }); }
   // C3: six weeks, Monday first; three rows of chips a day and +n more; a multi-day event spans its days in each week
   var MON_CAP=3;
   function monthOrder(x,y){ var mx=x.c1>x.c0?0:1, my=y.c1>y.c0?0:1, tx=x.e.at||"", ty=y.e.at||"";
@@ -6822,7 +6872,7 @@ function GENA_MAIN() {
   function shortClock(at){ var h=+at.slice(0,2), m=at.slice(3,5); return (h%12||12)+(m!=="00"?":"+m:"")+(h<12?"a":"p"); }
   function monthGridHtml(a){
     var ym=a.slice(0,7), first=ym+"-01", start=addDays(first,-((dow(first)+6)%7)), last=addDays(start,41), t=today(), list=[];
-    S.events.forEach(function(e){ if(e.date&&e.date<=last&&lastDay(e.date,e.end)>=start&&calVisible(e)) list.push(e); });
+    evAll().forEach(function(e){ if(e.date&&e.date<=last&&lastDay(e.date,e.end)>=start&&calVisible(e)) list.push(e); });
     var h='<div class="mg"><div class="mg-dh">'+["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(function(d){ return '<span>'+d+'</span>'; }).join("")+'</div>';
     for(var w=0;w<6;w++){
       var days=[]; for(var i=0;i<7;i++) days.push(addDays(start,w*7+i));
@@ -6841,7 +6891,7 @@ function GENA_MAIN() {
   // C4: twelve months with a dot on days that have a visible event; a day opens Day, a month's name opens Month
   function yearGridHtml(y){
     var busy={}, ys=String(y), y0=ys+"-01-01", y1=ys+"-12-31", t=today();
-    S.events.forEach(function(e){ if(!e.date||!calVisible(e)) return; var last=lastDay(e.date,e.end); if(e.date>y1||last<y0) return;
+    evAll().forEach(function(e){ if(!e.date||!calVisible(e)) return; var last=lastDay(e.date,e.end); if(e.date>y1||last<y0) return;
       var c=evHue(e); for(var d=e.date<y0?y0:e.date, to=last>y1?y1:last; d<=to; d=addDays(d,1)) if(!busy[d]) busy[d]=c; });   // D3: the dot is the first event's calendar colour
     var html='<div class="yr-grid">';
     for(var m=0;m<12;m++){
@@ -7053,7 +7103,7 @@ function GENA_MAIN() {
     // completed work stays on the timeline — it is a record of the term, not just a to-do forecast
     var datedTasks=S.tasks.filter(function(k){ return k.day && inScope(k); });
     var scopedPhases=S.phases.filter(function(ph){ return inScope(ph); });
-    var scopedEvents=S.events.filter(function(ev){ return ev.date && calVisible(ev) && !(ev.projectId&&!inScope(ev)); });
+    var scopedEvents=evAll().filter(function(ev){ return ev.date && calVisible(ev) && !(ev.projectId&&!inScope(ev)); });
     // 45: deadlines and check-backs are dates too — the timeline is where "am I on track" gets answered
     var dueMarks=S.tasks.filter(function(k){ return isOpen(k) && k.due && inScope(k); });
     var cbMarks=S.tasks.filter(function(k){ return isWaiting(k) && k.nextAt && inScope(k); });
@@ -7851,7 +7901,7 @@ function GENA_MAIN() {
       else if(act==="calday"){ openDayModal(a.dataset.d); }
       else if(act==="import-ics"){ importICS(); }
       else if(act==="calendars"){ openCalendarsModal(); }
-      else if(act==="calrefresh"){ toast("Syncing…"); refreshCalendars(function(){ render(); var bad=calFeeds().filter(function(s){ return s.enabled&&calState(s.id).error; }).length; if(bad) toast(bad+" calendar"+(bad===1?"":"s")+" couldn’t sync — see 🗓 Calendars"); }); }
+      else if(act==="calrefresh"){ macEnsure(true); toast("Syncing…"); refreshCalendars(function(){ render(); var bad=calFeeds().filter(function(s){ return s.enabled&&calState(s.id).error; }).length; if(bad) toast(bad+" calendar"+(bad===1?"":"s")+" couldn’t sync — see 🗓 Calendars"); }); }
       else if(act==="delphase"){ var phid=a.dataset.id; confirmModal("Remove this phase?","It disappears from the Timeline. The Project keeps its steps.","Remove",function(){ S.phases=S.phases.filter(function(x){return x.id!==phid;}); save(); render(); }); }
       else if(act==="email-toggle"){ var em=S.emails.find(function(x){return x.id===anyId;}); if(em){ em.done=!em.done; save(); render(); } }
       else if(act==="email-del"){ S.emails=S.emails.filter(function(x){return x.id!==anyId;}); save(); render(); }
@@ -9554,26 +9604,28 @@ function GENA_MAIN() {
     });
     return out;
   }
-  function sourceEnabled(ev){ if(!ev.sourceId) return true; var s=S.calSources.find(function(x){return x.id===ev.sourceId;}); return s?s.enabled!==false:false; }   // a removed calendar's events are gone (review finding 3)
+  function sourceEnabled(ev){ if(!ev.sourceId) return true; if(ev.sourceId.slice(0,4)==="mac:"){ var m=macCal(ev.sourceId); return !!m&&m.enabled; }   // Mac Calendar: a Mac calendar's twin of a subscription is not drawn
+    var s=S.calSources.find(function(x){return x.id===ev.sourceId;}); return s?s.enabled!==false&&!(MAC.cals.length&&macPaused(s.id)):false; }   // a removed calendar's events are gone (review finding 3)
   /* V6.2 Calendars filter. A calendar item may carry `account` (his own label), `hidden` and `ord`; Gena's own
      events use the pseudo item cal-gena (no url: never fetched, never listed in Settings), made on first hide. */
   var CAL_PROVIDERS=["Gena","Apple","Google","Outlook","Other"], CAL_GENA="cal-gena", CALSTATE_KEY="gena-calstate";
-  function calById(id){ return (S.calSources||[]).find(function(x){ return x.id===id; })||null; }
+  function calById(id){ if(typeof id==="string"&&id.slice(0,4)==="mac:") return macCal(id); return (S.calSources||[]).find(function(x){ return x.id===id; })||null; }   // Mac Calendar: "mac:<id>" is a Mac calendar (never stored)
   function calFeeds(){ return S.calSources.filter(function(s){ return !s.own; }); }
   function calGena(){ return calById(CAL_GENA)||{id:CAL_GENA,own:true,name:"My events"}; }
   // D1: the provider, read from the feed's host each time (never stored)
   function calProvider(s){
     if(s&&s.own) return "Gena";
+    if(s&&s.mac) return s.prov;
     var m=/^[a-z][a-z0-9+.-]*:\/\/(?:[^\/?#@]*@)?([^\/?#:]+)/i.exec(feedTarget(s&&s.url)), h=m?m[1].toLowerCase():"";
     if(/(^|\.)icloud\.com$/.test(h)) return "Apple";
     if(/(^|\.)google\.com$/.test(h)) return "Google";
     if(h==="outlook.office365.com"||/(^|\.)live\.com$/.test(h)) return "Outlook";
     return "Other";
   }
-  function calAccount(s){ var a=s&&!s.own&&typeof s.account==="string"?s.account.trim():""; return a||calProvider(s); }
+  function calAccount(s){ if(s&&s.mac) return s.account; var a=s&&!s.own&&typeof s.account==="string"?s.account.trim():""; return a||calProvider(s); }
   // D2: "A-Home" under Apple shows as "Home"; the stored name is never changed
   function calName(s){
-    if(!s) return ""; if(s.own) return s.name||"My events";
+    if(!s) return ""; if(s.own) return s.name||"My events"; if(s.mac) return s.name;
     var p=calProvider(s), n=String(s.name||""), cut=n.replace(/^[AGO][-: ]\s*/,"");
     return (p==="Apple"||p==="Google"||p==="Outlook")&&cut&&n.charAt(0)===p.charAt(0)?cut:n;
   }
@@ -9635,7 +9687,8 @@ function GENA_MAIN() {
     s.ord=next.length?(hi+Math.min.apply(null,next))/2:hi+10;
   }
   // hide or show; cal-gena is made the first time it is hidden
-  function calSetHidden(s,v){ if(s.id===CAL_GENA&&!calById(CAL_GENA)){ if(!v) return; S.calSources.push(s); } if(!!s.hidden!==!!v) s.hidden=!!v; }
+  function calSetHidden(s,v){ if(s.mac){ if(s.link){ var f=calById(s.link); if(f) calSetHidden(f,v); } else macPrefSet(s.mac.id,{hidden:!!v}); return; }   // Mac Calendar: a Mac calendar's hidden is this device's
+    if(s.id===CAL_GENA&&!calById(CAL_GENA)){ if(!v) return; S.calSources.push(s); } if(!!s.hidden!==!!v) s.hidden=!!v; }
   // Remove: the calendar and its events (device-local) and this device's note of it
   function calRemove(id){ evEdits(); S.events=S.events.filter(function(x){ return x.sourceId!==id; }); evEditsAfterFeed(id); S.calSources=S.calSources.filter(function(x){ return x.id!==id; }); var p={}; p[id]=null; setCalStates(p); save(); }
   // the same feed entry gets the same id on every fetch, so a refresh that changes nothing changes nothing
@@ -9696,7 +9749,7 @@ function GENA_MAIN() {
   }
   function refreshCalendars(cb,o){
     o=o||{};
-    var list=S.calSources.filter(function(s){return s.enabled&&s.url&&(!o.only||s.id===o.only);});
+    var list=S.calSources.filter(function(s){return s.enabled&&s.url&&(!o.only||s.id===o.only)&&!(MAC.cals.length&&macPaused(s.id));});   // M6: a feed moved to Mac Calendar is paused here
     if(!o.only) calLastRefresh=Date.now();
     dropOrphanEvents();
     if(!list.length){ if(cb)cb(); return; }
@@ -9721,14 +9774,243 @@ function GENA_MAIN() {
   // C6: back in the app after a while, read the feeds again (the relay caches them for 5 minutes)
   function calOnReturn(){ if(Date.now()-calLastRefresh>10*60000) refreshCalendars(function(){ if(groupOf(view)==="plan"||groupOf(view)==="cal") renderPassive(); },{passive:true}); }
 
+  /* ---------- Mac Calendar (V9_MAC_CALENDAR_BUILD_BRIEF M3 to M8) ----------
+     In the Mac app the page finds window.GenaNative (native/Gena.swift: EventKit behind a bridge that answers only this page).
+     His calendars there are listed under Calendars by account, and their events are read live for the days around the screen.
+     Nothing from EventKit goes into S: the events live in MAC.evs for this page session only (never saved, synced or put in
+     localStorage); this device's display choices (a name, hidden, the subscription it stands in for) are gena-mac-cals.
+     With no bridge (the website, the PWA, the phone, the old Mac app) each function here returns at once and nothing changes */
+  var MAC={access:"", cals:[], evs:[], from:"", to:"", busy:false, err:"", gen:0, loaded:false, ix:null};
+  var MAC_KEY="gena-mac-cals", MAC_PAD=14, MAC_MAX_DAYS=400;
+  function macApi(){ var g=typeof window!=="undefined"&&window.GenaNative; return g&&g.v>=1&&typeof g.events==="function"&&typeof g.save==="function"?g:null; }
+  // one bridge call → an object; never throws, never rejects (a failure is {ok:false, code})
+  function macCall(op){
+    var g=macApi(), a=[].slice.call(arguments,1); if(!g||typeof g[op]!=="function") return Promise.resolve({ok:false,code:"none"});
+    var bad=function(){ return {ok:false,code:"failed"}; };
+    try{ return Promise.resolve(g[op].apply(g,a)).then(function(r){ return r&&typeof r==="object"?r:bad(); },bad); }catch(e){ return Promise.resolve(bad()); }
+  }
+  var macPrefMap=null;
+  function macPrefs(){ if(!macPrefMap){ try{ macPrefMap=JSON.parse(localStorage.getItem(MAC_KEY)||"{}"); }catch(e){ macPrefMap=null; } if(!macPrefMap||typeof macPrefMap!=="object"||Array.isArray(macPrefMap)) macPrefMap={}; } return macPrefMap; }
+  function macPref(id){ var p=macPrefs()[id]; return p&&typeof p==="object"?p:{}; }
+  function macPrefSet(id,patch){
+    var m=macPrefs(), p={}, old=macPref(id); Object.keys(old).forEach(function(k){ p[k]=old[k]; });
+    Object.keys(patch).forEach(function(k){ if(patch[k]==null||patch[k]===false||patch[k]==="") delete p[k]; else p[k]=patch[k]; });
+    if(Object.keys(p).length) m[id]=p; else delete m[id];
+    try{ localStorage.setItem(MAC_KEY,JSON.stringify(m)); }catch(e){}
+    MAC.ix=null;
+  }
+  // the account a Mac calendar is in, read from its source each time (what the Calendar app shows)
+  function macProvider(c){ var s=String(c&&c.source||"").toLowerCase(), k=c&&c.kind;
+    if(k==="exchange"||/outlook|office ?365|exchange|hotmail|live\.com/.test(s)) return "Outlook";
+    if(/google|gmail/.test(s)) return "Google";
+    if(k==="mobileme"||/icloud/.test(s)) return "Apple";
+    return "Other"; }
+  function macAccount(c){ var p=macProvider(c);
+    if(c.kind==="local") return "On My Mac"; if(c.kind==="subscribed") return "Subscribed"; if(c.kind==="birthdays") return "Other";
+    return p==="Apple"?"iCloud":p==="Other"?(String(c.source||"").trim().slice(0,60)||"Other"):p; }
+  var MAC_ACCTS=["iCloud","Google","Outlook","On My Mac"];
+  function macNorm(t){ return String(t||"").trim().toLowerCase().replace(/\s+/g," "); }
+  // M6: a subscription and a Mac calendar are one calendar when the names match (the feed's shown name or its stored one) and
+  // the accounts agree; Other on either side matches by the name alone
+  function macSame(feed,c){ var n=macNorm(c.title); if(!n||(n!==macNorm(calName(feed))&&n!==macNorm(feed.name))) return false;
+    var a=calProvider(feed), b=macProvider(c); return a===b||a==="Other"||b==="Other"; }
+  /* the Mac calendars as calendar items for drawing (calById answers "mac:<id>" from here); built when the list, his choices or
+     the subscriptions change (render() starts a fresh one). A calendar he moved to Mac Calendar takes the subscription's name,
+     colour, account and hidden; the subscription is paused on this device. A twin he has not moved is not drawn: it shows once */
+  function macIx(){
+    if(MAC.ix) return MAC.ix;
+    var ix={src:Object.create(null), link:Object.create(null), dup:Object.create(null), twin:Object.create(null), paused:Object.create(null)}, taken=Object.create(null), feeds=calFeeds();
+    MAC.cals.forEach(function(c){ var f=macPref(c.id).sub, s=f&&calById(f); if(s&&!s.own&&!taken[s.id]){ taken[s.id]=c.id; ix.link[c.id]=s; ix.paused[s.id]=c.id; } });
+    MAC.cals.forEach(function(c){ if(ix.link[c.id]) return; var s=feeds.filter(function(x){ return !taken[x.id]&&x.enabled!==false&&macSame(x,c); })[0]; if(s){ taken[s.id]=c.id; ix.dup[c.id]=s; ix.twin[s.id]=c.id; } });
+    MAC.cals.forEach(function(c){ var p=macPref(c.id), f=ix.link[c.id], d=ix.dup[c.id];
+      ix.src["mac:"+c.id]={id:"mac:"+c.id, mac:c, name:f?calName(f):(p.name||c.title||"Calendar"), color:f&&f.color?f.color:(c.color||"var(--p0)"), account:f?calAccount(f):macAccount(c),
+        prov:macProvider(c), ro:!c.allowsModify, hidden:f?!!f.hidden:!!p.hidden, link:f?f.id:null, dup:d?d.id:null, enabled:!d}; });
+    return (MAC.ix=ix);
+  }
+  function macCal(id){ return MAC.cals.length&&typeof id==="string"&&id.slice(0,4)==="mac:"?macIx().src[id]||null:null; }
+  function macPaused(fid){ return MAC.cals.length>0&&!!macIx().paused[fid]; }
+  function macRO(e){ var s=e&&e.mac&&macCal(e.sourceId); return !s||s.ro||!!e.mac.guests; }   // a read-only calendar, or a meeting with guests (GD-072): Edit in Gena only
+  function macShown(){ if(!MAC.cals.length) return []; var ix=macIx(); return MAC.cals.map(function(c){ return ix.src["mac:"+c.id]; }).filter(function(s){ return s&&s.enabled; }); }
+  function macRank(a){ var i=MAC_ACCTS.indexOf(a); return i<0?MAC_ACCTS.length:i; }
+  // the calendars an event can be written to, by account (iCloud, Google, Outlook, On My Mac, then the rest), in Calendar's order within one
+  function macWritable(){ if(MAC.access!=="full") return []; var ix=macIx();
+    return MAC.cals.map(function(c,i){ return [ix.src["mac:"+c.id],i]; }).filter(function(x){ return x[0]&&x[0].enabled&&!x[0].ro; })
+      .sort(function(a,b){ return macRank(a[0].account)-macRank(b[0].account)||a[1]-b[1]; }).map(function(x){ return x[0]; }); }
+  // every event that is drawn: his own and subscribed ones (S.events), then, in the Mac app, the Mac calendars' (this session only)
+  var evAllC=null;
+  function evAll(){ if(!MAC.evs.length) return S.events; var c=evAllC;
+    if(c&&c.a===S.events&&c.n===S.events.length&&c.b===MAC.evs) return c.v;
+    evAllC={a:S.events, n:S.events.length, b:MAC.evs, v:S.events.concat(MAC.evs)}; return evAllC.v; }
+  function macHm(d){ return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+  // one EventKit occurrence → the event shape every view draws. An all-day end is its last day; a timed end at midnight is 24:00 of the day before
+  function macEvent(r){
+    if(!r||typeof r.eid!=="string"||!r.eid||typeof r.cal!=="string"||!isFinite(r.start)||!isFinite(r.end)||!isFinite(r.occ)||r.end<r.start||r.cancelled) return null;
+    var s=new Date(r.start), e=new Date(r.end), d0=fmt(s), tt=String(r.title||"").trim(), ev={id:"mac:"+r.eid+"@"+r.occ, title:tt.slice(0,200)||"(event)", date:d0, sourceId:"mac:"+r.cal};
+    if(r.allDay){ var last=fmt(new Date(Math.max(r.start,r.end-1))); if(last>d0) ev.end=last; }
+    else { var d1=fmt(e), to=macHm(e); if(to==="00:00"&&d1>d0){ d1=fmt(new Date(r.end-1)); to="24:00"; } ev.at=macHm(s); ev.to=to; if(d1>d0) ev.end=d1; }
+    var loc=typeof r.loc==="string"?r.loc:"", notes=typeof r.notes==="string"?r.notes:"";
+    if(loc) ev.loc=loc.slice(0,120); if(notes) ev.desc=notes.slice(0,300);
+    if(Array.isArray(r.who)&&r.who.length) ev.who=r.who.slice(0,8).map(function(x){ return String(x).slice(0,120); });
+    ev.mac={eid:r.eid, occ:+r.occ, stamp:+r.stamp||0, rec:!!r.rec, loc:loc, notes:notes, titleCut:r.titleCut===true||tt.length>200, locCut:r.locCut===true, notesCut:r.notesCut===true};   // the full place and notes, for editing (a title, place or notes the bridge or this page cut: read-only here)
+    if(r.guests===true||ev.who) ev.mac.guests=true;   // GD-072 (1): a meeting with guests is read-only in Gena (a change could email them); the names list can be empty
+    return ev;
+  }
+  // a day, start and end in Gena's shape → the instants EventKit takes, on this device's clock; an all-day end is its last day's last second
+  function macTimes(x){
+    var p=parse(x.date), q=parse(lastDay(x.date,x.end)), t=evSpanT(x);
+    if(!t) return {allDay:true, start:p.getTime(), end:new Date(q.getFullYear(),q.getMonth(),q.getDate()+1).getTime()-1000};
+    var d1=parse(t.d1); return {allDay:false, start:new Date(p.getFullYear(),p.getMonth(),p.getDate(),0,t.s).getTime(), end:new Date(d1.getFullYear(),d1.getMonth(),d1.getDate(),0,t.e).getTime()};
+  }
+  // the days around what is on screen, and today (Today, Up next), padded so a step or two needs no new read
+  function macWant(){ var t=today(), g=groupOf(view), r=g==="plan"||g==="cal"?calRange():[t,t], w=addDays(t,7);
+    return [r[0]<t?r[0]:t, r[1]>w?r[1]:w]; }
+  function macEnsure(force){
+    if(!macApi()||MAC.access!=="full") return false;
+    var w=macWant(); if(!force&&MAC.from&&w[0]>=MAC.from&&w[1]<=MAC.to) return false;   // asked already (a failed read waits for a refresh, the window or a change)
+    var from=addDays(w[0],-MAC_PAD), to=addDays(w[1],MAC_PAD); if(diffDays(to,from)>MAC_MAX_DAYS) to=addDays(from,MAC_MAX_DAYS);
+    MAC.from=from; MAC.to=to; macLoad(from,to); return true;
+  }
+  // the calendars and the range's events, read together; a newer read wins; slow accounts never hold the page (a spinner on the group)
+  function macLoad(from,to,then){
+    var g=++MAC.gen; MAC.busy=true; macBusyPaint();
+    Promise.all([macCall("calendars"),macCall("events",parse(from).getTime(),parse(addDays(to,1)).getTime())]).then(function(r){
+      if(g!==MAC.gen) return;
+      MAC.busy=false;
+      var bad=!r[0].ok?r[0]:(!r[1].ok?r[1]:null);
+      if(bad){ MAC.err=bad.code||"failed"; if(bad.code==="denied"){ MAC.access="denied"; macForget(); } macDraw(); if(then) then(false); return; }
+      MAC.err=""; MAC.cals=(Array.isArray(r[0].calendars)?r[0].calendars:[]).filter(function(c){ return c&&typeof c.id==="string"&&c.id; });
+      var seen=Object.create(null), live=Object.create(null); MAC.cals.forEach(function(c){ live[c.id]=1; });
+      MAC.evs=(Array.isArray(r[1].events)?r[1].events:[]).map(macEvent).filter(function(e){ if(!e||!live[e.sourceId.slice(4)]||seen[e.id]) return false; seen[e.id]=1; return true; });
+      MAC.loaded=true; MAC.ix=null;
+      macEditsAfterLoad();
+      macDraw(); if(then) then(true);
+    });
+  }
+  function macForget(){ MAC.cals=[]; MAC.evs=[]; MAC.from=MAC.to=""; MAC.loaded=false; MAC.ix=null; }
+  function macDraw(){ whenIdle(function(){ renderPassive(); }); }
+  function macBusyPaint(){ if(typeof document==="undefined"||!document.querySelector) return; var g=document.querySelector("#sidebar .mac-h"); if(g) g.classList.toggle("busy",MAC.busy); }
+  // M7: on boot, when the window comes back, and when the app says so: is access still there? A change reloads or clears
+  function macStart(){
+    if(!macApi()) return;
+    macCall("status").then(function(r){ var was=MAC.access; MAC.access=r.ok&&typeof r.access==="string"?r.access:"denied";
+      if(MAC.access==="full"){ if(was!=="full"||!MAC.loaded) macEnsure(true); }
+      else { if(MAC.loaded) macForget(); if(was!==MAC.access) macDraw(); } });
+  }
+  function macAllow(){ macCall("requestAccess").then(function(r){ MAC.access=r.ok&&r.access?r.access:"denied"; if(MAC.access==="full") macEnsure(true); else macDraw(); }); }
+  // W13's Edit in Gena for an event of a read-only Mac calendar: his record laid over each fresh read (the record stays until he resets it)
+  function macEditsAfterLoad(){ var m=evEdits(); if(!Object.keys(m).length) return; MAC.evs.forEach(function(e){ var r=m[e.id]; if(r){ r.orig=evFields(e); evApplyEdit(e); } }); }
+  /* M4: a change to a writable Mac event goes back through the bridge. A repeating one asks first, as Calendar does: this event
+     (the default), this and following, or all; a move to another calendar is the whole series. The change shows at once and the
+     range is read again; an event changed in Calendar meanwhile is reloaded and shown, never overwritten */
+  function macSpanAsk(verb,allOnly,go,cancel){
+    var opts=allOnly?[["all","All events"]]:[["this","This event"],["future","This and following"],["all","All events"]];
+    modal('<h3>'+esc(verb)+' a repeating event</h3><p class="sub">'+(allOnly?"A repeating event moves to another calendar as a whole series.":"Which events should change?")+'</p>'+
+      '<div class="modal-actions mac-span">'+'<button class="btn ghost" data-x>Cancel</button>'+opts.map(function(o,i){ return '<button class="btn '+(i?"ghost":"primary")+'" data-span="'+o[0]+'">'+o[1]+'</button>'; }).join("")+'</div>');
+    var root=document.getElementById("modal-root"), first=root.querySelector("[data-span]");
+    onModalDismiss=function(){ close(); if(cancel) cancel(); };
+    root.querySelector("[data-x]").onclick=function(){ close(); if(cancel) cancel(); };
+    [].forEach.call(root.querySelectorAll("[data-span]"),function(b){ b.onclick=function(){ close(); go(b.dataset.span); }; });
+    if(first) setTimeout(function(){ if(first.isConnected) first.focus(); },0);   // after modal()'s own autofocus: Enter takes This event
+  }
+  function macSay(r,cal){
+    if(r.code==="changed") return "This event changed in Calendar. Showing the latest.";
+    if(r.code==="gone") return "This event is no longer in Calendar.";
+    if(r.code==="guests") return "Has guests: change it in the Calendar app.";
+    if(r.code==="readonly") return "“"+(cal||"This calendar")+"” can’t be changed. Edit in Gena keeps a change on this device.";
+    if(r.code==="denied") return "Gena can’t reach your calendars any more. See Calendars in the side panel.";
+    return "Calendar didn’t take the change"+(r.msg?": "+String(r.msg).slice(0,120):"")+".";
+  }
+  // after a write: read the range again and keep the same event selected (a moved one-off has a new occurrence date)
+  function macAfter(r,e,what){
+    var cal=e&&macCal(e.sourceId), name=cal?cal.name:"";
+    if(r.ok){ if(e&&selEvId===e.id&&r.eid) selEvId="mac:"+r.eid+"@"+r.occ; toast(what+(name?" in "+name:"")); }
+    else toast(macSay(r,name));
+    macEnsure(true);
+  }
+  // the occurrence a write is for, with its stamp only when Calendar gave one (V9 review finding 5: the bridge refuses a stamp of 0)
+  function macRef(e,span){ var a={eid:e.mac.eid, occ:e.mac.occ, span:span}; if(e.mac.stamp>0) a.stamp=e.mac.stamp; return a; }
+  // undo puts back what a card change drew at once, when he cancels the repeating choice (V9 review finding 3)
+  function macWrite(e,set,verb,then,undo){
+    if(e.mac.guests){ if(undo) undo(); toast(macSay({code:"guests"})); render(); return; }   // GD-072 (1): never written from Gena, whatever path got here
+    var cal=macCal(e.sourceId), allOnly=!!(set.cal&&cal&&set.cal!==cal.mac.id);
+    var go=function(span){ var a=macRef(e,span); a.set=set; macCall("save",a).then(function(r){
+      if(r.ok&&r.stamp>0&&r.eid===e.mac.eid) e.mac.stamp=+r.stamp;   // V9 review finding 6: his own save moved the stamp; a second edit before the read takes the new one
+      macAfter(r,e,"Saved"); if(then) then(r); }); };
+    if(e.mac.rec) macSpanAsk(verb||"Change",allOnly,go,function(){ if(undo) undo(); render(); }); else go("this");
+  }
+  function macDelete(e){
+    if(e.mac.guests){ toast(macSay({code:"guests"})); return; }   // GD-072 (1)
+    var cal=macCal(e.sourceId), go=function(span){ macCall("remove",macRef(e,span)).then(function(r){ if(r.ok){ selEvId=null; evPopClose(); } macAfter(r,e,"Deleted"); }); };
+    confirmModal("Delete this event?","It is deleted from “"+(cal?cal.name:"Calendar")+"” in the Calendar app, and from your other devices on their next refresh.","Delete",function(){
+      if(e.mac.rec) setTimeout(function(){ macSpanAsk("Delete",false,go); },0); else go("this"); });
+  }
+  // a new event in a Mac calendar (the form's calendar picker, M5), or his own event moved there from Details
+  function macCreate(calId,x,then){
+    var set={cal:calId, title:x.title}, t=macTimes(x); set.allDay=t.allDay; set.start=t.start; set.end=t.end;
+    if(x.loc) set.loc=x.loc; if(x.notes) set.notes=x.notes;
+    macCall("save",{span:"this", set:set}).then(function(r){ if(r.ok){ var c=macCal("mac:"+calId); toast("Added"+(c?" to "+c.name:"")); if(r.eid) selEvId="mac:"+r.eid+"@"+r.occ; } else toast(macSay(r)); macEnsure(true); if(then) then(r); });
+  }
+  /* V9 review findings 1 and 2: a text as a field shows it and gives it back, so an untouched field compares equal: an input drops
+     line breaks (one line), a textarea turns CRLF into LF and its first line break may go; either is trimmed when read */
+  function macTx(s,line){ s=String(s||"").replace(/\r\n?/g,"\n"); return (line?s.replace(/\n/g,""):s).trim(); }
+  // the fields a card or form changed, as the bridge takes them (only what he changed; a time is all three together; cut notes never)
+  function macSet(e,x){
+    var set={}, a=macTimes(e), b=macTimes(x);
+    if(macTx(x.title,1)!==macTx(e.title,1)) set.title=x.title;
+    if(macTx(x.loc)!==macTx(e.mac.loc)) set.loc=x.loc||"";
+    if(!e.mac.notesCut&&macTx(x.notes)!==macTx(e.mac.notes)) set.notes=x.notes||"";
+    if(e.mac.titleCut) delete set.title; if(e.mac.locCut) delete set.loc;   // a cut title or place never goes back (V9 re-check R1, R2)
+    if(a.allDay!==b.allDay||a.start!==b.start||a.end!==b.end){ set.allDay=b.allDay; set.start=b.start; set.end=b.end; }
+    return set;
+  }
+  function macCopy(e){ var x={id:e.id, title:e.title, date:e.date, loc:e.mac.loc, notes:e.mac.notes}; ["end","at","to"].forEach(function(k){ if(e[k]) x[k]=e[k]; }); return x; }
+  // a card field on a writable Mac event (the popout, the panel, the sheet): the same rules as his own events (evQuick), then the bridge
+  function macQuick(e,f,v){
+    var x=macCopy(e), set;
+    if(f==="cal"){ var tc=macCal(v); if(!tc||tc.ro||!tc.enabled||v===e.sourceId) return false; set={cal:tc.mac.id}; }
+    else if(f==="loc"||f==="notes"){ x[f]=String(v||"").trim().slice(0,f==="loc"?500:5000); set=macSet(e,x); }
+    else { if(!evQuick(x,f,v)) return false; set=macSet(e,x); }
+    if(!Object.keys(set).length) return false;
+    var was={}, ks=["title","date","end","at","to","loc","desc"]; ks.forEach(function(k){ was[k]=e[k]; }); was.mloc=e.mac.loc; was.mnotes=e.mac.notes;
+    var undo=function(){ ks.forEach(function(k){ if(was[k]===undefined) delete e[k]; else e[k]=was[k]; }); e.mac.loc=was.mloc; e.mac.notes=was.mnotes; };
+    ["title","date","end","at","to"].forEach(function(k){ if(x[k]) e[k]=x[k]; else if(k!=="title") delete e[k]; });   // shown at once; the read that follows confirms it
+    if(set.loc!==undefined){ e.mac.loc=set.loc; if(set.loc) e.loc=set.loc.slice(0,120); else delete e.loc; }
+    if(set.notes!==undefined){ e.mac.notes=set.notes; if(set.notes) e.desc=set.notes.slice(0,300); else delete e.desc; }
+    macWrite(e,set,"Change",null,undo);
+    return true;
+  }
+  // M5: his own event to a Mac calendar, from Details: it becomes a Calendar event and leaves Gena's own events once Calendar has it
+  function macMoveOwn(e,calId){
+    var c=macCal("mac:"+calId); if(!c||c.ro) return;
+    confirmModal("Move to “"+c.name+"”?","It becomes an event in the Calendar app ("+c.account+") and leaves Gena’s own events. Its Focus, colour, pattern and emoji stay behind.","Move",function(){
+      macCreate(calId,{title:evTitle(e), date:e.date, end:e.end, at:e.at, to:e.to},function(r){ if(!r.ok){ render(); return; }
+        S.events=S.events.filter(function(x){ return x.id!==e.id; }); save(); render(); }); });
+  }
+  // M6: the one-line choice on a subscription that is also in Calendar; "Use Mac Calendar" pauses the feed here (never deletes it).
+  // GD-072 (4): the same for a Mac calendar he picks by hand for a subscription (fid), when a rename keeps them from matching
+  function macUse(macId,fid){ var d=fid?calById(fid):macIx().dup[macId]; if(!d||d.own||!macPick(d).some(function(c){ return c.id===macId; })) return; macPrefSet(macId,{sub:d.id, keep:null}); render(); toastUndo("“"+calName(d)+"” now comes from Mac Calendar on this Mac",function(){ macUnlink(macId); }); }
+  // the Mac calendars a subscription can use (any not already standing in for another one): the same account first, then Calendar's order by account
+  function macPick(feed){ var ix=macIx(), p=calProvider(feed);
+    return MAC.cals.map(function(c,i){ return [c,i]; }).filter(function(x){ return !ix.link[x[0].id]||ix.link[x[0].id].id===feed.id; })
+      .sort(function(a,b){ return (macProvider(b[0])===p)-(macProvider(a[0])===p)||macRank(macAccount(a[0]))-macRank(macAccount(b[0]))||a[1]-b[1]; }).map(function(x){ return x[0]; }); }
+  function macPairSheet(feed){ var cs=macPick(feed);
+    calSheet("Use a Mac calendar for “"+calName(feed)+"”",cs.map(function(c){ return [c.id,'<span class="mac-pdot" style="background:'+esc(c.color||"var(--p0)")+'"></span>',macAccount(c)+" · "+(c.title||"Calendar")+(c.allowsModify?"":" · read-only")]; }),function(id){ macUse(id,feed.id); }); }
+  function macKeep(macId){ var d=macIx().dup[macId]; if(!d) return; macPrefSet(macId,{keep:d.id}); render(); }
+  function macUnlink(macId){ var f=macPref(macId).sub; macPrefSet(macId,{sub:null}); render(); if(f) refreshCalendars(function(){ renderPassive(); },{only:f}); }
+  (function macWire(){
+    if(!macApi()) return;
+    window.addEventListener("gena-native",function(e){ if(e.detail==="changed") whenIdle(function(){ macEnsure(true); }); else macStart(); });
+    window.addEventListener("focus",function(){ macStart(); });
+  })();
+
   function openDayModal(ds){
     var tasks=tasksOn(ds);
-    var evs=S.events.filter(function(e){return evOnDay(e,ds) && calVisible(e);});
+    var evs=evAll().filter(function(e){return evOnDay(e,ds) && calVisible(e);});
     var body='<h3>'+niceDate(ds)+'</h3>';
     body+='<div class="fld"><label>Tasks</label><ul class="tasks">'+
       (tasks.length?tasks.map(function(k){var p=proj(k.projectId);var mp=(p?'<span class="pill proj" style="'+cbg(hueOf(p).color)+'">'+(p.emoji?esc(p.emoji)+" ":"")+esc(p.name)+'</span>':"")+(k.at?'<span class="pill block">🕒 '+fmtTime(k.at)+'</span>':"")+(k.subs&&k.subs.length?'<span class="pill subs-n">'+subCountText(k.subs,k.day,goalDone(k))+'</span>':"");return '<li class="task '+(k.status==="done"?"done":"")+'" data-id="'+esc(k.id)+'"><button class="chk '+(k.status==="done"?"done":"")+'" data-dact="toggle" aria-label="done" aria-pressed="'+(k.status==="done")+'"></button><div class="task-main"><div class="task-title">'+esc(k.title)+'</div>'+(mp?'<div class="task-meta">'+mp+'</div>':"")+'</div><button class="task-x" data-dact="deltask" style="opacity:1" aria-label="delete">✕</button></li>';}).join(""):'<div class="empty">No tasks</div>')+'</ul></div>';
     body+='<div class="fld"><label>Events &amp; milestones</label><ul class="tasks">'+
-      (evs.length?evs.map(function(e){return '<li class="task" data-id="'+esc(e.id)+'"><span class="dot" style="background:'+(evColor(e)||projColor(e.projectId))+';border-color:transparent;cursor:default"></span><div class="task-main" data-dact="evdet" title="Details"><div class="task-title">'+esc(evTitle(e))+'</div>'+(e.sourceId?'<div class="task-meta"><span class="pill block">subscribed</span></div>':"")+'</div>'+'<button class="task-x" data-dact="evmore" style="opacity:1" aria-label="Add to a calendar" title="Add to a calendar">⋯</button>'+(e.sourceId?"":'<button class="task-x" data-dact="delev" style="opacity:1" aria-label="delete">✕</button>')+'</li>';}).join(""):'<div class="empty">No events</div>')+'</ul></div>';
+      (evs.length?evs.map(function(e){return '<li class="task" data-id="'+esc(e.id)+'"><span class="dot" style="background:'+(evColor(e)||projColor(e.projectId))+';border-color:transparent;cursor:default"></span><div class="task-main" data-dact="evdet" title="Details"><div class="task-title">'+esc(evTitle(e))+'</div>'+(e.sourceId?'<div class="task-meta"><span class="pill block">'+(e.mac?"Mac Calendar":"subscribed")+'</span></div>':"")+'</div>'+'<button class="task-x" data-dact="evmore" style="opacity:1" aria-label="Add to a calendar" title="Add to a calendar">⋯</button>'+(e.sourceId?"":'<button class="task-x" data-dact="delev" style="opacity:1" aria-label="delete">✕</button>')+'</li>';}).join(""):'<div class="empty">No events</div>')+'</ul></div>';
     var fitems=S.focus[ds]||[];
     if(fitems.length) body+='<div class="fld"><label>Priority that day</label><ul class="tasks">'+fitems.map(function(f){ var ftxt=f.text, fdone=f.done, fsubs=f.subs;
       if(f.habitId){ var fhb=habitById(f.habitId); if(!fhb) return ""; ftxt=fhb.name; fdone=habitDoneOn(fhb,ds); }
@@ -9750,9 +10032,9 @@ function GENA_MAIN() {
       if(a.dataset.dact==="toggle"){ toggleTask(id); li.classList.toggle("done"); a.classList.toggle("done"); a.setAttribute("aria-pressed",a.classList.contains("done")); }
       else if(a.dataset.dact==="deltask"){ S.tasks=S.tasks.filter(function(k){return k.id!==id;}); save(); li.remove(); render(); }
       else if(a.dataset.dact==="delev"){ S.events=S.events.filter(function(x){return x.id!==id;}); save(); li.remove(); render(); }
-      else if(a.dataset.dact==="editev"){ var ev=S.events.find(function(x){return x.id===id;}); if(ev){ close(); openEventModal(ev.date,ev); } }
+      else if(a.dataset.dact==="editev"){ var ev=evAll().find(function(x){return x.id===id;}); if(ev){ close(); openEventModal(ev.date,ev); } }
       else if(a.dataset.dact==="evdet"){ close(); selectEvent(id); }   // W13: every event opens its details
-      else if(a.dataset.dact==="evmore"){ var ev2=S.events.find(function(x){return x.id===id;}); if(ev2){ close(); openAddToSheet(ev2); } }
+      else if(a.dataset.dact==="evmore"){ var ev2=evAll().find(function(x){return x.id===id;}); if(ev2){ close(); openAddToSheet(ev2); } }
     });
   }
 
@@ -9803,7 +10085,7 @@ function GENA_MAIN() {
   function hhmm(m){ m=((Math.round(m)%1440)+1440)%1440; return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); }
   function inClock(at){ if(!/^\d{2}:\d{2}$/.test(at||"")) return ""; var h=+at.slice(0,2); return (h%12||12)+":"+at.slice(3,5)+" "+(h<12||h===24?"AM":"PM"); }
   // (e) the timed events on day d, the edited one left out: what the free time and the clash line read
-  function evBusy(d,skip){ var out=[]; S.events.forEach(function(e){ if(e.id===skip||!e.date||!calVisible(e)) return; var sg=evSegOn(evSpanT(e),d); if(sg) out.push({s:sg.s, e:sg.e, ev:e}); });
+  function evBusy(d,skip){ var out=[]; evAll().forEach(function(e){ if(e.id===skip||!e.date||!calVisible(e)) return; var sg=evSegOn(evSpanT(e),d); if(sg) out.push({s:sg.s, e:sg.e, ev:e}); });
     return out.sort(function(a,b){ return a.s-b.s||a.e-b.e; }); }
   /* up to four starts that fit dur minutes: the first free slot of each gap from now (today) on, inside the work day; when the
      gaps there are fewer than four, more starts inside them an hour apart; only then after 8 PM, and last before 8 AM */
@@ -9828,20 +10110,26 @@ function GENA_MAIN() {
     return hits.length?"Overlaps "+hits.slice(0,3).map(function(x){ return evTitle(x.ev)+" "+clockLabel(x.s); }).join(", ")+(hits.length>3?" and "+(hits.length-3)+" more":""):"";
   }
   function openEventModal(ds, ev, o){
-    o=o||{}; var editing=!!ev, sub=!!(ev&&ev.sourceId), own=!sub;
-    var base=ev||{title:"",date:ds||today(),projectId:null}, gcal=calGena(), src=sub?calById(ev.sourceId):gcal, home=sub?evEditHome(ev):null;
+    o=o||{}; var mw=!!(ev&&ev.mac&&!macRO(ev)), editing=!!ev, sub=!!(ev&&ev.sourceId)&&!mw, own=!sub&&!mw;   // Mac Calendar: a writable Mac event is edited here and saved through the bridge
+    var base=ev||{title:"",date:ds||today(),projectId:null}, gcal=calGena(), src=sub||mw?calById(ev.sourceId):gcal, home=sub?evEditHome(ev):null;
     var at0=o.at||base.at||null;
     var st={at:at0, to:at0?(base.to||(o.at||!editing?hhmm(toMins(at0)+60):null)):null, color:base.color||null, pat:base.pat||"", emoji:base.emoji||""};
     if(st.at&&!st.to) st.to=hhmm(toMins(st.at)+30);
-    var calHue=function(){ return sub?((src&&src.color)||"var(--p0)"):(gcal.color||"var(--terra)"); };
+    var macOn=function(){ return /^mac:/.test(document.getElementById("ev-cal").value); };
+    var calHue=function(){ if(!sub&&document.getElementById("ev-cal")&&macOn()){ var mc=macCal(document.getElementById("ev-cal").value); return (mc&&mc.color)||"var(--p0)"; } return sub?((src&&src.color)||"var(--p0)"):(gcal.color||"var(--terra)"); };
     var pals=FAMILIES.map(function(f){ return f[1][2]; });
     var projOpts=S.projects.map(function(p){return '<option value="'+esc(p.id)+'" '+(p.id===base.projectId?"selected":"")+'>'+esc(p.name)+'</option>';}).join("");
     var tl=""; for(var q=0;q<96;q++) tl+='<option value="'+inClock(hhmm(q*15))+'"></option>';
-    var cals='<option value="'+CAL_GENA+'"'+(own?" selected":"")+'>'+esc(calName(gcal))+' (Gena)</option>'+calFeeds().map(function(c){ var mine=sub&&c.id===ev.sourceId;
+    // M5: the writable Mac calendars in the Mac app (the chosen one's colour shows); elsewhere one line says where they are
+    var macs=sub?[]:macWritable(), pick=mw?ev.sourceId:(own&&!editing&&o.cal&&macCal(o.cal)?o.cal:CAL_GENA);
+    var cals='<option value="'+CAL_GENA+'"'+(pick===CAL_GENA&&!sub?" selected":"")+(mw?" disabled":"")+'>'+esc(calName(gcal))+' (Gena)</option>'+
+      macs.map(function(c){ return '<option value="'+esc(c.id)+'"'+(pick===c.id?" selected":"")+'>'+esc("Mac · "+c.account+" · "+c.name)+'</option>'; }).join("")+
+      (sub||macApi()?"":'<option disabled>Mac calendars · in Gena for Mac</option>')+
+      calFeeds().map(function(c){ var mine=sub&&c.id===ev.sourceId; if(!mine&&macPaused(c.id)) return "";
       return '<option value="'+esc(c.id)+'"'+(mine?" selected":" disabled")+'>'+esc(calAccount(c)+" · "+calName(c))+(mine?"":" · read-only")+'</option>'; }).join("");
-    modal('<h3>'+(sub?"Edit in Gena":(editing?"Edit event":"New event"))+'</h3><p class="sub">'+(sub?"Your changes show in Gena on this device. "+esc(home.name.replace(/^the /,"The "))+" keeps the original; Reset to original puts it back.":"An event of your own, in "+esc(calName(gcal))+".")+'</p>'+
+    modal('<h3>'+(sub?"Edit in Gena":(editing?"Edit event":"New event"))+'</h3><p class="sub" id="ev-sub">'+(sub?(ev.mac&&ev.mac.guests?"Has guests: change it in the Calendar app. ":"")+"Your changes show in Gena on this device. "+esc(home.name.replace(/^the /,"The "))+" keeps the original; Reset to original puts it back.":(mw?"In "+esc(calName(src))+", in the Calendar app.":"An event of your own, in "+esc(calName(gcal))+"."))+'</p>'+
       '<div class="fld"><label for="ev-cal">Calendar</label><select id="ev-cal"'+(sub?" disabled":"")+'>'+cals+'</select></div>'+
-      '<div class="fld"><label for="ev-t">Title</label><div class="ev-trow"><button type="button" class="ev-emo-b" id="ev-emo-b" aria-expanded="false" aria-controls="ev-emo-pane" aria-label="Emoji" title="Emoji">'+(st.emoji?esc(st.emoji):"🙂")+'</button><input id="ev-t" value="'+esc(base.title)+'" placeholder="e.g. Dentist, Launch day"/></div>'+
+      '<div class="fld"><label for="ev-t">Title</label><div class="ev-trow"><button type="button" class="ev-emo-b" id="ev-emo-b" aria-expanded="false" aria-controls="ev-emo-pane" aria-label="Emoji" title="Emoji">'+(st.emoji?esc(st.emoji):"🙂")+'</button><input id="ev-t" value="'+esc(base.title)+'" placeholder="e.g. Dentist, Launch day"/></div>'+(mw&&ev.mac.titleCut?'<div class="ev-hint mac-cut">This title is longer than Gena shows. Change it in the Calendar app.</div>':'')+
         '<div class="ev-emo-pane" id="ev-emo-pane" hidden><div class="ev-emo-in"><input id="ev-emo" value="'+esc(st.emoji)+'" maxlength="16" placeholder="Type or paste one" aria-label="Emoji"/><button type="button" class="chip" id="ev-emo-x">None</button></div>'+
         '<div class="ev-hint">Ctrl+Cmd+Space for all emoji</div>'+emojiPickerHtml("ev-emo")+'</div></div>'+
       '<div class="row"><div class="fld"><label>Starts</label><input id="ev-d" type="date" value="'+(base.date||today())+'"/></div>'+
@@ -9851,15 +10139,20 @@ function GENA_MAIN() {
         '<div class="fld"><label for="ev-en">End</label><input id="ev-en" list="ev-tl" value="'+inClock(st.to)+'" placeholder="10:00 AM" autocomplete="off"/></div></div>'+
         '<div class="ev-durs" role="group" aria-label="Length">'+EV_DURS.map(function(x){ return '<button type="button" class="chip" data-dur="'+x[0]+'">'+x[1]+'</button>'; }).join("")+'</div>'+
         '<div class="ev-sug" id="ev-sug" role="group" aria-label="Suggested times"></div><div class="ev-clash" id="ev-clash" role="status"></div></div><datalist id="ev-tl">'+tl+'</datalist></div>'+
-      '<div class="fld"><label>Colour</label><div class="ev-sws" id="ev-sws" role="group" aria-label="Colour"></div></div>'+
-      '<div class="fld"><label>Pattern</label><div class="seg seg-mini ev-pats" id="ev-pats" role="group" aria-label="Pattern">'+EV_PATS.map(function(x){ return '<button type="button" data-pat="'+x[0]+'" aria-pressed="'+(st.pat===x[0])+'">'+x[1]+'</button>'; }).join("")+'</div>'+
+      '<div class="fld" id="ev-col-fld"><label>Colour</label><div class="ev-sws" id="ev-sws" role="group" aria-label="Colour"></div></div>'+
+      '<div class="fld" id="ev-pat-fld"><label>Pattern</label><div class="seg seg-mini ev-pats" id="ev-pats" role="group" aria-label="Pattern">'+EV_PATS.map(function(x){ return '<button type="button" data-pat="'+x[0]+'" aria-pressed="'+(st.pat===x[0])+'">'+x[1]+'</button>'; }).join("")+'</div>'+
         '<div class="ev-prev-wrap"><div class="evblock ev-prev" id="ev-prev"></div></div></div>'+
-      (own?'<div class="fld"><label for="ev-p">Focus</label><select id="ev-p"><option value="">No Focus</option>'+projOpts+'</select></div>':
-        '<div class="fld"><label for="ev-loc">Where</label><input id="ev-loc" maxlength="120" value="'+esc(base.loc||"")+'"/></div><div class="fld"><label for="ev-desc">Notes</label><textarea id="ev-desc" maxlength="300" rows="3">'+esc(base.desc||"")+'</textarea></div>')+
-      (own?'<div class="fld"><label>Add to a calendar</label><div class="chips" id="ev-addto">'+addToHtml(calItem(base),"chip",false)+'</div></div>':'')+
-      '<div class="modal-actions">'+(editing&&own?'<button class="btn ghost danger" id="ev-del" style="margin-right:auto">Delete</button>':"")+(sub&&evEdited(ev)?'<button class="btn ghost" id="ev-reset" style="margin-right:auto">Reset to original</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">'+(editing?"Save":"Add")+'</button></div>',"form");
+      (own?'<div class="fld" id="ev-p-fld"><label for="ev-p">Focus</label><select id="ev-p"><option value="">No Focus</option>'+projOpts+'</select></div>':'')+
+      (own&&!macs.length?'':'<div class="fld ev-mac-f" id="ev-loc-fld"><label for="ev-loc">Where</label>'+(mw?'<textarea id="ev-loc" maxlength="500" rows="2">'+esc(ev.mac.loc)+'</textarea>':'<input id="ev-loc" maxlength="'+(sub?120:500)+'" value="'+esc(base.loc||"")+'"/>')+(mw&&ev.mac.locCut?'<div class="ev-hint mac-cut">This place is longer than Gena shows. Change it in the Calendar app.</div>':'')+'</div><div class="fld ev-mac-f" id="ev-desc-fld"><label for="ev-desc">Notes</label><textarea id="ev-desc" maxlength="'+(sub?300:5000)+'" rows="3"'+(mw&&ev.mac.notesCut?' readonly':'')+'>'+esc(mw?ev.mac.notes:(base.desc||""))+'</textarea>'+(mw&&ev.mac.notesCut?'<div class="ev-hint mac-cut">These notes are longer than Gena shows. Change them in the Calendar app.</div>':'')+'</div>')+
+      (own?'<div class="fld" id="ev-addto-fld"><label>Add to a calendar</label><div class="chips" id="ev-addto">'+addToHtml(calItem(base),"chip",false)+'</div></div>':'')+
+      '<div class="modal-actions">'+(editing&&(own||mw)?'<button class="btn ghost danger" id="ev-del" style="margin-right:auto">Delete</button>':"")+(sub&&evEdited(ev)?'<button class="btn ghost" id="ev-reset" style="margin-right:auto">Reset to original</button>':"")+'<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">'+(editing?"Save":"Add")+'</button></div>',"form");
     var $=function(id){ return document.getElementById(id); };
-    $("ev-cal").onchange=function(){ st.color=null; draw(); };   // (a) the calendar's colour, shown live; he may override it below
+    if(mw){ $("ev-t").readOnly=!!ev.mac.titleCut; $("ev-loc").readOnly=!!ev.mac.locCut; }   // a title or place the bridge or this page cut is read-only (V9 re-check R1, R2)
+    // a Mac calendar takes a place and notes, and keeps its own colour; Gena's own events keep colour, pattern, emoji and Focus
+    function macMode(){ var on=!sub&&macOn(); ["ev-col-fld","ev-pat-fld","ev-p-fld","ev-addto-fld"].forEach(function(id){ if($(id)) $(id).hidden=on; });
+      ["ev-loc-fld","ev-desc-fld"].forEach(function(id){ if($(id)) $(id).hidden=!on&&!sub; }); if($("ev-emo-b")) $("ev-emo-b").hidden=on; if(on){ $("ev-emo-pane").hidden=true; }
+      if(!sub) $("ev-sub").textContent=on?"In "+(macCal($("ev-cal").value)||{name:""}).name+", in the Calendar app.":"An event of your own, in "+calName(gcal)+"."; }
+    $("ev-cal").onchange=function(){ st.color=null; macMode(); draw(); };   // (a) the calendar's colour, shown live; he may override it below
     $("ev-emo-b").onclick=function(){ var p=$("ev-emo-pane"), open=p.hidden; p.hidden=!open; this.setAttribute("aria-expanded",String(open)); if(open){ var f=$("ev-emo"); f.focus(); f.select(); } };   // (c) and the system picker: Ctrl+Cmd+Space in the field
     $("ev-emo").oninput=function(){ st.emoji=Array.from(this.value.trim()).slice(0,4).join(""); $("ev-emo-b").textContent=st.emoji||"🙂"; draw(); };
     $("ev-emo-x").onclick=function(){ $("ev-emo").value=""; $("ev-emo").oninput(); };
@@ -9888,7 +10181,7 @@ function GENA_MAIN() {
       $("ev-sug").innerHTML=sg.length?'<span class="ev-sug-l">Suggested</span>'+sg.map(function(m){ return '<button type="button" class="chip" data-s="'+m+'">'+esc(clockLabel(m))+'</button>'; }).join(""):"";
       $("ev-clash").textContent=timed&&a?evClashText(d,toMins(a),toMins(a)+dur(),ev&&ev.id):"";
     }
-    draw();
+    macMode(); draw();
     document.querySelector("[data-x]").onclick=close;
     $("m-save").onclick=function(){ var t=$("ev-t").value.trim(); if(!t){toast("Title?");return;}
       var dt=$("ev-d").value||today(), evEnd=$("ev-e").value||null; if(!(evEnd&&evEnd>dt)) evEnd=null;
@@ -9896,6 +10189,11 @@ function GENA_MAIN() {
       if(timed&&!a){ toast("Start time? Try 9:30 or 3p"); $("ev-s").focus(); return; }
       if(a&&(!b||b===a)) b=hhmm(toMins(a)+60);
       var emo=st.emoji||null, pat=st.pat||null, col=st.color||null;
+      if(!sub&&macOn()){   // M4, M5: to the Calendar app, through the bridge (nothing in S)
+        var x={id:ev&&ev.id, title:t.slice(0,500), date:dt, end:evEnd, at:a, to:a?b:null, loc:$("ev-loc").value.trim().slice(0,500), notes:$("ev-desc").value.trim().slice(0,5000)}, cid=$("ev-cal").value.slice(4);
+        if(mw){ var set=macSet(ev,x); if(cid!==ev.sourceId.slice(4)) set.cal=cid; close(); if(Object.keys(set).length) macWrite(ev,set,"Change"); return; }
+        if(emo) x.title=emo+" "+x.title;
+        close(); macCreate(cid,x,function(r){ if(r.ok&&editing&&own){ S.events=S.events.filter(function(y){ return y.id!==ev.id; }); save(); } render(); }); return; }
       if(sub){ evSetEdit(ev,{title:t, date:dt, end:evEnd, at:a, to:b, loc:$("ev-loc").value.trim().slice(0,120)||null, desc:$("ev-desc").value.trim().slice(0,300)||null, color:col, pat:pat, emoji:emo});
         save(); close(); render(); toast("Saved in Gena, on this device"); return; }
       var pid=$("ev-p").value||null, saved=ev, put=function(x,k,v){ if(v) x[k]=v; else delete x[k]; };
@@ -9908,7 +10206,8 @@ function GENA_MAIN() {
       wireAddTo($("ev-addto"),function(){ var t=$("ev-t").value.trim(); if(!t){ toast("Title?"); return null; }
         var dt=$("ev-d").value||today(), en=$("ev-e").value||null, a=$("ev-allday").checked?null:readT("ev-s"); return calItem({title:t,date:dt,end:en&&en>dt?en:null,at:a,dur:a?dur():null}); });
       if(editing) $("ev-del").onclick=function(){ confirmModal("Delete this event?","It disappears from the calendar.","Delete",function(){ S.events=S.events.filter(function(x){return x.id!==ev.id;}); save(); render(); }); };
-    } else if($("ev-reset")) $("ev-reset").onclick=function(){ evResetEdit(ev); save(); close(); render(); toast("Back to the original"); };
+    } else if(mw) $("ev-del").onclick=function(){ close(); macDelete(ev); };
+    else if($("ev-reset")) $("ev-reset").onclick=function(){ evResetEdit(ev); save(); close(); render(); toast("Back to the original"); };
   }
 
   /* ---------- V6.2 Calendars filter: the Events left panel (F1 to F10) ---------- */
@@ -9922,7 +10221,7 @@ function GENA_MAIN() {
     var ds=calDays(cv,a); return [ds[0],ds[ds.length-1]];
   }
   function calCounts(){ var r=calRange(), n={};
-    S.events.forEach(function(e){ if(!e.date||e.date>r[1]||lastDay(e.date,e.end)<r[0]) return; var k=e.sourceId||CAL_GENA; n[k]=(n[k]||0)+1; });
+    evAll().forEach(function(e){ if(!e.date||e.date>r[1]||lastDay(e.date,e.end)<r[0]) return; var k=e.sourceId||CAL_GENA; n[k]=(n[k]||0)+1; });
     return n; }
   function calSidebarHtml(){
     var gs=calGroups(), n=calCounts(), st=calStates(), many=gs.length>1;
@@ -9936,18 +10235,60 @@ function GENA_MAIN() {
         (many?'<button class="sb-star" data-sb="calgmore" data-key="'+esc(g.key)+'" title="Move '+esc(g.key)+'" aria-label="Options for '+esc(g.key)+'">⋯</button>':'')+
         '<button class="cal-chk" role="checkbox" aria-checked="'+tri+'" data-sb="calgchk" data-key="'+esc(g.key)+'" aria-label="Show '+esc(g.key)+'"></button></div>';
       var rows=shut?"":g.items.map(function(x){
-        var c=x.own?(x.color||"var(--terra)"):(x.color||"var(--p0)"), err=!x.own&&st[x.id]&&st[x.id].error, off=!x.own&&x.enabled===false, nm=calName(x);
+        var lk=!x.own&&macPaused(x.id)?macIx().paused[x.id]:null, tw=!x.own&&!lk&&MAC.cals.length?macIx().twin[x.id]:null;   // M6: moved here (lk), or a twin he has not moved (tw)
+        var c=x.own?(x.color||"var(--terra)"):(x.color||"var(--p0)"), err=!lk&&!x.own&&st[x.id]&&st[x.id].error, off=!x.own&&x.enabled===false, nm=calName(x), cn=lk?n["mac:"+lk]:n[x.id];
         return '<div class="sb-row cal-row'+(err?" cal-err":"")+(off?" cal-off":"")+'" data-sb="calrow" data-cid="'+esc(x.id)+'" draggable="'+!x.own+'" style="--cal:'+esc(c)+';--calink:'+tick(c)+'"'+(err?' title="Couldn’t sync — see Settings → Calendars"':'')+'>'+
           '<span class="cal-grip" aria-hidden="true">'+(x.own?"":"≡")+'</span>'+
           '<button class="cal-chk" role="checkbox" aria-checked="'+!x.hidden+'" data-sb="calchk" data-cid="'+esc(x.id)+'" aria-label="Show '+esc(nm)+'"></button>'+
-          '<span class="sb-name" title="'+esc(nm)+'">'+esc(nm)+'</span>'+
-          (off?'<span class="cnt">off</span>':(n[x.id]?'<span class="cnt">'+(err?"⚠ ":"")+n[x.id]+'</span>':(err?'<span class="cnt">⚠</span>':'')))+
-          '<button class="sb-star" data-sb="calmore" data-cid="'+esc(x.id)+'" title="Options" aria-label="Options for '+esc(nm)+'">⋯</button></div>';
+          '<span class="sb-name" title="'+esc(nm)+(lk?' · from Mac Calendar':'')+'">'+esc(nm)+'</span>'+(lk?'<span class="cnt mac-tag" title="Read from Mac Calendar on this Mac">Mac</span>':'')+
+          (off?'<span class="cnt">off</span>':(cn?'<span class="cnt">'+(err?"⚠ ":"")+cn+'</span>':(err?'<span class="cnt">⚠</span>':'')))+
+          '<button class="sb-star" data-sb="calmore" data-cid="'+esc(x.id)+'" title="Options" aria-label="Options for '+esc(nm)+'">⋯</button></div>'+
+          (tw&&macPref(tw).keep!==x.id?'<div class="sb-mini mac-dup">Also in Mac Calendar. <button class="chip" data-sb="macuse" data-mcid="'+esc(tw)+'">Use Mac Calendar for this one</button> <button class="chip" data-sb="mackeep" data-mcid="'+esc(tw)+'">Keep the feed</button></div>':'');
       }).join("");
       return '<div class="cal-grp" data-key="'+esc(g.key)+'">'+head+rows+'</div>';
     }).join("");
-    if(!calFeeds().length) body+='<div class="sb-mini">No calendars yet — add one in Settings → Calendars <button class="chip" data-sb="caladd" style="margin-top:6px">🗓 Add a calendar</button></div>';
+    if(!calFeeds().length&&!macApi()) body+='<div class="sb-mini">No calendars yet — add one in Settings → Calendars <button class="chip" data-sb="caladd" style="margin-top:6px">🗓 Add a calendar</button></div>';
+    body+=macSidebarHtml(n);   // Mac Calendar: the Mac app only
     return sbSection("cals","Calendars",'<button class="sb-act" data-sb="calall">Show all</button>',body);
+  }
+  /* Mac Calendar M3, M7: the Mac Calendar group, by account (iCloud, Google, Outlook, On My Mac, then the rest), each calendar in its own colour.
+     A calendar standing in for a subscription is drawn on that subscription's row instead; a twin not moved yet is not drawn (M6) */
+  function macSidebarHtml(n){
+    if(!macApi()) return "";
+    var a=MAC.access, body="", tick=function(c){ return /^#/.test(c||"")?inkOn(c):"#fff"; };
+    var head='<div class="sb-row cal-acct mac-h'+(MAC.busy?" busy":"")+'"><span class="sb-name">Mac Calendar</span><span class="mac-spin" role="status" aria-label="Reading your calendars"></span>'+
+      (a==="full"?'<button class="sb-star" data-sb="macrefresh" title="Read your calendars again" aria-label="Read your Mac calendars again">↻</button>':'')+'</div>';
+    if(!a) body='<div class="sb-mini">Checking your calendars…</div>';
+    else if(a==="notDetermined") body='<div class="sb-mini mac-msg">Show and edit the calendars from the Calendar app (Google, iCloud, Outlook) here. <button class="chip" data-sb="macallow">Allow access</button></div>';
+    else if(a!=="full") body='<div class="sb-mini mac-msg mac-denied">Gena can’t read your calendars'+(a==="writeOnly"?" (it may only add events)":"")+'. In System Settings, open Privacy &amp; Security → Calendars and give Gena full access. <button class="chip" data-sb="macsettings">Open System Settings</button></div>';
+    else if(!MAC.loaded&&MAC.err) body='<div class="sb-mini mac-msg">Couldn’t read your calendars. <button class="chip" data-sb="macrefresh">Try again</button></div>';
+    else if(MAC.loaded&&!MAC.cals.length) body='<div class="sb-mini mac-msg">No calendars in the Calendar app yet. Add an account there (Calendar → Settings → Accounts) and it shows here.</div>';
+    else {
+      var ix=macIx(), by=Object.create(null), keys=[];
+      MAC.cals.forEach(function(c){ var x=ix.src["mac:"+c.id]; if(!x||x.link||x.dup) return; var k=x.account; if(!by[k]){ by[k]=[]; keys.push(k); } by[k].push(x); });
+      keys.sort(function(p,q){ var i=MAC_ACCTS.indexOf(p), j=MAC_ACCTS.indexOf(q); i=i<0?99:i; j=j<0?99:j; return i-j||(p.toLowerCase()<q.toLowerCase()?-1:p.toLowerCase()>q.toLowerCase()?1:0); });
+      body=keys.map(function(k){ return '<div class="mac-acct">'+esc(k)+'</div>'+by[k].map(function(x){ var id=esc(x.mac.id), c=x.color, nm=x.name;
+        return '<div class="sb-row cal-row mac-row'+(x.ro?" mac-ro":"")+'" data-sb="macrow" data-mcid="'+id+'" style="--cal:'+esc(c)+';--calink:'+tick(c)+'">'+
+          '<span class="cal-grip" aria-hidden="true"></span>'+
+          '<button class="cal-chk" role="checkbox" aria-checked="'+!x.hidden+'" data-sb="macchk" data-mcid="'+id+'" aria-label="Show '+esc(nm)+'"></button>'+
+          '<span class="sb-name" title="'+esc(nm)+(x.ro?' · read-only':'')+'">'+esc(nm)+'</span>'+(x.ro?'<span class="cnt" title="Read-only in Calendar" aria-label="read-only">🔒</span>':'')+
+          (n["mac:"+x.mac.id]?'<span class="cnt">'+n["mac:"+x.mac.id]+'</span>':'')+
+          '<button class="sb-star" data-sb="macmore" data-mcid="'+id+'" title="Options" aria-label="Options for '+esc(nm)+'">⋯</button></div>'; }).join(""); }).join("");
+      if(!body&&MAC.loaded) body='<div class="sb-mini">Every calendar here is shown on its subscription above.</div>';
+      if(!MAC.loaded) body='<div class="sb-mini">Reading your calendars…</div>';
+    }
+    return '<div class="cal-grp mac-grp" data-key="mac">'+head+body+'</div>';
+  }
+  function openMacSheet(id){
+    var x=macCal("mac:"+id); if(!x) return; var p=macPref(id);
+    var items=[["rename","✎","Rename (on this Mac)"],["vis",x.hidden?"☑":"☐",x.hidden?"Show":"Hide"],["only","◉","Only this one"]];
+    if(p.name) items.push(["title","↺","Use its Calendar name"]);
+    calSheet(x.name,items,function(a){
+      if(a==="rename") calFieldModal("Rename calendar","Shown in Gena on this Mac. The Calendar app keeps “"+(x.mac.title||"")+"”.",p.name||x.mac.title||"",x.mac.title||"","Calendar name",function(v){ v=v.trim(); if(!v){ toast("A name, please"); return false; } macPrefSet(id,{name:v===x.mac.title?null:v}); });
+      else if(a==="vis"){ calSetHidden(x,!x.hidden); render(); }
+      else if(a==="only"){ calOnly(x.id); save(); render(); }
+      else if(a==="title"){ macPrefSet(id,{name:null}); render(); }
+    });
   }
   // one ⋯ sheet, the phone's row sheet
   function calSheet(title,items,run){
@@ -9956,7 +10297,7 @@ function GENA_MAIN() {
     document.getElementById("scrim").classList.add("sheet-scrim");
     root.querySelector(".modal").onclick=function(e){ var b=e.target.closest("[data-si]"); if(!b) return; var it=items[+b.dataset.si]; close(); run(it[0]); };
   }
-  function calOnly(id){ [calGena()].concat(calFeeds()).forEach(function(x){ calSetHidden(x,x.id!==id); }); }
+  function calOnly(id){ [calGena()].concat(calFeeds(),macShown()).forEach(function(x){ calSetHidden(x,x.id!==id&&x.link!==id); }); }
   // F4/F10: his own account name; empty = the detected provider. In his own order it moves to the end of its new block
   function calSetAccount(s,v){ v=String(v||"").trim(); if(v===(s.account||"")) return false;
     if(v) s.account=v; else delete s.account; calPlace(s); return true; }
@@ -9968,6 +10309,9 @@ function GENA_MAIN() {
     var items=[["rename","✎","Rename"],["colour","🎨","Colour"],["account","👤","Account…"],["only","◉","Only this one"]];
     if(i>0) items.push(["up","▲","Move up"]);
     if(i<g.items.length-1) items.push(["down","▼","Move down"]);
+    var lk=macPaused(s.id)?macIx().paused[s.id]:null;   // M6: read from Mac Calendar on this Mac
+    if(lk) items.push(["feed","↩","Use the feed again"]);
+    else if(MAC.access==="full"&&s.enabled!==false&&macPick(s).length) items.push(["macpair","🖥","Use a Mac calendar for this one…"]);   // GD-072 (4): pair by hand; not for a turned-off feed (V9 review finding 3)
     items.push(["refresh","↻","Refresh now"],["toggle","⏻",s.enabled===false?"Turn on":"Turn off"],["settings","⚙","Edit in Settings…"],["remove","✕","Remove",1]);
     calSheet(nm,items,function(a){
       if(a==="rename") openCalRename(s);
@@ -9975,7 +10319,9 @@ function GENA_MAIN() {
       else if(a==="account") openCalAccount(s);
       else if(a==="only"){ calOnly(s.id); save(); render(); }
       else if(a==="up"||a==="down"){ if(calMove(s.id,a==="up"?-1:1)){ save(); render(); } }
-      else if(a==="refresh") calRefreshOne(s);
+      else if(a==="refresh"){ if(lk) macEnsure(true); else calRefreshOne(s); }
+      else if(a==="feed") macUnlink(lk);
+      else if(a==="macpair") macPairSheet(s);
       else if(a==="toggle"){ s.enabled=s.enabled===false; save(); render(); if(s.enabled) calRefreshOne(s); }
       else if(a==="settings") openCalendarsModal(s.id);
       else if(a==="remove") confirmModal("Remove “"+nm+"”?","Its events go with it. You can add it again in Settings → Calendars.","Remove",function(){ calRemove(s.id); render(); });
@@ -11192,7 +11538,7 @@ function GENA_MAIN() {
       S.jobs.forEach(function(j){ if(rows.length<40 && (norm(j.company)+" "+norm(j.role)+" "+norm(j.notes)).indexOf(q)>=0) rows.push(row("job",j.id,j.company+(j.role?" — "+j.role:""),j.stage||"")); });
       S.projects.forEach(function(p){ if(rows.length<40 && (!scoped||inScope(p.id)) && (norm(p.name)+" "+norm(p.notes)).indexOf(q)>=0) rows.push(row("focus",p.id,p.name,"")); });
       (S.efforts||[]).forEach(function(e){ if(rows.length<40 && (!scoped||effortInScope(e)) && (norm(e.name)+" "+norm(e.notes)).indexOf(q)>=0) rows.push(row("project",e.id,e.name,stateLabel(e)||"")); });
-      S.events.forEach(function(ev){ if(rows.length<40 && calVisible(ev) && within(ev) && norm(ev.title).indexOf(q)>=0) rows.push(row("event",ev.id,ev.title,ev.date?niceDate(ev.date):"")); });
+      evAll().forEach(function(ev){ if(rows.length<40 && calVisible(ev) && within(ev) && norm(ev.title).indexOf(q)>=0) rows.push(row("event",ev.id,ev.title,ev.date?niceDate(ev.date):"")); });
       S.emails.forEach(function(em){ if(rows.length<40 && (norm(em.subject)+" "+norm(em.sender)).indexOf(q)>=0) rows.push(row("email",em.id,em.subject,em.sender||"")); });
       (S.archive||[]).forEach(function(k){ if(rows.length<40 && within(k) && norm(k.title+" "+htmlToText(k.notes)).indexOf(q)>=0) rows.push(row("archived",k.id,k.title,"done "+(k.completedOn?niceDate(k.completedOn):""))); });
       Object.keys(S.notes).forEach(function(dk){ if(rows.length<40 && norm(S.notes[dk]).indexOf(q)>=0) rows.push(row("note",dk,S.notes[dk].slice(0,70),niceDate(dk))); });
@@ -11204,7 +11550,7 @@ function GENA_MAIN() {
       else if(kind==="job"){ var jb=S.jobs.find(function(x){return x.id===key;}); if(jb){ close(); openJobModal(jb); } }
       else if(kind==="focus"){ var pr=proj(key); if(pr){ close(); openProjModal(pr); } }
       else if(kind==="project"){ var ef=effortById(key); if(ef){ close(); openEffortModal(ef); } }
-      else if(kind==="event"){ var ev=S.events.find(function(x){return x.id===key;}); if(ev){ close(); selectEvent(ev.id); } }   // W13: its details
+      else if(kind==="event"){ var ev=evAll().find(function(x){return x.id===key;}); if(ev){ close(); selectEvent(ev.id); } }   // W13: its details
       else if(kind==="archived"){ var ak=(S.archive||[]).find(function(x){return x.id===key;});
         if(ak){ close(); confirmModal("Bring “"+ak.title.slice(0,40)+"” back?","It returns to your To-do as an open task for today.","Restore",function(){
           S.archive=S.archive.filter(function(x){return x.id!==ak.id;});
@@ -12614,6 +12960,7 @@ function GENA_MAIN() {
   handleCaptureParams();   // quick-capture from bookmarklet / PWA share -> Backlog (sets view before first paint)
   render();
   refreshCalendars(function(){ if(groupOf(view)==="plan"||groupOf(view)==="cal") renderPassive(); },{passive:true});
+  macStart();   // Mac Calendar: the Mac app's calendars (nothing on the web, the PWA or a phone)
   ghCfgReady.then(function(){ updateSyncStatus(); ghPull(); });
   document.addEventListener("visibilitychange",function(){ if(!document.hidden){ ghPull(); calOnReturn(); } });
   if(lockCfg()) showLock();

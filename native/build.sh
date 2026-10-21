@@ -11,8 +11,15 @@ BIN="Contents/MacOS/Gena"
 echo "› Cleaning old build…"
 rm -rf "$APP" Gena.iconset Gena.icns
 
-echo "› Compiling native binary (Swift + WebKit)…"
-swiftc -O Gena.swift -o gena-bin -framework Cocoa -framework WebKit
+echo "› Checking the calendar bridge (its gate and request checks; no window, no calendar)…"
+# V6.9: the same file built with GENA_SELFCHECK runs the bridge's own checks and exits; a red check stops the build
+CHECK_DIR=$(mktemp -d)
+swiftc -O -D GENA_SELFCHECK Gena.swift -o "$CHECK_DIR/gena-selfcheck" -framework Cocoa -framework WebKit -framework EventKit
+"$CHECK_DIR/gena-selfcheck"
+rm -rf "$CHECK_DIR"
+
+echo "› Compiling native binary (Swift + WebKit + EventKit)…"
+swiftc -O Gena.swift -o gena-bin -framework Cocoa -framework WebKit -framework EventKit
 
 echo "› Assembling app bundle…"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -60,6 +67,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key><string>11.0</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSHumanReadableCopyright</key><string>© 2026 Mintay Misgano · PolyForm Noncommercial</string>
+  <key>NSCalendarsFullAccessUsageDescription</key><string>Gena shows and edits the events in your calendars</string>
+  <key>NSCalendarsUsageDescription</key><string>Gena shows and edits the events in your calendars</string>
   ${ICON_LINE}
 </dict>
 </plist>
