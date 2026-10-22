@@ -2014,7 +2014,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-10-21-V6.6.2";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-10-21-V6.6.3";   // set by ship.sh on every release — the footer is how you tell a surface is current
   // The day V5 shipped (tag gena-2026-10-05-V5): the closing-states cutoff, fixed, so a later build's stamp
   // never moves it (I-28). Above `var S = load()`, which reads it.
   var V5_SHIP_DAY = "2026-10-05";
@@ -3387,7 +3387,7 @@ function GENA_MAIN() {
     S.templates.forEach(function(tp){
       if(tp.paused) return;
       var on=ruleHits(tp,day)?day:goalCatchUp(tp,day);   // V6.5 review finding 3: a goal's week whose first day no device opened
-      if(!on||(tp.skip||[]).indexOf(on)>=0) return;
+      if(!on||(tp.skip||[]).indexOf(on)>=0||(on===day&&weeklyGoal(tp)&&goalSeriesRuns(tp,day))) return;   // V6.6.3: the new weekday's own day too (goalCatchUp checks the days after it)
       var exists=S.tasks.some(function(k){ return k.tplId===tp.id && (on===day?k.day===on:k.day>=on); });   // V6.6.2 review: a catch-up counts any copy on or after its hit day (a copy he moved later in the week is still this week's)
       if(!exists){
         S.tasks.push({id:uid(),title:tp.title,projectId:tp.projectId,effortId:tp.effortId||undefined,status:"todo",day:on,
@@ -3563,9 +3563,12 @@ function GENA_MAIN() {
   /* V6.5 review finding 3: generateRecurring makes a copy only on a day the rule hits, so a week whose first day no device opened had
      no goal copy at all. On a day the rule does not hit, a goal still running today gets its week's copy on its own day (the latest hit
      in the last 6 days, with that day's `end`), once: the copy for that day already there (or skipped, moved or cleared) makes nothing,
-     and two devices that each make it before they sync keep one (collapseRepeatCopies, review finding 2). Other repeats unchanged */
+     and two devices that each make it before they sync keep one (collapseRepeatCopies, review finding 2). Other repeats unchanged.
+     V6.6.3 (V6.6.2 review): This and following re-points the running copy to the split rule, so a new weekday's week can start while
+     that copy still runs; no copy while any copy of the series (this rule or the one it was split from) runs on or after the hit day */
   function goalCatchUp(tp,day){ if(!weeklyGoal(tp)||(tp.until&&tp.until<day)) return null;
-    for(var i=1;i<7;i++){ var d=addDays(day,-i); if(ruleHits(tp,d)) return goalEnd(tp,d)>=day?d:null; } return null; }
+    for(var i=1;i<7;i++){ var d=addDays(day,-i); if(ruleHits(tp,d)) return goalEnd(tp,d)>=day&&!goalSeriesRuns(tp,d)?d:null; } return null; }
+  function goalSeriesRuns(tp,d){ var ids=seriesIds(tp); return S.tasks.some(function(k){ return k.tplId&&ids[k.tplId]&&lastDay(k.day,k.end)>=d; }); }
   function goalRuleOf(k){ var tp=k&&k.tplId&&(S.templates||[]).find(function(x){ return x.id===k.tplId; }); return weeklyGoal(tp)?tp:null; }
   /* W39 (c): one tap makes a repeat a weekly goal: a new weekly rule from today, with its first copy now until the rule's next day;
      the old rule ends yesterday (Ended, in Repeats) and every copy it made stays as it is. V6.5.1 (V65 review finding 4): the goal
