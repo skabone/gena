@@ -2014,7 +2014,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-10-21-V6.6.1";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-10-21-V6.6.2";   // set by ship.sh on every release — the footer is how you tell a surface is current
   // The day V5 shipped (tag gena-2026-10-05-V5): the closing-states cutoff, fixed, so a later build's stamp
   // never moves it (I-28). Above `var S = load()`, which reads it.
   var V5_SHIP_DAY = "2026-10-05";
@@ -2382,14 +2382,20 @@ function GENA_MAIN() {
      (m0: the stamps before this normalize, so with V6.8's pass in the same load it is still old _m + 1; the same answer on every device). An older build adopts that newer copy on merge; if its own later edit wins with the old
      colour, that copy has no `apartRev`, so the next pass converts it again. A Domain he colours himself, or makes, is marked, so a
      colour he chooses afterwards is never moved, unless it is exactly an earlier Domain's (two devices can each make or move a
-     Domain into the same colour before they sync; the picker never offers that). His test items are never moved. */
+     Domain into the same colour before they sync; the picker never offers that). His test items are never moved.
+     V25 finding 4: V6.6.1 wrote the mark (1) on a Domain it did not move without a stamp, so it never reached another device, and a
+     colour he then picked on a device that had no mark was moved. The mark is now 2 and is stamped old _m + 1 the first time a Domain
+     takes it (one made in the same pass is new and carries it), so a mark already set as 1 syncs too; old _m + 1 never beats a real edit made anywhere since that copy was taken (the
+     edit wins, and the next pass marks that copy again). V6.6.1 reads any mark as checked, so the two builds agree on what moves. */
   function apartDoms(d,m0){
     var leave=V6_OWNER.leave, doms=sortDoms(d.profiles||[],true), seen=[], same=function(a,b){ var x=famHex(a); return !!x&&x===famHex(b); };
     doms.forEach(function(pr){
+      var st=false;
       if(!leave[pr.id]&&(!pr.apartRev||seen.some(function(x){ return same(x.color,pr.color); }))){
         if(domPin(pr)>=2&&seen.some(function(x){ return domTooClose(x.color,pr.color); })){ var c=domApartPick(pr.color,doms.filter(function(x){ return x!==pr; }));
-          if(c&&c!==pr.color){ pr.color=c; pr._m=Math.max(pr._m||0,(m0&&pr.id in m0?m0[pr.id]:(pr._m||0))+1); } }
-        pr.apartRev=1; }
+          if(c&&c!==pr.color){ pr.color=c; st=true; } } }
+      if(!leave[pr.id]&&pr.apartRev!==2){ pr.apartRev=2; if(!m0||pr.id in m0) st=true; }   // a Domain made in this same pass is new: its mark rides on it
+      if(st) pr._m=Math.max(pr._m||0,(m0&&pr.id in m0?m0[pr.id]:(pr._m||0))+1);
       seen.push(pr); });
   }
   // OKLab of a hex: [L, a, b]
@@ -3380,12 +3386,12 @@ function GENA_MAIN() {
     ensurePrepTasks(day);
     S.templates.forEach(function(tp){
       if(tp.paused) return;
-      if((tp.skip||[]).indexOf(day)>=0) return;
-      if(!ruleHits(tp,day)) return;
-      var exists=S.tasks.some(function(k){ return k.tplId===tp.id && k.day===day; });
+      var on=ruleHits(tp,day)?day:goalCatchUp(tp,day);   // V6.5 review finding 3: a goal's week whose first day no device opened
+      if(!on||(tp.skip||[]).indexOf(on)>=0) return;
+      var exists=S.tasks.some(function(k){ return k.tplId===tp.id && (on===day?k.day===on:k.day>=on); });   // V6.6.2 review: a catch-up counts any copy on or after its hit day (a copy he moved later in the week is still this week's)
       if(!exists){
-        S.tasks.push({id:uid(),title:tp.title,projectId:tp.projectId,effortId:tp.effortId||undefined,status:"todo",day:day,
-          block:tp.block||null,priority:!!tp.priority,rollover:0,tplId:tp.id,created:day,subs:repeatCopySubs(tp,day),end:weeklyGoal(tp)?goalEnd(tp,day):undefined});
+        S.tasks.push({id:uid(),title:tp.title,projectId:tp.projectId,effortId:tp.effortId||undefined,status:"todo",day:on,
+          block:tp.block||null,priority:!!tp.priority,rollover:0,tplId:tp.id,created:day,subs:repeatCopySubs(tp,on),end:weeklyGoal(tp)?goalEnd(tp,on):undefined});
         if(tp.firstSubs) delete tp.firstSubs;   // the first copy took them
       }
     });
@@ -3554,6 +3560,12 @@ function GENA_MAIN() {
      Trash Day) lapses overnight as before. The marker is a field on the rule item, so the per-item merge carries it. */
   function weeklyGoal(tp){ return !!(tp&&tp.goal&&tp.freq==="weekly"&&(tp.subs||[]).length); }
   function goalEnd(tp,day){ for(var i=1;i<7;i++){ if(ruleHits(tp,addDays(day,i))) return addDays(day,i-1); } return addDays(day,6); }
+  /* V6.5 review finding 3: generateRecurring makes a copy only on a day the rule hits, so a week whose first day no device opened had
+     no goal copy at all. On a day the rule does not hit, a goal still running today gets its week's copy on its own day (the latest hit
+     in the last 6 days, with that day's `end`), once: the copy for that day already there (or skipped, moved or cleared) makes nothing,
+     and two devices that each make it before they sync keep one (collapseRepeatCopies, review finding 2). Other repeats unchanged */
+  function goalCatchUp(tp,day){ if(!weeklyGoal(tp)||(tp.until&&tp.until<day)) return null;
+    for(var i=1;i<7;i++){ var d=addDays(day,-i); if(ruleHits(tp,d)) return goalEnd(tp,d)>=day?d:null; } return null; }
   function goalRuleOf(k){ var tp=k&&k.tplId&&(S.templates||[]).find(function(x){ return x.id===k.tplId; }); return weeklyGoal(tp)?tp:null; }
   /* W39 (c): one tap makes a repeat a weekly goal: a new weekly rule from today, with its first copy now until the rule's next day;
      the old rule ends yesterday (Ended, in Repeats) and every copy it made stays as it is. V6.5.1 (V65 review finding 4): the goal
@@ -4503,7 +4515,7 @@ function GENA_MAIN() {
   function nextOrd(list){ var o=(list||[]).map(function(x){ return x.ord; }).filter(function(x){ return typeof x==="number"; }); return o.length?Math.max.apply(null,o)+ORD_STEP:ORD_STEP; }
   // V6.10 W38: the editors' creation code, shared with the pickers' + bubbles. A Domain takes its own neon colour and goes last in
   // the order; a Focus is shown in its Domain's next free shade (W27, hueOf) and goes last (W30)
-  function addDomain(name,emoji,color){ var d={id:uid(),name:name,emoji:emoji,color:color||domFreeNeon(),ord:nextOrd(S.profiles),apartRev:1}; S.profiles.push(d); S.profiles=sortDoms(S.profiles); return d; }
+  function addDomain(name,emoji,color){ var d={id:uid(),name:name,emoji:emoji,color:color||domFreeNeon(),ord:nextOrd(S.profiles),apartRev:2}; S.profiles.push(d); S.profiles=sortDoms(S.profiles); return d; }
   function addFocus(name,emoji,dom,color,pat,state){ var np={id:uid(),name:name,color:color||COLORS[S.projects.length%COLORS.length],emoji:emoji,notes:"",profileId:dom||null,state:state||null,ord:nextOrd(S.projects)}; if(pat) np.pat=pat; S.projects.push(np); return np; }
   function focusDomOf(f){ return f.profileId&&profileById(f.profileId)?f.profileId:null; }
   function moveDomain(id,refId,after){
@@ -9394,7 +9406,7 @@ function GENA_MAIN() {
       var target=pr;
       var pfColor=(window.__pfColor!==undefined)?window.__pfColor:base.color;
       if(!editing) target=addDomain(name,emoji,pfColor);   // V6.8: its own neon colour, last in the order
-      else { target.name=name; target.emoji=emoji; target.color=pfColor; target.apartRev=1; }   // V6.6.1: his colour, never moved
+      else { target.name=name; target.emoji=emoji; target.color=pfColor; target.apartRev=2; }   // V6.6.1: his colour, never moved (V25 finding 4: mark 2)
       setCols(target,pfCols());
       S.projects.forEach(function(p){
         if(assigned[p.id]) p.profileId=target.id;
@@ -10199,7 +10211,18 @@ function GENA_MAIN() {
   }
   function macAllow(){ macCall("requestAccess").then(function(r){ MAC.access=r.ok&&r.access?r.access:"denied"; if(MAC.access==="full") macEnsure(true); else macDraw(); }); }
   // W13's Edit in Gena for an event of a read-only Mac calendar: his record laid over each fresh read (the record stays until he resets it)
-  function macEditsAfterLoad(){ var m=evEdits(); if(!Object.keys(m).length) return; MAC.evs.forEach(function(e){ var r=m[e.id]; if(r){ r.orig=evFields(e); evApplyEdit(e); } }); }
+  /* V29 open item: a one-off's id holds its start, so Calendar moving it left the record under the old id and his change stopped
+     showing. A record whose event is no longer read follows the one one-off read with its eid (macMovedTo, as a draft does in
+     macRekey) in the same calendar, unless that event has a record of its own; a repeating event's occurrence keeps its id. The record keeps the fields he
+     changed (where ed differs from orig, Calendar's values at the last read), so Calendar's new time shows under the rest, as a draft's
+     does; then its orig is Calendar's new values, as on every read. M8: nothing more about the Mac event is kept */
+  function macEditsAfterLoad(){ var m=evEdits(); if(!Object.keys(m).length) return; var mv=false, rd=Object.create(null); MAC.evs.forEach(function(e){ rd[e.id]=1; });
+    Object.keys(m).forEach(function(id){ if(!/^mac:/.test(id)||rd[id]) return; var n=macMovedTo(id.slice(4,id.lastIndexOf("@")));
+      var r=m[id], ed={}; if(!n||m[n.id]||n.sourceId!==r.sid) return;
+      Object.keys(r.ed||{}).forEach(function(f){ if(!evSame(r.ed[f],(r.orig||{})[f])) ed[f]=r.ed[f]; });   // only what he changed: Calendar's new time shows under the rest
+      r.ed=ed; m[n.id]=r; delete m[id]; MAC.moved[id]=n.id; if(selEvId===id) selEvId=n.id; mv=true; });
+    MAC.evs.forEach(function(e){ var r=m[e.id]; if(r){ r.orig=evFields(e); evApplyEdit(e); } });
+    if(mv) evEditsPut(m); }
   /* M4: a change to a writable Mac event goes back through the bridge. A repeating one asks first, as Calendar does: this event
      (the default), this and following, or all; a move to another calendar is the whole series. The change shows at once and the
      range is read again; an event changed in Calendar meanwhile is reloaded and shown, never overwritten */
