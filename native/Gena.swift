@@ -112,6 +112,44 @@ let BRIDGE_JS = """
 """
 let BRIDGE_CHANGED_JS = "window.dispatchEvent(new CustomEvent('gena-native',{detail:'changed'}))"
 let BRIDGE_ACTIVE_JS = "window.dispatchEvent(new CustomEvent('gena-native',{detail:'active'}))"
+// V6.6.1 GD-075 F4: a download was saved to Downloads, or could not be; fixed lines like the two above (no file name goes back)
+let DOWNLOAD_SAVED_JS = "window.dispatchEvent(new CustomEvent('gena-native',{detail:'saved'}))"
+let DOWNLOAD_FAILED_JS = "window.dispatchEvent(new CustomEvent('gena-native',{detail:'savefail'}))"
+
+/* ---------- V6.6.1 GD-075 F4: downloads (⋯ → Export, the tasks CSV, an .ics) ----------
+   The page saves a file the way a browser does, a link with `download` to a blob it made. WKWebView does nothing with that unless
+   the app takes it as a download (macOS 11.3+). Only Gena's own page, in the main frame, may start one (the bridge's gate), and only
+   for a blob or data link it made itself; the file goes to ~/Downloads under the name the page suggests, made safe, never over a
+   file already there ("name (1).ext", "name (2).ext", ...) */
+func downloadAllowed(isMainFrame: Bool, scheme: String?, host: String?, port: Int, path: String?, linkScheme: String?) -> Bool {
+    guard let l = linkScheme?.lowercased(), l == "blob" || l == "data" else { return false }
+    return bridgeAllowed(isMainFrame: isMainFrame, scheme: scheme, host: host, port: port, path: path)
+}
+// a file name the page suggested, as one plain name: no folders, no hidden or empty name, at most 120 characters and
+// NAME_MAX_BYTES of UTF-8 (V25 finding 5: APFS takes 255 bytes, and freeFileName may add " (n)" or a UUID); a cut takes whole
+// characters off the name before its extension, so ".json" stays
+let NAME_MAX_BYTES = 200
+func safeFileName(_ s: String) -> String {
+    var n = s.components(separatedBy: CharacterSet(charactersIn: "/\\:")).last ?? ""
+    n = String(n.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) }).trimmingCharacters(in: .whitespacesAndNewlines)
+    while n.hasPrefix(".") { n.removeFirst() }
+    let fits = { (x: String) -> Bool in x.count <= 120 && x.utf8.count <= NAME_MAX_BYTES }
+    if !fits(n) {
+        let ns = n as NSString, ext = ns.pathExtension, keep = !ext.isEmpty && ext.count <= 16 && ext.utf8.count <= 32
+        let tail = keep ? "." + ext : ""
+        var stem = keep ? ns.deletingPathExtension : n
+        while !stem.isEmpty && !fits(stem + tail) { stem.removeLast() }
+        n = (stem.isEmpty ? "Gena download" : stem) + tail
+    }
+    return n.isEmpty ? "Gena download" : n
+}
+// the name itself when it is free, else "name (1).ext", "name (2).ext", ... (exists answers for a name in the folder)
+func freeFileName(_ name: String, exists: (String) -> Bool) -> String {
+    if !exists(name) { return name }
+    let ns = name as NSString, ext = ns.pathExtension, stem = ext.isEmpty ? name : ns.deletingPathExtension
+    for i in 1...9999 { let c = "\(stem) (\(i))" + (ext.isEmpty ? "" : ".\(ext)"); if !exists(c) { return c } }
+    return "\(stem) \(UUID().uuidString)" + (ext.isEmpty ? "" : ".\(ext)")
+}
 
 // GD-072 (1): a meeting with guests is changed in the Calendar app only (a change or a delete from here could email them): save and remove refuse it
 func guestRefusal(_ guests: Int) -> [String: Any]? { return guests > 0 ? ["ok": false, "code": "guests"] : nil }
@@ -409,6 +447,13 @@ final class WebController: NSViewController, WKNavigationDelegate, WKUIDelegate 
     func webView(_ webView: WKWebView,
                  decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        // GD-075 F4: a link with `download` from Gena's own page is saved as a file; from anywhere else it is refused
+        if #available(macOS 11.3, *), navigationAction.shouldPerformDownload {
+            let f = navigationAction.sourceFrame, o = f.securityOrigin
+            let ok = downloadAllowed(isMainFrame: f.isMainFrame, scheme: o.protocol, host: o.host, port: o.port, path: f.request.url?.path, linkScheme: navigationAction.request.url?.scheme)
+            decisionHandler(ok ? .download : .cancel)
+            return
+        }
         if navigationAction.navigationType == .linkActivated,
            let u = navigationAction.request.url,
            let scheme = u.scheme, scheme.hasPrefix("http"),
@@ -420,6 +465,9 @@ final class WebController: NSViewController, WKNavigationDelegate, WKUIDelegate 
         decisionHandler(.allow)
     }
 
+    @available(macOS 11.3, *)
+    func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) { download.delegate = self }
+
     // target="_blank" / window.open → open externally instead of a dead popup
     func webView(_ webView: WKWebView,
                  createWebViewWith configuration: WKWebViewConfiguration,
@@ -428,6 +476,20 @@ final class WebController: NSViewController, WKNavigationDelegate, WKUIDelegate 
         if let u = navigationAction.request.url { NSWorkspace.shared.open(u) }
         return nil
     }
+}
+
+// GD-075 F4: where a download goes and what the page is told (macOS 11.3+, so the app still opens on 11.0)
+@available(macOS 11.3, *)
+extension WebController: WKDownloadDelegate {
+    func download(_ download: WKDownload, decideDestinationUsing response: URLResponse, suggestedFilename: String, completionHandler: @escaping (URL?) -> Void) {
+        guard let dir = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first else { completionHandler(nil); return }
+        let name = freeFileName(safeFileName(suggestedFilename)) { FileManager.default.fileExists(atPath: dir.appendingPathComponent($0).path) }
+        completionHandler(dir.appendingPathComponent(name))
+    }
+
+    func downloadDidFinish(_ download: WKDownload) { calendar.tell(DOWNLOAD_SAVED_JS) }
+
+    func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) { calendar.tell(DOWNLOAD_FAILED_JS) }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -544,7 +606,21 @@ func selfCheck() -> Int32 {
     let gw = guestWindows(Date(timeIntervalSince1970: 0), Date(timeIntervalSince1970: 1000 * 86400)), day0 = Date(timeIntervalSince1970: 0)
     ok(gw.count == 3 && gw.first?.0 == day0 && gw.last?.1 == Date(timeIntervalSince1970: 1000 * 86400) && zip(gw, gw.dropFirst()).allSatisfy { $0.1 == $1.0 } && gw.allSatisfy { $0.1.timeIntervalSince($0.0) <= BRIDGE_MAX_DAYS * 86400 } && guestWindows(day0, day0).isEmpty, "a span with guests anywhere in it is read whole, in back-to-back pieces (V9 review finding 2)")
     ok(BRIDGE_JS.contains("location.hostname !== \"skabone.github.io\"") && BRIDGE_JS.contains("window.top !== window"), "the page script checks the origin and the frame too")
-    ok(BRIDGE_CHANGED_JS.hasPrefix("window.dispatchEvent(new CustomEvent('gena-native',") && BRIDGE_ACTIVE_JS.hasPrefix("window.dispatchEvent(new CustomEvent('gena-native',"), "the only lines run in the page are the two fixed notices")
+    let NP = "window.dispatchEvent(new CustomEvent('gena-native',{detail:'"
+    ok([BRIDGE_CHANGED_JS, BRIDGE_ACTIVE_JS, DOWNLOAD_SAVED_JS, DOWNLOAD_FAILED_JS].allSatisfy { $0.hasPrefix(NP) && $0.hasSuffix("'}))") && $0.dropFirst(NP.count).dropLast(4).allSatisfy { $0.isLetter } }, "the only lines run in the page are the four fixed notices (calendars changed, back to the front, a download saved or not)")
+    // GD-075 F4: downloads
+    ok(downloadAllowed(isMainFrame: true, scheme: "https", host: H, port: 0, path: "/gena/", linkScheme: "blob") && downloadAllowed(isMainFrame: true, scheme: "https", host: H, port: 0, path: "/gena/", linkScheme: "data"), "a download: Gena's own page, a blob or data link")
+    ok(!downloadAllowed(isMainFrame: false, scheme: "https", host: H, port: 0, path: "/gena/", linkScheme: "blob") && !downloadAllowed(isMainFrame: true, scheme: "https", host: "evil.github.io", port: 0, path: "/gena/", linkScheme: "blob") && !downloadAllowed(isMainFrame: true, scheme: nil, host: nil, port: 0, path: nil, linkScheme: "blob"), "a download from a frame, another site or the offline page is refused")
+    ok(!downloadAllowed(isMainFrame: true, scheme: "https", host: H, port: 0, path: "/gena/", linkScheme: "https") && !downloadAllowed(isMainFrame: true, scheme: "https", host: H, port: 0, path: "/gena/", linkScheme: "file") && !downloadAllowed(isMainFrame: true, scheme: "https", host: H, port: 0, path: "/gena/", linkScheme: nil), "a download of a web, file or missing link is refused (only a file the page made)")
+    ok(safeFileName("daybook-backup-2026-10-21.json") == "daybook-backup-2026-10-21.json" && safeFileName("../../.ssh/config") == "config" && safeFileName("a/b\\c:d.ics") == "d.ics" && safeFileName(".hidden") == "hidden" && safeFileName("  ") == "Gena download" && safeFileName(String(repeating: "x", count: 300)).count == 120 && safeFileName("tab\tname.csv") == "tabname.csv", "a suggested name becomes one plain name: no folders, no hidden or empty name, no control characters, at most 120 characters")
+    var have: Set<String> = ["daybook-2026-10-21.ics", "daybook-2026-10-21 (1).ics", "notes"]
+    ok(freeFileName("free.json") { have.contains($0) } == "free.json" && freeFileName("daybook-2026-10-21.ics") { have.contains($0) } == "daybook-2026-10-21 (2).ics" && freeFileName("notes") { have.contains($0) } == "notes (1)", "never over a file already there: the name, else name (1), name (2) before the extension")
+    have.insert("notes (1)"); ok(freeFileName("notes") { have.contains($0) } == "notes (2)", "…counting on past the ones taken")
+    // V25 finding 5: a name of many-byte characters is cut on UTF-8 bytes, between whole characters, keeping its extension
+    let fam = "\u{1F1EA}\u{1F1F9}", wide = safeFileName(String(repeating: fam, count: 40) + ".csv"), acc = safeFileName(String(repeating: "\u{E9}", count: 150) + ".json")
+    ok(wide.utf8.count <= NAME_MAX_BYTES && wide.hasSuffix(".csv") && String(wide.dropLast(4)) == String(repeating: fam, count: wide.count - 4) && wide.count > 4 && acc.utf8.count <= NAME_MAX_BYTES && acc.hasSuffix(".json") && acc.count > 50 && safeFileName(String(repeating: "x", count: 300) + ".json").hasSuffix(".json") && safeFileName(String(repeating: "x", count: 300) + ".json").count == 120, "a long name is cut on its UTF-8 bytes (at most \(NAME_MAX_BYTES)) and its characters, whole characters only, and keeps its extension")
+    let big = freeFileName(wide) { _ in true }, big1 = freeFileName(acc) { $0 == acc }
+    ok(big.utf8.count < 255 && big.hasSuffix(".csv") && big1.utf8.count < 255 && big1.hasSuffix(" (1).json"), "…so with \" (n)\" or the last-resort UUID it stays under APFS's 255 bytes")
     print(bad.isEmpty ? "✓ bridge self-check: \(n) checks" : "✗ bridge self-check: \(bad.count) of \(n) failed: " + bad.joined(separator: "; "))
     return bad.isEmpty ? 0 : 1
 }

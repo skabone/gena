@@ -189,6 +189,10 @@
   @keyframes macspin{ to{ transform:rotate(360deg); } }
   @media (prefers-reduced-motion:reduce){ .mac-h.busy .mac-spin{ animation:none; border-top-color:var(--terra); } }
   .mac-acct{ font-size:11px; color:var(--ink-faint); padding:4px 8px 1px 26px; }
+  /* V6.6.1 GD-075 (5): the Mac Calendar section and each account fold like the subscription groups (this device); the account's chevron is drawn, so its text stays the name */
+  .mac-acct[data-mkey]{ display:flex; align-items:center; gap:4px; padding-left:8px; cursor:pointer; }
+  .mac-acct .sb-fold{ width:14px; flex:none; text-align:center; color:var(--ink-faint); }
+  .mac-acct .sb-fold::before{ content:"▾"; } .mac-acct .sb-fold[aria-expanded="false"]::before{ content:"▸"; }
   .mac-msg .chip{ margin-top:6px; }
   .sb-mini.mac-dup{ padding:0 8px 4px 50px; }
   .sb-mini.mac-dup .chip{ margin-top:3px; font-size:11px; padding:2px 8px; }
@@ -548,6 +552,7 @@
   .modal.form .form-cols > *{ break-inside:avoid; -webkit-column-break-inside:avoid; page-break-inside:avoid; }
   .modal.form .form-cols > .fld:first-child, .modal.form .form-cols > .row:first-child .fld{ margin-top:6px; }
   .modal.form .form-cols > .fld{ display:block; }
+  .modal.form .form-cols > .fld[hidden]{ display:none; }   /* V6.6.1 GD-075 F1: a field the form hides (a Mac calendar's colour, pattern, Focus) stays hidden in the columns */
   .modal.form label.check-row{ display:flex; align-items:center; } .modal.form .check-row input[type=checkbox]{ width:auto; margin:0; flex:none; }
   .modal.form .modal-actions{ position:sticky; bottom:0; background:var(--sheet); border-top:1px solid var(--line-soft); padding:12px 0 calc(12px + env(safe-area-inset-bottom)); margin-top:12px; z-index:3; }
   @media (max-width:600px){
@@ -606,6 +611,7 @@
   .cp-grid .sw, .cp-row .sw{ width:100%; height:auto; aspect-ratio:1; max-width:30px; border-width:2px; }
   .cp-row{ display:grid; grid-template-columns:repeat(12,1fr); gap:4px; }
   .cp-row .sw.neon.nf{ margin-left:0; } .cp-row .sw.neon.nf::before{ display:none; }
+  .cp-panel .sw.sw-near{ opacity:.18; cursor:not-allowed; box-shadow:none; }   /* V6.6.1: too close to another Domain's colour */
   .cp-custom{ display:flex; align-items:center; gap:8px; }
   .cp-prev{ list-style:none; margin:0; padding:0; border-radius:10px; overflow:hidden; background:var(--card); border:1px solid var(--line); }
   .cp-prev li.task{ margin:0; border:none; pointer-events:none; }
@@ -1317,6 +1323,10 @@
   .evc .evd-ed .evd-b{ margin-left:4px; }
   .evc-more{ border:0; background:none; color:var(--terra-deep); font-family:inherit; font-size:12.5px; font-weight:700; padding:2px 0; cursor:pointer; }
   .evc-mb[hidden]{ display:none; }
+  /* V6.6.1 GD-075 (1): Save and Cancel, only while the card holds a change he has not saved */
+  .evc-sv{ display:flex; justify-content:flex-end; gap:6px; margin:2px 0 6px; } .evc-sv[hidden]{ display:none; }
+  .evc-sv .btn{ padding:5px 14px; font-size:13px; }
+  .evc-rs .evd-b{ margin-left:6px; }
   .rb-ev[data-act="evsel"]{ cursor:pointer; }
   .rb-ev.picked{ outline:2px solid var(--ink); outline-offset:1px; }
   .rb-ev-day{ display:block; font-size:10.5px; color:var(--ink-faint); }
@@ -2004,7 +2014,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-10-21-V6.6";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-10-21-V6.6.1";   // set by ship.sh on every release — the footer is how you tell a surface is current
   // The day V5 shipped (tag gena-2026-10-05-V5): the closing-states cutoff, fixed, so a later build's stamp
   // never moves it (I-28). Above `var S = load()`, which reads it.
   var V5_SHIP_DAY = "2026-10-05";
@@ -2048,6 +2058,9 @@ function GENA_MAIN() {
   var P_HEX={"var(--p0)":"#c99a3a","var(--p1)":"#45573f","var(--p2)":"#4f6b52","var(--p3)":"#a8472c","var(--p4)":"#5b7fa6","var(--p5)":"#8a5a83","var(--p6)":"#b0603f"};
   var DOM_NEON=["#ffd60a","#00ff85","#b8ff00","#ff2d55","#3d7bff","#e040fb","#ff5e00","#00e5ff","#8b5cf6","#ff1ecb"];   // slot p0..p6 first, then the rest
   var JIK={id:"area-faith", from:"Faith", name:"JIK", color:"#5b2a9e"}, ORD_STEP=1000;
+  /* V6.6.1 (GD-074): two Domains look alike when their bands' hues are under APART_DEG degrees apart on the OKLCH wheel (both
+     coloured), or, when either is greyish (chroma under APART_GREY), under APART_DE apart in OKLab. Read by apartDoms inside load() */
+  var APART_DEG=30, APART_GREY=0.06, APART_DE=0.1;
   var JIK_DONE;   // {name, color} when migrateV68 renamed Faith on this load (boot offers the undo); no initializer (the hoisting trap)
   // Tags sanitizeRTE keeps. Declared up here on purpose: normalize() sanitises stored notes during
   // load(), long before the rich-text code further down would otherwise define it. When it was declared
@@ -2189,6 +2202,7 @@ function GENA_MAIN() {
   var UI_DENSITY_KEY="gena-ui-density";
   var WK_SHOW_KEY="gena-ui-wkshow";
   var PLAN_SHOW_KEY="gena-ui-planshow";
+  var UI_SCOPE_KEY="gena-ui-scope";
   var S = load();
   var bootDedupeCount = dedupeRemovedCount;               // duplicates cleaned on this load (toast shown after first render)
   var baseState = clone(S);
@@ -2360,7 +2374,43 @@ function GENA_MAIN() {
     var _dm0={}, _fm0={}; out42.profiles.forEach(function(pr){ _dm0[pr.id]=pr._m||0; }); out42.projects.forEach(function(p){ if(p&&p.id) _fm0[p.id]=p._m||0; });
     migrateV6(out42);                                     // last: it stamps old _m + 1, so every item has its _m by now
     migrateV68(out42,_dm0,_fm0);                               // after V6's Domain order, which it then keeps in `ord`
+    apartDoms(out42,_dm0);                                     // V6.6.1: after V6.8's neons and order
     return out42; }
+  /* V6.6.1 (GD-074, his "yes", 2026-10-21): no two Domains look alike. In his order (JIK, DRM, then `ord`), a Domain whose band is too
+     close to an earlier Domain's (domTooClose) moves to the nearest clearly different neon; JIK and DRM keep theirs. Stored: keyed on
+     the item, a Domain without `apartRev` has not been checked; the check marks it, and a Domain it recolours is stamped old _m + 1
+     (m0: the stamps before this normalize, so with V6.8's pass in the same load it is still old _m + 1; the same answer on every device). An older build adopts that newer copy on merge; if its own later edit wins with the old
+     colour, that copy has no `apartRev`, so the next pass converts it again. A Domain he colours himself, or makes, is marked, so a
+     colour he chooses afterwards is never moved, unless it is exactly an earlier Domain's (two devices can each make or move a
+     Domain into the same colour before they sync; the picker never offers that). His test items are never moved. */
+  function apartDoms(d,m0){
+    var leave=V6_OWNER.leave, doms=sortDoms(d.profiles||[],true), seen=[], same=function(a,b){ var x=famHex(a); return !!x&&x===famHex(b); };
+    doms.forEach(function(pr){
+      if(!leave[pr.id]&&(!pr.apartRev||seen.some(function(x){ return same(x.color,pr.color); }))){
+        if(domPin(pr)>=2&&seen.some(function(x){ return domTooClose(x.color,pr.color); })){ var c=domApartPick(pr.color,doms.filter(function(x){ return x!==pr; }));
+          if(c&&c!==pr.color){ pr.color=c; pr._m=Math.max(pr._m||0,(m0&&pr.id in m0?m0[pr.id]:(pr._m||0))+1); } }
+        pr.apartRev=1; }
+      seen.push(pr); });
+  }
+  // OKLab of a hex: [L, a, b]
+  function okLab(h){ var o=hexToRgb(h), c=[o.r,o.g,o.b].map(function(v){ v/=255; return v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4); });
+    var l=Math.cbrt(0.4122214708*c[0]+0.5363325363*c[1]+0.0514459929*c[2]), m=Math.cbrt(0.2119034982*c[0]+0.6806995451*c[1]+0.1073969566*c[2]), s=Math.cbrt(0.0883024619*c[0]+0.2817188376*c[1]+0.6299787005*c[2]);
+    return [0.2104542553*l+0.7936177850*m-0.0040720468*s, 1.9779984951*l-2.4285922050*m+0.4505937099*s, 0.0259040371*l+0.7827717662*m-0.8086757660*s]; }
+  // a Domain colour as its band looks on every scheme (a dark one lifted toward neon, as domBand does), or null
+  function domLook(c){ var x=famHex(c); if(!x) return null; var o=hexToHsl(x); return relLumHex(x)<0.12?hslToHex(o.h,Math.max(o.s,75),Math.max(o.l,62)):x; }
+  function okHueGap(a,b){ var p=okLab(a), q=okLab(b), d=Math.abs(Math.atan2(p[2],p[1])-Math.atan2(q[2],q[1]))*180/Math.PI; return Math.min(d,360-d); }
+  function domTooClose(a,b){ var x=domLook(a), y=domLook(b); if(!x||!y) return false; var p=okLab(x), q=okLab(y);
+    if(Math.hypot(p[1],p[2])<APART_GREY||Math.hypot(q[1],q[2])<APART_GREY) return Math.hypot(p[0]-q[0],p[1]-q[1],p[2]-q[2])<APART_DE;
+    return okHueGap(x,y)<APART_DEG; }
+  /* the colour a Domain moves to: the neon nearest its own hue that is clearly different from every other Domain (`others`); when no
+     neon is, the nearest full neon-bright hue on a 10-degree ring that is; when nothing is, the neon or ring hue farthest from them all */
+  function domApartPick(c,others){ var me=domLook(c)||"#87919f", near=function(x){ return okHueGap(me,domLook(x)); };
+    var clear=function(x){ return !others.some(function(o){ return domTooClose(o.color,x); }); }, by=function(a,b){ return near(a)-near(b); };
+    var ring=[]; for(var h=0;h<360;h+=10) ring.push(hslToHex(h,100,55));
+    var pick=DOM_NEON.filter(clear).sort(by)[0]||ring.filter(clear).sort(by)[0];
+    if(pick) return pick;
+    var gap=function(x){ return others.reduce(function(m,o){ var y=domLook(o.color); return y?Math.min(m,okHueGap(domLook(x),y)):m; },360); };
+    return DOM_NEON.concat(ring).sort(function(a,b){ return gap(b)-gap(a)||by(a,b); })[0]; }
   /* V6.8 W28, W30 (W27's Domain colours). The order is an `ord` on each Domain and Focus (a field on the item, so the per-item merge
      carries it, and mergeStates already sorts a list by `ord`); a drag writes the midpoint of its neighbours, so two devices' moves
      both keep. JIK (his Faith Domain, by id, or any Domain named JIK) is first and DRM second; the rest follow their `ord`.
@@ -2369,8 +2419,10 @@ function GENA_MAIN() {
      Focuses, tasks and people are not touched). A Domain that changes is stamped old _m + 1, and so is any Domain or Focus given its first `ord`
      (V6.11 finding 1: on a tie a V6.3 device keeps its own copy, without `ord`). Deterministic, never today(). */
   function domPin(pr){ var n=String(pr&&pr.name||"").trim().toUpperCase(); return pr.id===JIK.id||n===JIK.name?0:n==="DRM"?1:2; }
-  function sortDoms(list){ return list.map(function(pr,i){ return [domPin(pr),typeof pr.ord==="number"?pr.ord:Infinity,i,pr]; })
-    .sort(function(a,b){ return a[0]-b[0]||a[1]-b[1]||a[2]-b[2]; }).map(function(x){ return x[3]; }); }
+  // byId (V25 finding 3, for apartDoms): a tie on `ord` goes by the Domain's id, which every device shares, not by this device's list order
+  function sortDoms(list,byId){ var ix=function(a,b){ var p=String(a[3].id||""), q=String(b[3].id||""); return p<q?-1:p>q?1:0; };
+    return list.map(function(pr,i){ return [domPin(pr),typeof pr.ord==="number"?pr.ord:Infinity,i,pr]; })
+    .sort(function(a,b){ return a[0]-b[0]||a[1]-b[1]||(byId?ix(a,b):0)||a[2]-b[2]; }).map(function(x){ return x[3]; }); }
   function sortByOrd(list){ return list.map(function(x,i){ return [typeof x.ord==="number"?x.ord:Infinity,i,x]; }).sort(function(a,b){ return a[0]-b[0]||a[1]-b[1]; }).map(function(x){ return x[2]; }); }
   function giveOrd(list){ var has=list.filter(function(x){ return typeof x.ord==="number"; });
     if(!has.length){ list.forEach(function(x,i){ x.ord=(i+1)*ORD_STEP; }); return; }
@@ -3092,7 +3144,8 @@ function GENA_MAIN() {
   /* V6.8 W27, W32: a Domain's colour family. Each Focus and Project in a Domain shows its own shade of the Domain's colour (a lighter
      or darker step, or a slight hue shift), kept between 1.5:1 on the light card and 1.5:1 on the dark one; past the shades, a shade
      with a pattern whose second colour is another shade of the family. Display only: a Focus's or Project's stored colour is never
-     rewritten, so its tasks, subtasks and history never change; a colour he picks is kept when it is in the family and not taken. */
+     rewritten, so its tasks, subtasks and history never change; a colour he picks is kept when it is one of the family's slots and
+     not taken (V6.6.1 GD-074: an older colour merely near the Domain's is no longer kept, so no two members look alike). */
   function hexToHsl(hex){ var o=hexToRgb(hex), r=o.r/255, g=o.g/255, b=o.b/255, mx=Math.max(r,g,b), mn=Math.min(r,g,b), l=(mx+mn)/2, h=0, s=0, d=mx-mn;
     if(d){ s=d/(1-Math.abs(2*l-1)); h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4; h*=60; if(h<0) h+=360; }
     return {h:h, s:s*100, l:l*100}; }
@@ -3116,20 +3169,20 @@ function GENA_MAIN() {
     var near=function(x){ return out.reduce(function(m,y){ return Math.min(m,famDist(x,y)); },famDist(x,b)); };
     while(out.length<8){ var best=null, bd=-1; cand.forEach(function(x){ if(out.indexOf(x)>=0) return; var d=near(x); if(d>bd){ bd=d; best=x; } }); if(!best||bd<18) break; out.push(best); }
     return out.sort(function(x,y){ return famDist(x,b)-famDist(y,b); }); }
-  // in the family: a hex within 24 degrees of the base's hue, coloured enough to read as it
-  function famIn(c,base){ var x=famHex(c), b=famHex(base); if(!x||!b||!/^#/.test(c)) return false; var p=hexToHsl(x), q=hexToHsl(b), d=Math.abs(p.h-q.h); d=Math.min(d,360-d); return d<=24&&p.s>=25; }
   function famKey(v){ var p=patValid(v.pat); return String(v.color).toLowerCase()+"|"+(p?p.shape+"|"+(p.b||""):""); }
   // slot n of a base's family: the shades, then each shade with each pattern (second colour: the shade half the family away)
   function famSlot(sh,n){ var k=sh.length; if(n<k) return {color:sh[n]}; var m=n-k;
     return {color:sh[m%k], pat:{shape:FAM_SHAPES[Math.floor(m/k)%FAM_SHAPES.length], b:sh[(m%k+Math.max(1,k>>1))%k]}}; }
+  // the slot number of each colour-and-pattern a base's family offers (famKey to n), for every shade with every pattern
+  function famSlots(sh){ var at={}; for(var n=0;n<sh.length*(FAM_SHAPES.length+1);n++){ var k=famKey(famSlot(sh,n)); if(!(k in at)) at[k]=n; } return at; }
   /* members: [{own:{color,pat}, near:index of its Focus in members or -1}], in the tree's order. Returns one {color,pat} a member,
-     no two the same: an own colour in the family is kept first come; the rest take the next free slot, a Project the free one nearest
-     its Focus's (a step lighter or darker) */
+     every one a slot of the family and no two the same: an own colour that is exactly a slot (the Focus picker offers only those) is
+     kept first come; the rest take the next free slot, a Project the free one nearest its Focus's (a step lighter or darker) */
   function famAssign(base,members){
-    var sh=famShades(base), used={}, out=[], slotOf=[], next=0;
-    members.forEach(function(m,i){ var o=m.own||{};
-      if(famIn(o.color,base)&&!used[famKey(o)]){ out[i]={color:o.color, pat:patValid(o.pat)||undefined}; used[famKey(out[i])]=1; slotOf[i]=-1; } });
+    var sh=famShades(base), used={}, out=[], slotOf=[], next=0, at=famSlots(sh);
     var free=function(n){ return !used[famKey(famSlot(sh,n))]; }, take=function(i,n){ out[i]=famSlot(sh,n); used[famKey(out[i])]=1; slotOf[i]=n; };
+    members.forEach(function(m,i){ var o=m.own||{}, n=/^#/.test(o.color||"")?at[famKey({color:famHex(o.color),pat:o.pat})]:undefined;
+      if(n!==undefined&&free(n)) take(i,n); });
     members.forEach(function(m,i){ if(out[i]) return;
       var at=m.near>=0?slotOf[m.near]:-1;
       if(at>=0&&at<sh.length) for(var d=1;d<sh.length;d++){ if(at+d<sh.length&&free(at+d)){ take(i,at+d); return; } if(at-d>=0&&free(at-d)){ take(i,at-d); return; } }
@@ -3165,6 +3218,14 @@ function GENA_MAIN() {
   }
   function hueOf(x){ if(!x||typeof x!=="object") return x; return hueMap().get(x)||x; }
   function hueC(x,dflt){ var h=hueOf(x); return (h&&h.color)||dflt||"var(--ink-faint)"; }
+  /* V6.6.1 (GD-074): what the Focus and Project colour pickers offer: the Domain's slots no other member shows, the plain shades
+     first and the patterned ones only once every shade is taken; `self` (the item being edited, or null) never blocks its own */
+  function famFree(domId,self){ var d=profileById(domId); if(!d) return null;
+    var sh=famShades(famHex(d.color)||"#87919f"), taken={}, fc={}; (S.projects||[]).forEach(function(p){ fc[p.id]=p; });
+    var inDom=function(x){ return x.profileId===domId; }, effDom=function(e){ var f=e.projectId&&fc[e.projectId]; return f&&f.profileId&&profileById(f.profileId)?f.profileId:e.profileId; };
+    (S.projects||[]).filter(inDom).concat((S.efforts||[]).filter(function(e){ return effDom(e)===domId; })).forEach(function(x){ if(x!==self) taken[famKey(hueOf(x))]=1; });
+    var plain=[], pat=[]; for(var n=0;n<sh.length*(FAM_SHAPES.length+1)&&pat.length<sh.length;n++){ var s=famSlot(sh,n); if(taken[famKey(s)]) continue; (n<sh.length?plain:pat).push(s); }
+    return plain.length?plain:pat; }
   document.getElementById("theme-btn").onclick=function(){
     var cur=S.theme|| (matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
     S.theme = cur==="dark"?"light":"dark"; applyTheme(); save(); render();   // V5.3 C5: patterns lift a near-black second colour per scheme
@@ -3742,7 +3803,18 @@ function GENA_MAIN() {
   function toastUndo(msg, fn, label, ms){ var t=document.getElementById("toast"); t.textContent=msg+" "; var b=document.createElement("button"); b.textContent=label||"Undo"; b.style.cssText="margin-left:8px;background:transparent;border:none;color:var(--terra);font-weight:800;cursor:pointer;font-family:inherit;font-size:13.5px"; b.onclick=function(){ fn(); t.classList.remove("show"); }; t.appendChild(b); t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(function(){t.classList.remove("show");},ms||5500); }
   // The service worker opens the cached page at once and fetches the new one behind it; when that
   // differs it says so. Reloading is the user's call, and never offered over an open editor.
-  function updateReady(){ whenIdle(function(){ toastUndo("Update ready", function(){ location.reload(); }, "Reload", 20000); }); }
+  // V25 finding 2: it also waits while an event's Details hold changes not saved (only the reload waits: a sync keeps the draft).
+  // V28 finding 2: the wait says why, with Open to the draft; after 10 minutes Reload is offered anyway. A draft kept on this device
+  // (his own, Edit in Gena, subscribed) comes back after it; a Mac Calendar event's is not kept (V9 M8), so its Reload asks first
+  var UPD_WAIT=10*60000, updWait=0;
+  function updateReady(){ whenIdle(function(){
+    var d=evDraft&&evDraftDirty()?evDraft:null, e=d&&evById(d.id), now=Date.now();
+    if(!e){ updWait=0; toastUndo("Update ready", function(){ location.reload(); }, "Reload", 20000); return; }
+    if(!updWait){ updWait=now; toastUndo("Update ready once you save or discard “"+evTitle(e)+"”", function(){ evDraftOpen(); }, "Open", 20000); }
+    if(now-updWait<UPD_WAIT){ setTimeout(updateReady,1000); return; }
+    updWait=0; var kept=evStashKeeps(d.id)&&draftsOn(), here=macApi()?"this Mac":"this device";
+    toastUndo(kept?"Update ready. Your unsaved change to “"+evTitle(e)+"” is kept on "+here+".":"Update ready. Your unsaved change to “"+evTitle(e)+"” is not kept on a reload: Reload asks first.",
+      function(){ if(kept){ evFoldLive(); evStashSync(); location.reload(); } else evLeave(function(){ location.reload(); }); }, "Reload", 20000); }); }
 
   /* ---------- router ---------- */
   var view="today";
@@ -3937,6 +4009,7 @@ function GENA_MAIN() {
   function groupOf(v){ for(var g in GROUPS) if(GROUPS[g].indexOf(v)>=0) return g; return null; }
   function goView(v, opts){
     opts=opts||{};
+    if(evDraft&&evDraftDirty()){ evLeave(function(){ goView(v,opts); }); return; }   // GD-075: an event's changes not saved ask first
     if(v==="calendar") v=calTabView(opts.cal||S.calView)||"cal";   // an old Events calendar link: the same view in Calendar
     if(v==="cal"&&!lastSub.cal) lastSub.cal=calTabView(S.calView)||"cal-day";   // 10b: the first open follows his saved calView
     if(GROUPS[v]) v=lastSub[v]||GROUPS[v][0];
@@ -4081,9 +4154,9 @@ function GENA_MAIN() {
      everything inside an assigned Domain, Focus or Project; Projects their steps from every Focus. The legacy
      Focus filter (`filterProjects`) still narrows to its Focuses. One scope per draw (cached on IX). */
   function profileById(id){ return S.profiles.find(function(x){return x.id===id;}); }
-  function scopeKind(v){ v=v||S.activeProfile; if(!v||v==="all") return "all"; if(v==="pjs") return "pjs";
+  function scopeKind(v){ v=v||curScope(); if(!v||v==="all") return "all"; if(v==="pjs") return "pjs";
     var m=/^(col|fc|pj):/.exec(v); return m?m[1]:"dom"; }
-  function scopeRef(v){ v=v||S.activeProfile; return String(v||"").replace(/^(col|fc|pj):/,""); }
+  function scopeRef(v){ v=v||curScope(); return String(v||"").replace(/^(col|fc|pj):/,""); }
   function scopeValid(v){ var k=scopeKind(v), id=scopeRef(v);
     return k==="all"||k==="pjs"||(k==="dom"&&!!profileById(id))||(k==="col"&&!!colById(id))||(k==="fc"&&!!proj(id))||(k==="pj"&&!!effortById(id)); }
   function hasCol(x,c){ return !!(x&&x.cols&&x.cols.indexOf(c)>=0); }
@@ -4111,13 +4184,14 @@ function GENA_MAIN() {
       // V6.1 F7: a Domain pulls the tasks linked to its people too (sidebarStats counts the same way)
       if(anyDp) (S.tasks||[]).forEach(function(t){ if((t.personIds||[]).some(function(id){ return dp[id]; })) sc.item[t.id]=1; });
     }
-    var f=(S.filterProjects||[]).filter(function(i){ return proj(i); });
+    var f=curFilterProjects().filter(function(i){ return proj(i); });
     if(f.length){ var only={}; f.forEach(function(i){ if(!sc||sc.foc[i]) only[i]=1; }); sc={foc:only,eff:{},item:{},person:{},dom:{}}; }
     return sc;
   }
   function scopeInfo(){
-    if((!S.activeProfile||S.activeProfile==="all")&&!(S.filterProjects||[]).length) return null;
-    var key=S.activeProfile+"|"+(S.filterProjects||[]).join(",");
+    var u=uiScopeRaw();
+    if(!u&&(!S.activeProfile||S.activeProfile==="all")&&!(S.filterProjects||[]).length) return null;
+    var key=(u||"")+"#"+S.activeProfile+"|"+(S.filterProjects||[]).join(",");
     if(IX&&IX.scopeKey===key) return IX.scope;
     var sc=buildScope(); if(IX){ IX.scope=sc; IX.scopeKey=key; } return sc;
   }
@@ -4136,13 +4210,37 @@ function GENA_MAIN() {
     else if(k==="fc"&&(it=proj(id))) bits.push("Focus: "+(it.emoji?it.emoji+" ":"")+it.name);
     else if(k==="pj"&&(it=effortById(id))) bits.push("Project: "+(it.emoji?it.emoji+" ":"")+it.name);
     else if(k==="pjs") bits.push("All Projects");
-    if((S.filterProjects||[]).length) bits.push((S.filterProjects||[]).length+" Focus"+((S.filterProjects||[]).length===1?"":"es"));
+    var fp=curFilterProjects(); if(fp.length) bits.push(fp.length+" Focus"+(fp.length===1?"":"es"));
     return bits.join(" · ");
   }
   // the Domain a new Focus or Project starts in: the scoped Domain, or the scoped Focus's or Project's
   function scopeDomain(){ var k=scopeKind(), id=scopeRef(), x;
     if(k==="dom"&&profileById(id)) return id; if(k==="fc"&&(x=proj(id))) return x.profileId||null; if(k==="pj"&&(x=effortById(id))) return x.profileId||null; return null; }
-  function setScope(v){ S.activeProfile=v||"all"; S.filterProjects=[]; save(); render(); }
+  /* V6.6.1 (GD-074, his answer 2026-10-21): a quick-add bubble pick filters only the device it was tapped on. It is kept in
+     localStorage["gena-ui-scope"] (a value as activeProfile holds; never in S, never synced) and wins here over the synced filter
+     (activeProfile and the legacy filterProjects) until the bubbles are closed back to it, or this device's sidebar, ✕ Showing everything or
+     a Focus link sets one. A sync from another device changes only the synced filter underneath. An older build never reads the key,
+     so it shows the synced filter alone. A pick whose Domain, Focus or Project is gone is ignored. */
+  var uiScopeVal;
+  function uiScopeRaw(){ if(uiScopeVal===undefined){ try{ uiScopeVal=localStorage.getItem(UI_SCOPE_KEY)||null; }catch(e){ uiScopeVal=null; } } return uiScopeVal; }
+  function uiScope(){ var u=uiScopeRaw(); return u&&scopeValid(u)?u:null; }
+  function setUiScope(v){ uiScopeVal=v||null; try{ if(v) localStorage.setItem(UI_SCOPE_KEY,v); else localStorage.removeItem(UI_SCOPE_KEY); }catch(e){} }
+  function curScope(){ return uiScope()||S.activeProfile||"all"; }
+  function curFilterProjects(){ return uiScope()?[]:(S.filterProjects||[]); }
+  function setScope(v){ setUiScope(null); S.activeProfile=v||"all"; S.filterProjects=[]; save(); render(); qaFollowScope(); }
+  /* V6.6.1 (GD-074): the quick-add's bubbles and the sidebar are one filter on this device. A tap on a quick-add Domain bubble filters
+     the page to that Domain, a Focus to that Focus, closing it goes back to All (qaScope; this device only, above); a sidebar pick or
+     clearing it moves the bubbles to match (qaFollowScope), which never fires qaScope again */
+  function qaScope(sel){ var st=sel.__dfp, f=proj(sel.value), dom=st.dom;
+    var want=f&&(dom===null||dfFocusDom(f)===dom)?"fc:"+f.id:dom&&profileById(dom)?dom:"all";
+    if(want===curScope()&&!curFilterProjects().length) return;
+    setUiScope(want===(S.activeProfile||"all")&&!(S.filterProjects||[]).length?null:want); render(); }
+  function qaFollowScope(){ var sel=typeof document!=="undefined"&&document.getElementById&&document.getElementById("q-proj"), st=sel&&sel.__dfp; if(!st) return;
+    var k=scopeKind(), id=scopeRef(), f=proj(sel.value);
+    if(k==="fc"&&proj(id)){ st.dom=dfFocusDom(proj(id)); if(sel.value!==id) sel.value=id; }
+    else if(k==="dom"){ st.dom=id; if(f&&dfFocusDom(f)!==id) sel.value=""; }
+    else if(k==="all"){ st.dom=null; if(sel.value) sel.value=""; }
+    dfPaint(sel); }
   /* One walk for the sidebar: open tasks per Domain, Collection and Project, and each Project's progress
      (done steps / all steps; the archive counts as done). Cached for one draw. */
   function sidebarStats(){
@@ -4216,7 +4314,7 @@ function GENA_MAIN() {
      the chevrons beside the heading fold or open them all (W29), and rows drag to reorder (W30; JIK and DRM keep the first places) */
   function sbBand(h){ return '<i class="sb-band" aria-hidden="true" style="background:'+esc(patBg(h.color,h.pat,0.5,"strip"))+'"></i>'; }
   function sbDomainsTree(st,row,more){
-    var cur=S.activeProfile, openCnt=openCount, shelved=0, kids={}, none=[], anyOpen=false;
+    var cur=curScope(), openCnt=openCount, shelved=0, kids={}, none=[], anyOpen=false;
     S.projects.forEach(function(p){ if(!projActive(p)){ shelved++; return; } if(p.profileId&&profileById(p.profileId)) (kids[p.profileId]=kids[p.profileId]||[]).push(p); else none.push(p); });
     var focusRow=function(p){ var fav=hasCol(p,"col-fav");
       return row("fc:"+p.id,sbBand(hueOf(p))+'<span class="pdot" style="'+dotStyle(p)+'"></span>',(p.emoji?p.emoji+" ":"")+p.name,openCnt(p.id),
@@ -4236,7 +4334,7 @@ function GENA_MAIN() {
     if(shelved) h+='<div class="sb-mini">'+shelved+' Focus'+(shelved===1?"":"es")+' paused / ended in Lists → Focuses.</div>';
     var all='<button class="sb-foldall" data-sb="domall" data-v="'+(anyOpen?1:0)+'" title="'+(anyOpen?"Collapse":"Expand")+' all Domains" aria-label="'+(anyOpen?"Collapse":"Expand")+' all Domains">'+
       '<svg viewBox="0 0 16 16" aria-hidden="true">'+(anyOpen?'<path d="M4 7l4-4 4 4M4 13l4-4 4 4"/>':'<path d="M4 3l4 4 4-4M4 9l4 4 4-4"/>')+'</svg></button>';
-    var act=all+(S.filterProjects.length?'<button class="sb-act" data-sb="clearfilter">✕ clear filter</button>':'')+'<button class="sb-act" data-sb="newprofile">+ new</button>';
+    var act=all+(curFilterProjects().length?'<button class="sb-act" data-sb="clearfilter">✕ clear filter</button>':'')+'<button class="sb-act" data-sb="newprofile">+ new</button>';
     return sbSection("doms","Domains",act,h);
   }
   function sbProjects(st,row,more){
@@ -4322,7 +4420,7 @@ function GENA_MAIN() {
   }
   function renderSidebar(){
     var sb=document.getElementById("sidebar"); if(!sb) return;
-    var st=sidebarStats(), cur=S.activeProfile;
+    var st=sidebarStats(), cur=curScope();
     var row=function(val,icon,name,cnt,extra,style,cls,attrs){ return '<div class="sb-row'+(cls?" "+cls:"")+'" role="button" tabindex="0" data-sb="scope" data-id="'+esc(val)+'" aria-pressed="'+(cur===val)+'"'+(style?' style="'+style+'"':'')+(attrs||'')+'>'+icon+'<span class="sb-name">'+esc(name)+'</span>'+(cnt?'<span class="cnt">'+cnt+'</span>':'')+(extra||"")+'</div>'; };
     var more=function(kind,id,name){ return '<button class="sb-star sb-hov" data-sb="cols" data-kind="'+kind+'" data-id="'+esc(id)+'" title="Collections for '+esc(name)+'" aria-label="Collections for '+esc(name)+'">⋯</button>'; };
     var old=sb.querySelector&&sb.querySelector(".sb-tree"), top=old?old.scrollTop:0;
@@ -4339,7 +4437,7 @@ function GENA_MAIN() {
     var a=e.target.closest("[data-sb]"); if(!a) return;
     if(Date.now()-domDragEnd<400) return;   // V6.8 W30: the tap a long-press drag ends with is not a scope pick
     var t=a.dataset.sb;
-    if(t==="view"){ view=a.dataset.v; syncNav(); document.body.classList.remove("sb-open"); render(); }
+    if(t==="view"){ var sv=a.dataset.v, gv=function(){ view=sv; syncNav(); document.body.classList.remove("sb-open"); render(); }; if(evDraft&&evDraftDirty()) evLeave(gv); else gv(); }   // GD-075: changes not saved ask first
     else if(t==="scope"){ if(e.target.closest("[data-sb]")!==a) return; setScope(a.dataset.id); }
     else if(t==="fold"){ if(a.dataset.id==="show"){ uiSetFold("sb:show",!uiFolded("sb:show",false)); } else if(a.dataset.id==="hours"||a.dataset.id==="next"){ uiSetFold("sb:"+a.dataset.id,!uiFolded("sb:"+a.dataset.id,false)); } else { S.collapsed["sb-"+a.dataset.id]=!S.collapsed["sb-"+a.dataset.id]; save(); } renderSidebar(); }
     else if(t==="domfold"){ var dk="sb-dom:"+a.dataset.id; uiSetFold(dk,!uiFolded(dk,true)); renderSidebar(); }
@@ -4356,7 +4454,7 @@ function GENA_MAIN() {
     else if(t==="theme"){ setThemeMode(a.dataset.m); }
     else if(t==="density"){ setUiDensity(a.dataset.m); render(); }
     else if(t==="fav"){ var p=proj(a.dataset.id); if(p){ var on=hasCol(p,"col-fav"); p.cols=(p.cols||[]).filter(function(c){ return c!=="col-fav"; }); if(!on) p.cols.push("col-fav"); save(); render(); } }
-    else if(t==="projfilter"){ var fid=a.dataset.id; var fi=S.filterProjects.indexOf(fid); if(fi<0) S.filterProjects.push(fid); else S.filterProjects.splice(fi,1); save(); render(); }
+    else if(t==="projfilter"){ setUiScope(null); var fid=a.dataset.id; var fi=S.filterProjects.indexOf(fid); if(fi<0) S.filterProjects.push(fid); else S.filterProjects.splice(fi,1); save(); render(); }
     else if(t==="clearfilter"){ S.filterProjects=[]; save(); render(); }
     else if(t==="newprofile"){ openProfileModal(); }
     else if(t==="neweffort"){ openEffortModal(); }
@@ -4376,6 +4474,7 @@ function GENA_MAIN() {
     // Mac Calendar: show or hide (this device), ⋯, access, a read again, and the M6 choice on a subscription
     else if(t==="macchk"||t==="macrow"){ var mc=macCal("mac:"+a.dataset.mcid); if(mc){ calSetHidden(mc,!mc.hidden); if(mc.link) save(); render(); } }   // a moved subscription's hidden syncs
     else if(t==="macmore"){ openMacSheet(a.dataset.mcid); }
+    else if(t==="macfold"){ var mk=a.dataset.mkey?"sb-mac:"+a.dataset.mkey:"sb-mac"; uiSetFold(mk,!uiFolded(mk,false)); renderSidebar(); var fb=document.querySelector('#sidebar .sb-fold[data-sb="macfold"][data-mkey="'+(window.CSS&&CSS.escape?CSS.escape(a.dataset.mkey):a.dataset.mkey)+'"]'); if(fb&&a.tagName==="BUTTON") fb.focus(); }   // GD-075 (5): this device only
     else if(t==="macallow"){ macAllow(); }
     else if(t==="macsettings"){ macCall("openSettings"); }
     else if(t==="macrefresh"){ macEnsure(true); }
@@ -4398,12 +4497,13 @@ function GENA_MAIN() {
      new neighbours, so another device's reorder of other items keeps; a Focus that changes Domain keeps its tasks, subtasks and
      Projects and shows its new Domain's family. Alt+Up/Down moves the focused row; a phone long-presses. Handlers as for the calendars */
   var domDrag=null, domDragEnd=0, PIN_SAY="JIK and DRM keep the first two places";
-  function domFreeNeon(){ var used={}; S.profiles.forEach(function(x){ if(x.color) used[String(x.color).toLowerCase()]=1; }); return DOM_NEON.filter(function(c){ return !used[c]; })[0]||DOM_NEON[S.profiles.length%DOM_NEON.length]; }
+  // V6.6.1 (GD-074): the first neon clearly different from every Domain (not merely unused), else apartDoms' fallback
+  function domFreeNeon(){ return DOM_NEON.filter(function(c){ return !S.profiles.some(function(x){ return domTooClose(x.color,c); }); })[0]||domApartPick(DOM_NEON[0],S.profiles); }
   function ordBetween(a,b){ a=typeof a==="number"?a:null; b=typeof b==="number"?b:null; return a==null&&b==null?ORD_STEP:a==null?b-ORD_STEP:b==null?a+ORD_STEP:(a+b)/2; }
   function nextOrd(list){ var o=(list||[]).map(function(x){ return x.ord; }).filter(function(x){ return typeof x==="number"; }); return o.length?Math.max.apply(null,o)+ORD_STEP:ORD_STEP; }
   // V6.10 W38: the editors' creation code, shared with the pickers' + bubbles. A Domain takes its own neon colour and goes last in
   // the order; a Focus is shown in its Domain's next free shade (W27, hueOf) and goes last (W30)
-  function addDomain(name,emoji,color){ var d={id:uid(),name:name,emoji:emoji,color:color||domFreeNeon(),ord:nextOrd(S.profiles)}; S.profiles.push(d); S.profiles=sortDoms(S.profiles); return d; }
+  function addDomain(name,emoji,color){ var d={id:uid(),name:name,emoji:emoji,color:color||domFreeNeon(),ord:nextOrd(S.profiles),apartRev:1}; S.profiles.push(d); S.profiles=sortDoms(S.profiles); return d; }
   function addFocus(name,emoji,dom,color,pat,state){ var np={id:uid(),name:name,color:color||COLORS[S.projects.length%COLORS.length],emoji:emoji,notes:"",profileId:dom||null,state:state||null,ord:nextOrd(S.projects)}; if(pat) np.pat=pat; S.projects.push(np); return np; }
   function focusDomOf(f){ return f.profileId&&profileById(f.profileId)?f.profileId:null; }
   function moveDomain(id,refId,after){
@@ -5262,6 +5362,8 @@ function GENA_MAIN() {
      Everything from a feed is text: escaped, with http(s) links made into links that open a new tab. A subscribed event
      cannot be edited in Gena: its button names where it lives and opens that calendar's own web app, never the feed link. */
   function evById(id){ var a=evAll(); for(var i=0;i<a.length;i++) if(a[i].id===id) return a[i]; return null; }
+  // a card drawn before Calendar moved its one-off (V28 finding 1) still names the old id: follow it to the new one
+  function evNow(id){ var e=evById(id), n=0; while(!e&&MAC.moved[id]&&n++<20){ id=MAC.moved[id]; e=evById(id); } return e; }
   function shortDate(s){ var p=parse(s); return DOWNAMES[p.getDay()]+", "+MONTHS[p.getMonth()].slice(0,3)+" "+p.getDate(); }
   // "7 PM – 9 PM · Sat, Oct 17", "All day · Sat, Oct 17", "All day · Oct 19 – 21", or both ends for a timed event across days
   function evWhenText(e){
@@ -5291,12 +5393,12 @@ function GENA_MAIN() {
   function evCalLabel(e){ var s=e.sourceId?calById(e.sourceId):calGena(); return s?(s.own?"Gena · "+calName(s):(s.mac?"Mac Calendar · ":"")+calAccount(s)+" · "+calName(s)):"Gena"; }
   /* the card's calendar list (Mac Calendar M4, M5): his own events can move to a writable Mac calendar; a writable Mac event to another
      one (a repeating one as a whole series); subscriptions and read-only calendars are listed, not choosable */
-  function evCalOpts(e){
-    var mine=e.sourceId||CAL_GENA, mw=!!(e.mac&&!macRO(e)), mine2=null;
+  function evCalOpts(e,pick){
+    var mine=e.sourceId||CAL_GENA, mw=!!(e.mac&&!macRO(e)), mine2=null, on=pick||mine;   // pick: the calendar a Details draft chose (GD-075)
     var o=function(id,label,sel,dis){ if(sel) mine2=id; return '<option value="'+esc(id)+'"'+(sel?' selected':'')+(dis?' disabled':'')+'>'+esc(label)+'</option>'; };
-    var h=o(CAL_GENA,calName(calGena())+" (Gena)",mine===CAL_GENA,!!e.sourceId);
-    macWritable().forEach(function(c){ h+=o(c.id,"Mac · "+c.account+" · "+c.name,mine===c.id,!!e.sourceId&&!mw); });
-    calFeeds().forEach(function(c){ if(macPaused(c.id)) return; var me=mine===c.id; h+=o(c.id,calAccount(c)+" · "+calName(c)+(me?"":" · read-only"),me,!me); });
+    var h=o(CAL_GENA,calName(calGena())+" (Gena)",on===CAL_GENA,!!e.sourceId);
+    macWritable().forEach(function(c){ h+=o(c.id,"Mac · "+c.account+" · "+c.name,on===c.id,!!e.sourceId&&!mw); });
+    calFeeds().forEach(function(c){ if(macPaused(c.id)) return; var me=mine===c.id; h+=o(c.id,calAccount(c)+" · "+calName(c)+(me?"":" · read-only"),me&&on===mine,!me); });
     if(!mine2&&e.mac){ var s=calById(e.sourceId); if(s) h+=o(s.id,"Mac · "+s.account+" · "+s.name+" · read-only",true,false); }
     return h;
   }
@@ -5310,12 +5412,14 @@ function GENA_MAIN() {
   function evMoreSet(on){ try{ localStorage.setItem(EVMORE_KEY,on?"1":"0"); }catch(e){} }
   function evDetailsHtml(e,where){
     where=where||"panel";
+    var dr=evDraftOf(e.id), dirty=!!dr&&evDraftDirty(dr), st=!!evStashOf(e); e=evDraftView(e,dr);   // GD-075 (1): the card shows his pending changes; V25 finding 2: or offers an earlier page's
     var sub=!!e.sourceId, s=sub?calById(e.sourceId):calGena(), home=sub?evEditHome(e):null, id=esc(e.id), t=evSpanT(e), ed=evEdited(e), more=evMoreOn();
     var mw=!!(e.mac&&!macRO(e)), mro=!!(e.mac&&!mw);   // Mac Calendar: a writable Mac event edits in place, through the bridge
+    var pick=dr?dr.x.cal:null, tomac=!e.mac&&/^mac:/.test(pick||""), mlook=!!e.mac||tomac;   // GD-075 F1: a Mac calendar's event has no emoji, colour, pattern or Add to (his own one too, once a Mac calendar is picked)
     var hue=esc(evHue(e)), calHue=sub?((s&&s.color)||"var(--p0)"):(calGena().color||"var(--terra)"), cur=sub&&!ed?"":(e.color||"");
     var fa=function(k,extra){ return 'data-f="'+k+'" data-eid="'+id+'"'+(extra?" "+extra:""); };
     var b=function(k,label){ return '<button type="button" class="evd-b" data-act="evd" data-k="'+k+'" data-eid="'+id+'">'+label+'</button>'; };
-    var cals=evCalOpts(e);
+    var cals=evCalOpts(e,pick);
     var pals=FAMILIES.map(function(f){ return f[1][2]; });
     var sws='<button type="button" class="ev-sw-cal" '+fa("color",'data-v=""')+' style="--sw:'+esc(calHue)+';--swink:'+(/^#/.test(calHue)?inkOn(calHue):"#fff")+'" aria-pressed="'+!cur+'" title="The calendar’s colour">Calendar</button>'+
       pals.map(function(c){ return '<button type="button" '+fa("color",'data-v="'+c+'"')+' style="--sw:'+c+'" aria-pressed="'+(cur===c)+'" aria-label="'+c+'" title="'+c+'"></button>'; }).join("");
@@ -5334,19 +5438,22 @@ function GENA_MAIN() {
     var edit=!sub||mw?b("edit","Edit"):b("gedit","Edit in Gena")+(home.url?'<a class="evd-b" href="'+esc(home.url)+'" target="_blank" rel="noopener noreferrer" title="Gena shows it; you change it there">Edit in '+esc(home.name)+'</a>':b("where","Edit in "+esc(home.name)));
     return '<div class="evd evc" data-eid="'+id+'" data-where="'+where+'"><div class="evd-cal"><span class="evd-dot'+evPatCls(e)+'" style="'+(evPatCls(e)?'background-color:'+hue+';--c:'+hue:'background:'+hue)+'"></span>'+esc(evCalLabel(e))+'</div>'+
       '<h4 class="evc-h">'+esc(evTitle(e))+'</h4><div class="evd-when">'+esc(evWhenText(e))+'</div>'+
-      '<div class="evc-f"><div class="evc-trow">'+(mw?'':'<input class="evc-emo" '+fa("emoji")+' value="'+esc(e.emoji||"")+'" maxlength="16" placeholder="🙂" aria-label="Emoji" title="Emoji: type or paste one (Ctrl+Cmd+Space for all emoji)"/>')+
+      '<div class="evc-f"><div class="evc-trow">'+(mlook?'':'<input class="evc-emo" '+fa("emoji")+' value="'+esc(e.emoji||"")+'" maxlength="16" placeholder="🙂" aria-label="Emoji" title="Emoji: type or paste one (Ctrl+Cmd+Space for all emoji)"/>')+
         (mw&&e.mac.titleCut?'<div class="evd-ro mac-cut">This title is longer than Gena shows. Change it in the Calendar app.</div>':'<input class="evc-t" '+fa("title")+' value="'+esc(e.title)+'" aria-label="Title"/>')+'</div>'+
         '<div class="evc-row"><input type="date" class="evc-d" '+fa("date")+' value="'+esc(e.date)+'" aria-label="Date"/><label class="ev-ad evc-ad"><input type="checkbox" role="switch" '+fa("allday")+(t?'':' checked')+'/> All day</label></div>'+
         (t?'<div class="evc-row"><input class="evc-tm" '+fa("at",'list="evc-tl"')+' value="'+esc(inClock(e.at))+'" aria-label="Start" autocomplete="off"/><span class="evc-to">to</span><input class="evc-tm" '+fa("to",'list="evc-tl"')+' value="'+esc(inClock(hhmm(t.e)))+'" aria-label="End" autocomplete="off"/></div>':'')+
         '<div class="evc-row"><select class="evc-cal" '+fa("cal")+(sub&&!mw?' disabled':'')+' aria-label="Calendar">'+cals+'</select></div>'+
-        (mw?'':'<div class="ev-sws evc-sws" role="group" aria-label="Colour">'+sws+'</div>'+
+        (mlook?'':'<div class="ev-sws evc-sws" role="group" aria-label="Colour">'+sws+'</div>'+
         '<div class="seg seg-mini ev-pats evc-pats" role="group" aria-label="Pattern">'+pats+'</div>')+'</div>'+
+      (tomac?'<div class="evd-ro mac-move">Save moves it to “'+esc((macCal(pick)||{name:""}).name)+'” in the Calendar app. Its Focus, colour, pattern and emoji stay behind.</div>':'')+
+      '<div class="evc-sv"'+(dirty?'':' hidden')+'><button type="button" class="btn ghost" data-act="evd" data-k="cancel" data-eid="'+id+'">Cancel</button><button type="button" class="btn primary" data-act="evd" data-k="save" data-eid="'+id+'">Save</button></div>'+
+      (st?'<div class="evd-ro evc-rs">Unsaved changes from before: <button type="button" class="evd-b" data-act="evd" data-k="restore" data-eid="'+id+'">Restore</button><button type="button" class="evd-b" data-act="evd" data-k="unstash" data-eid="'+id+'">Discard</button></div>':'')+
       (mw&&e.mac.rec?'<div class="evd-ro mac-rep">↻ Repeats. A change asks: this event, this and following, or all.</div>':'')+
       (mro&&!ed?(e.mac.guests?'<div class="evd-ro mac-guests">Has guests: change it in the Calendar app.</div>':'<div class="evd-ro">🔒 '+esc(calName(s))+' is read-only in Calendar. Edit in Gena keeps a change on this device.</div>'):'')+
       (ed?'<div class="evd-ed">✎ Edited here, on this device. '+esc(home.name.replace(/^the /,"The "))+' keeps the original. '+b("reset","Reset to original")+'</div>':'')+
       '<button type="button" class="evc-more" data-act="evmore" aria-expanded="'+more+'">More '+(more?"▴":"▾")+'</button>'+
       '<div class="evc-mb"'+(more?'':' hidden')+'>'+(rows?'<dl class="evd-dl">'+rows+'</dl>':'')+
-      '<div class="evd-acts">'+edit+b("addto","Add to another calendar")+b("copy","Copy details")+(s?b("hide","Hide "+esc(calName(s))):"")+(sub&&!mw?'':b("del","Delete"))+'</div></div></div>';
+      '<div class="evd-acts">'+edit+(mlook?'':b("addto","Add to another calendar"))+b("copy","Copy details")+(s?b("hide","Hide "+esc(calName(s))):"")+(sub&&!mw?'':b("del","Delete"))+'</div></div></div>';
   }
   function evDetailsSection(){
     var e=selEvId?evById(selEvId):null; if(!e||!calVisible(e)) return "";
@@ -5362,6 +5469,7 @@ function GENA_MAIN() {
   // D1, W22: select, outline, and open the details: the popout beside the event and the right panel when it shows; a phone, the sheet
   function selectEvent(id,anchor){
     var e=evById(id); if(!e) return;
+    if(evDraft&&evDraft.id!==id){ evLeave(function(){ selectEvent(id,anchor); }); return; }   // GD-075: another event, with changes not saved, asks first
     selEvId=id; markPicked(); evTlEnsure();
     if(evIsPhone()){ evPopClose(); openEvSheet(e); return; }
     if(paneShown("rb")) redrawPanel();
@@ -5370,7 +5478,11 @@ function GENA_MAIN() {
     if(d&&d.scrollIntoView) d.scrollIntoView({block:"nearest"});
     var x=(pop&&!pop.hidden&&pop.querySelector(".evd-x"))||(d&&d.querySelector(".evd-x")); if(x) x.focus({preventScroll:true});   // finding 7: focus moves into the details (Esc or ✕ closes them)
   }
-  function closeEvDetails(){ selEvId=null; evPopClose(); markPicked(); redrawPanel(); }
+  // V28 finding 2: back to the event whose changes are not saved (Update ready's Open): its day in Calendar when it is not on screen
+  function evDraftOpen(){ var e=evDraft&&evById(evDraft.id); if(!e) return;
+    if(!evIsPhone()&&!evPopFind(e.id)){ view="cal-day"; calDay=e.date; syncNav(); render(); }
+    selectEvent(e.id); }
+  function closeEvDetails(){ evLeave(function(){ selEvId=null; evPopClose(); markPicked(); redrawPanel(); }); }
   /* the popout: a card fixed beside the event (right, else left, else below or above), kept on screen; it never covers the event
      where a side has room. A redraw puts it back beside the same event (the one nearest where it was), or closes it when the
      event left the screen (the panel keeps it) */
@@ -5402,18 +5514,24 @@ function GENA_MAIN() {
   function openEvSheet(e){
     var root=modal('<div class="sheet-grip"></div><div class="sheet-title">Details</div>'+evDetailsHtml(e,"sheet"),"sheet");
     var sc=document.getElementById("scrim"); if(sc) sc.classList.add("sheet-scrim");
-    onModalDismiss=function(){ close(); selEvId=null; markPicked(); };   // dismissModal leaves the closing to its handler
+    var back=function(){ var e2=evNow(e.id); if(e2) openEvSheet(e2); };   // GD-075: Keep editing opens the sheet again, his changes still in it
+    onModalDismiss=function(){ evLeave(function(){ close(); selEvId=null; markPicked(); },back); };   // dismissModal leaves the closing to its handler
     root.querySelector(".modal").onclick=function(ev){
-      var b=ev.target.closest('[data-act="evd"],[data-act="evmore"]'); if(!b) return; if(b.dataset.act==="evmore"){ evMoreToggle(); return; } var k=b.dataset.k; if(k!=="copy"){ onModalDismiss=null; close(); selEvId=null; markPicked(); } evdAct(k,b.dataset.eid); };   // finding 8: leaving the sheet by a button unselects too
+      var b=ev.target.closest('[data-act="evd"],[data-act="evmore"]'); if(!b) return; if(b.dataset.act==="evmore"){ evMoreToggle(); return; } var k=b.dataset.k, id=b.dataset.eid;
+      if(k==="save"){ evDraftSave(null,back); return; }   // Save keeps the sheet open; a question (which events, Move) took its place, so Calendar refusing opens it again (V25 finding 1)
+      if(/^(copy|cancel|restore|unstash)$/.test(k)){ evdAct(k,id); return; }   // Cancel, Restore and Discard keep the sheet open
+      if(k==="del"){ onModalDismiss=null; close(); selEvId=null; markPicked(); evdAct(k,id); return; }   // a delete asks itself; his changes go with the event
+      evLeave(function(){ onModalDismiss=null; close(); selEvId=null; markPicked(); evdAct(k,id); },back); };   // finding 8: leaving the sheet by a button unselects too
   }
   // More opens and closes in every copy at once (the popout, the panel, the sheet), and stays so on this device
   function evMoreToggle(){ var on=!evMoreOn(); evMoreSet(on);
     [].forEach.call(document.querySelectorAll(".evc"),function(c){ var mb=c.querySelector(".evc-mb"), bt=c.querySelector(".evc-more"); if(mb) mb.hidden=!on; if(bt){ bt.setAttribute("aria-expanded",String(on)); bt.textContent="More "+(on?"▴":"▾"); } });
     var p=document.getElementById("evpop"); if(p&&!p.hidden){ var a=evPopFind(selEvId,evPopAt); if(a) evPopPlace(p,a); } }
   /* a basic field changed in a card: his own event's item, or the subscribed event's override (W13). Each field keeps the rest:
-     a new date keeps a span's length, a new start keeps the length, All day off takes the first free hour */
-  function evQuick(e,f,v){
-    var sub=!!e.sourceId, x=sub?evFields(e):null, o=sub?x:e;
+     a new date keeps a span's length, a new start keeps the length, All day off takes the first free hour. With o (GD-075: a
+     Details draft) the rules change o only, never the event */
+  function evQuick(e,f,v,o){
+    var sub=!!e.sourceId, x=o||(sub?evFields(e):null), dr=!!o; o=dr?o:(sub?x:e);
     var put=function(k,val){ if(val===null||val===undefined||val==="") delete o[k]; else o[k]=val; };
     var timed=/^\d{2}:\d{2}$/.test(o.at||"");
     if(f==="title"){ v=String(v||"").trim(); if(!v||v===o.title) return false; put("title",v.slice(0,200)); }
@@ -5426,32 +5544,159 @@ function GENA_MAIN() {
     else if(f==="color"){ v=v||null; if(v&&!isHex6(v)) return false; if(v===(o.color||null)&&!(sub&&!evEdited(e))) return false; put("color",v); }
     else if(f==="pat"){ v=/^(stripes|dots|outline|light)$/.test(v||"")?v:null; if(v===(o.pat||null)) return false; put("pat",v); }
     else return false;
-    if(sub) evSetEdit(e,x);
+    if(sub&&!dr) evSetEdit(e,x);
     return true;
   }
-  // apply, save, draw; then the card he typed in gets its field back (the popout, the panel or the sheet)
-  // V6.11 finding 10: a change fired by the blur of a mouse press is saved at once, but its redraw waits for the release, so the click
-  // still reaches the event it was aimed at (a redraw at mousedown replaced it, and the click went nowhere)
+  /* ---------- V6.6.1 GD-075 (1): Save and Cancel in an event's Details ----------
+     A card's field no longer writes on Enter or blur: it goes into one draft for the open event, which the popout, the panel and the
+     phone's sheet all show. Save applies the whole draft at once: one store change (one undo step) for his own event, one W13 record
+     for Edit in Gena, one bridge save for a writable Mac event (a repeating one asks which events once, at Save). Cancel throws it
+     away; closing, another event or another view with changes asks Save, Discard or Keep editing. Nothing stored changes shape */
+  var evDraft=null, evLeaveOn=false;
+  function evDraftOf(id){ return evDraft&&evDraft.id===id?evDraft:null; }
+  // what a card edits, as the event has it now: a writable Mac event's full place and notes, the others' W13 fields; and its calendar
+  function evDraftBase(e){ var x=e.mac&&!macRO(e)?macCopy(e):evFields(e); delete x.id; x.cal=e.sourceId||CAL_GENA; return x; }
+  function evDraftStart(e){ if(!evDraftOf(e.id)){ var b=evDraftBase(e); evDraft={id:e.id, base:b, x:evDraftBase(e), ad:null}; } return evDraft; }
+  function evSame(a,b){ return String(a==null?"":a)===String(b==null?"":b); }
+  // the event's fields as they are now, with only what he changed in the draft laid over them: a field a sync or Calendar changed
+  // meanwhile shows, and is never sent back stale
+  function evDraftMerged(e,d){ var y=evDraftBase(e);
+    Object.keys(d.x).concat(Object.keys(d.base)).forEach(function(k){ if(evSame(d.base[k],d.x[k])) return; if(d.x[k]==null||d.x[k]==="") delete y[k]; else y[k]=d.x[k]; });
+    return y; }
+  function evDraftDirty(d){ d=d||evDraft; var e=d&&evById(d.id); if(!e) return false; var y=evDraftMerged(e,d), b=evDraftBase(e);
+    if(y.cal!==b.cal) return true;
+    if(e.mac&&!macRO(e)) return Object.keys(macSet(e,y)).length>0;
+    return EV_EDIT_FIELDS.some(function(k){ return !evSame(b[k],y[k]); }); }
+  // the event as the card shows it: his changes over the event (the grid keeps the saved event)
+  function evDraftView(e,d){ if(!d) return e; var v={}, y=evDraftMerged(e,d); Object.keys(e).forEach(function(k){ v[k]=e[k]; });
+    ["title","date","end","at","to","emoji","color","pat"].forEach(function(k){ if(y[k]!=null&&y[k]!=="") v[k]=y[k]; else delete v[k]; });
+    if(e.mac&&!macRO(e)){ v.mac={}; Object.keys(e.mac).forEach(function(k){ v.mac[k]=e.mac[k]; }); v.mac.loc=y.loc||""; v.mac.notes=y.notes||""; }
+    return v; }
+  /* a card's field into the draft, by evQuick's rules (a Mac event: its calendar, place and notes; never a colour, pattern or emoji).
+     F2: All day off gives back the times the event had before All day went on in this edit; an event all-day from the start takes the
+     first free hour */
+  function evStage(e,f,v){
+    var mw=!!(e.mac&&!macRO(e)), d=evDraftStart(e), x=d.x;
+    if(f==="cal"){ if(!v||v===x.cal) return false;
+      if(mw||!e.sourceId){ var tc=v===CAL_GENA?null:macCal(v); if(mw?(!tc||tc.ro||!tc.enabled):(v!==CAL_GENA&&(!tc||tc.ro||!tc.enabled))) return false; }
+      else return false;   // a subscription, or a read-only Mac calendar, keeps its calendar
+      x.cal=v; return true; }
+    if(mw&&(f==="loc"||f==="notes")){ var t=String(v||"").trim().slice(0,f==="loc"?500:5000); if(t===(x[f]||"")) return false; x[f]=t; return true; }
+    if(mw&&!/^(title|date|allday|at|to)$/.test(f)) return false;   // a Mac event keeps its calendar's colour; alerts stay in Calendar
+    if(f==="allday"){ var timed=/^\d{2}:\d{2}$/.test(x.at||"");
+      if(v&&timed) d.ad={at:x.at, to:x.to||null};
+      else if(!v&&!timed&&d.ad){ x.at=d.ad.at; if(d.ad.to) x.to=d.ad.to; else delete x.to; d.ad=null; return true; } }
+    return evQuick(e,f,v,x);
+  }
+  // Save and Cancel show while the draft differs from the event, or while the field he is in holds text not yet in it
+  function evLiveEl(){ var el=typeof document!=="undefined"&&document.activeElement; return el&&el.closest&&el.closest(".evc")&&el.dataset&&el.dataset.f&&/^(INPUT|TEXTAREA)$/.test(el.tagName)&&el.type!=="checkbox"&&el.value!==el.defaultValue?el:null; }
+  function evSaveBar(){ if(typeof document==="undefined"||!document.querySelectorAll) return; var on=evDraftDirty()||!!evLiveEl();
+    [].forEach.call(document.querySelectorAll(".evc .evc-sv"),function(b){ b.hidden=!on; }); }
+  // the field he is typing in, into the draft (before a Save or a leave); its text is kept as the field's own, so leaving it adds nothing
+  function evFoldLive(){ var el=evLiveEl(), e=el&&evNow(el.dataset.eid); if(!e) return; evStage(e,el.dataset.f,el.value); el.defaultValue=el.value; }
+  // every copy of the card drawn again from the draft: the page (the popout follows) and the phone's sheet
+  function evCardsDraw(){ evStashSync(); render(); evSheetDraw(); }
+  function evSheetDraw(){ var m=typeof document!=="undefined"&&document.querySelector&&document.querySelector("#modal-root .evc"), e=m&&evNow(m.dataset.eid);
+    if(e){ var tmp=document.createElement("div"); tmp.innerHTML=evDetailsHtml(e,"sheet"); m.replaceWith(tmp.firstChild); } }
+  /* Save: the whole draft at once. then() runs once it is applied, or sent to Calendar and taken; a Move to a Mac calendar asks
+     first (then runs on his yes); a repeating Mac event he backs out of keeps the draft. V25 finding 1: when Calendar refuses (changed,
+     denied, guests, any error) the draft comes back, the card stays open with Save, and back() runs instead of then() (the phone's
+     sheet opens again); after a re-read the card shows Calendar's latest under the fields he changed, so a second Save is his choice */
+  function evDraftSave(then,back){
+    evFoldLive();
+    var d=evDraft, e=d&&evById(d.id); if(!e){ evDraft=null; return false; }
+    if(!evDraftDirty(d)){ evDraft=null; evCardsDraw(); if(then) then(); return false; }
+    var x=evDraftMerged(e,d), mw=!!(e.mac&&!macRO(e));
+    if(mw){
+      var set=macSet(e,x), tc=x.cal!==e.sourceId?macCal(x.cal):null; if(tc&&!tc.ro) set.cal=tc.mac.id;
+      if(!Object.keys(set).length){ evDraft=null; evCardsDraw(); if(then) then(); return false; }
+      var was={}, ks=["title","date","end","at","to","loc","desc"]; ks.forEach(function(k){ was[k]=e[k]; }); was.mloc=e.mac.loc; was.mnotes=e.mac.notes;
+      var undo=function(){ ks.forEach(function(k){ if(was[k]===undefined) delete e[k]; else e[k]=was[k]; }); e.mac.loc=was.mloc; e.mac.notes=was.mnotes; if(!evDraft||evDraft.id===d.id) evDraft=d; macRekey(); };   // he backed out of the repeating choice, or Calendar refused: his draft is back (V28 finding 1: on the event's new id, when Calendar moved it)
+      var kept=function(){ undo(); evCardsDraw(); if(back) back(); };
+      ["title","date","end","at","to"].forEach(function(k){ if(x[k]) e[k]=x[k]; else if(k!=="title") delete e[k]; });   // shown at once; the read that follows confirms it
+      if(set.loc!==undefined){ e.mac.loc=set.loc; if(set.loc) e.loc=set.loc.slice(0,120); else delete e.loc; }
+      if(set.notes!==undefined){ e.mac.notes=set.notes; if(set.notes) e.desc=set.notes.slice(0,300); else delete e.desc; }
+      evDraft=null; macWrite(e,set,"Change",function(r){ if(r&&!r.ok){ kept(); return; } if(then) then(); },kept); render(); return true; }
+    if(!e.sourceId&&/^mac:/.test(x.cal||"")){ macMoveOwn(e,x.cal.slice(4),x,then,back); return true; }   // M5: his own event to a Mac calendar (asks first)
+    delete x.cal; evDraft=null; evStashPriorDrop(d.id);   // V28 finding 3: his new draft saved, so an earlier copy still offered goes
+    if(e.sourceId) evSetEdit(e,x);   // Edit in Gena: one record
+    else EV_EDIT_FIELDS.forEach(function(k){ if(evSame(e[k],x[k])) return; if(x[k]==null||x[k]==="") delete e[k]; else e[k]=x[k]; });   // only what he changed: a field another device changed meanwhile stays
+    save(); evCardsDraw(); if(then) then(); return true;
+  }
+  function evDraftCancel(){ evDraft=null; evCardsDraw(); }
+  /* V25 finding 2: changes not saved are kept on this device while they wait (each change, and when the page goes: a reload,
+     closing the window, the phone ending the app), in SY5's drafts key: never in S, never synced or exported, none while a
+     passcode is on. The next time that event opens it offers them back: "Unsaved changes from before: Restore / Discard".
+     Only the fields he changed are laid over the event as it is then. Nothing reaches the store without his Save. A Mac Calendar
+     event's draft is never kept (V9 M8: no event data outside the page session); Update ready still waits for it */
+  var evStashMine={}, EV_STASH_DAYS=30;
+  function evStashWrite(all){ try{ if(Object.keys(all).length) localStorage.setItem(DRAFT_KEY,JSON.stringify(all)); else localStorage.removeItem(DRAFT_KEY); }catch(e){} }
+  // the open draft into the key while it differs from the event; an entry this page wrote and no longer holds goes; old ones go
+  function evStashKeeps(id){ return !/^mac:/.test(String(id||"")); }
+  // V28 finding 3: a new change to an event whose earlier copy is still offered moves that copy to "evp:<id>" (not over it) until he
+  // picks Restore or Discard, or saves the new draft
+  function evStashSync(){ if(!draftsOn()) return; var all=draftsAll(), was=JSON.stringify(all), d=evDraft, put=!!d&&evStashKeeps(d.id)&&evDraftDirty(d), now=Date.now();
+    Object.keys(evStashMine).forEach(function(id){ if(!(put&&d.id===id)){ delete all["ev:"+id]; delete evStashMine[id]; } });
+    Object.keys(all).forEach(function(k){ if(/^evp?:/.test(k)&&!(now-(all[k].at||0)<EV_STASH_DAYS*864e5)) delete all[k]; });
+    if(put&&!evStashMine[d.id]&&!all["evp:"+d.id]){ var p0=evStashAsDraft(d.id,all["ev:"+d.id]); if(p0&&evDraftDirty(p0)) all["evp:"+d.id]=all["ev:"+d.id]; }
+    if(put){ var v={base:d.base, x:d.x, ad:d.ad||null}, o=all["ev:"+d.id]; if(!o||JSON.stringify(o.ev)!==JSON.stringify(v)) all["ev:"+d.id]={ev:JSON.parse(JSON.stringify(v)), at:now}; evStashMine[d.id]=1; }
+    if(JSON.stringify(all)!==was) evStashWrite(all); }
+  // what an earlier page kept for this event, as a draft, while it still changes something and nothing is open for it
+  // (an earlier copy moved aside by V28 finding 3 is offered even while a new draft is open)
+  function evStashAsDraft(id,o){ return o&&o.ev&&o.ev.x&&o.ev.base?{id:id, base:o.ev.base, x:o.ev.x, ad:o.ev.ad||null}:null; }
+  function evStashOf(e){ if(!e||!evStashKeeps(e.id)||!draftsOn()) return null; var all=draftsAll(), o=all["evp:"+e.id];
+    if(!o){ if(evDraftOf(e.id)) return null; o=all["ev:"+e.id]; }
+    var d=evStashAsDraft(e.id,o); return d&&evDraftDirty(d)?d:null; }
+  function evStashDrop(id){ var all=draftsAll(); if(all["evp:"+id]){ delete all["evp:"+id]; evStashWrite(all); return; }   // the earlier copy goes; the open draft stays
+    delete evStashMine[id]; if(!all["ev:"+id]) return; delete all["ev:"+id]; evStashWrite(all); }
+  function evStashPriorDrop(id){ var all=draftsAll(); if(all["evp:"+id]){ delete all["evp:"+id]; evStashWrite(all); } }
+  // Restore: the earlier copy back, with any newer change he made on top of it (the open draft, or a later page's kept copy)
+  function evStashUse(id){ var d=evStashOf(evById(id)), all=draftsAll(), n=evDraftOf(id)||(all["evp:"+id]?evStashAsDraft(id,all["ev:"+id]):null); if(!d||(evDraft&&evDraft.id!==id)) return;
+    if(n) Object.keys(n.x).concat(Object.keys(n.base)).forEach(function(k){ if(evSame(n.base[k],n.x[k])) return; d.base[k]=n.base[k]; d.x[k]=n.x[k]; });
+    if(n&&n.ad) d.ad=n.ad;
+    evStashPriorDrop(id); evDraft=d; evStashMine[id]=1; evCardsDraw(); }
+  /* closing, another event, another view or another action with changes not saved: Save, Discard or Keep editing (Escape, a click
+     outside it). go runs after Save or Discard; keep after Keep editing (the phone's sheet opens again). One question at a time */
+  function evLeave(go,keep){
+    evFoldLive();
+    if(!evDraftDirty()){ evDraft=null; go(); return true; }
+    if(evLeaveOn) return false;
+    var e=evById(evDraft.id); evLeaveOn=true;
+    modal('<h3>Save your changes?</h3><p class="sub">“'+esc(evTitle(e))+'” has changes you have not saved.</p>'+
+      '<div class="modal-actions evd-leave"><button class="btn ghost" data-lv="keep">Keep editing</button><button class="btn ghost" data-lv="discard">Discard</button><button class="btn primary" data-lv="save">Save</button></div>');
+    var root=document.getElementById("modal-root"), shut=function(){ evLeaveOn=false; close(); }, stay=function(){ shut(); if(keep) keep(); };
+    onModalDismiss=stay;
+    root.querySelector('[data-lv="keep"]').onclick=stay;
+    root.querySelector('[data-lv="discard"]').onclick=function(){ shut(); evDraft=null; evStashSync(); go(); };
+    root.querySelector('[data-lv="save"]').onclick=function(){ shut(); evDraftSave(go,keep); };   // Calendar refusing keeps the card (V25 finding 1)
+    var sb=root.querySelector('[data-lv="save"]'); setTimeout(function(){ if(sb.isConnected) sb.focus(); },0);   // after modal()'s own autofocus: Enter saves
+    return false;
+  }
+  // a card's field: into the draft, then every copy drawn again with the field he was in focused. A call with no card (code, not a
+  // card) has nothing to wait in, so its one change is saved at once
+  // V6.11 finding 10: a change fired by the blur of a mouse press is kept at once, but its redraw waits for the release, so the click
+  // still reaches what it was aimed at (an event, or Save)
   var evPress=false;
   function evQuickApply(id,f,v,card){
-    var e=evById(id); if(!e) return false;
-    if(!e.sourceId&&f==="cal"&&/^mac:/.test(v||"")){ render(); macMoveOwn(e,v.slice(4)); return false; }   // M5: his own event moves to a Mac calendar (asks first)
-    var mw=!!(e.mac&&!macRO(e));
-    if(mw?!macQuick(e,f,v):!evQuick(e,f,v)) return false;
-    var where=card&&card.dataset.where, focusF=document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.f;
-    if(mw&&document.querySelector("#modal-root .mac-span")){ render(); return true; }   // a repeating Mac event is asking which events
-    if(!mw) save();
-    if(evPress){ var t=0, go=function(){ if(t) return; t=1; document.removeEventListener("pointerup",up,true); document.removeEventListener("pointercancel",up,true); render(); }, up=function(){ setTimeout(go,0); };
+    var e=evNow(id); if(!e) return false;
+    if(!evStage(e,f,v)){ evSaveBar(); return false; }
+    if(!card) return evDraftSave()!==false;
+    var where=card.dataset.where, focusF=document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.f;
+    if(evPress){ var t=0, go=function(){ if(t) return; t=1; document.removeEventListener("pointerup",up,true); document.removeEventListener("pointercancel",up,true); evCardsDraw(); }, up=function(){ setTimeout(go,0); };
       document.addEventListener("pointerup",up,true); document.addEventListener("pointercancel",up,true); setTimeout(go,1500); return true; }
-    render();
-    if(where==="sheet"){ var m=document.querySelector("#modal-root .evc"); if(m){ var tmp=document.createElement("div"); tmp.innerHTML=evDetailsHtml(evById(id)||e,"sheet"); m.replaceWith(tmp.firstChild); } }
+    evCardsDraw();
     if(focusF){ var c=document.querySelector(where==="pop"?"#evpop .evc":(where==="sheet"?"#modal-root .evc":"#rightbar .evc")), el=c&&c.querySelector('[data-f="'+focusF+'"]'); if(el&&el.tagName!=="BUTTON") el.focus({preventScroll:true}); }
     return true;
   }
   (function evCardWire(){
     document.addEventListener("change",function(ev){ var el=ev.target, card=el.closest&&el.closest(".evc"); if(!card||!el.dataset.f) return;
       evQuickApply(el.dataset.eid,el.dataset.f,el.type==="checkbox"?el.checked:el.value,card); });
-    document.addEventListener("keydown",function(ev){ var el=ev.target; if(ev.key!=="Enter"||!el.closest||!el.closest(".evc")||(el.tagName!=="INPUT"&&!(el.classList.contains("evc-loc")&&!ev.shiftKey))||!el.dataset.f) return; ev.preventDefault(); el.blur(); },true);   // Where commits on Enter too (Shift+Enter: a new line)
+    // GD-075: Enter in a one-line field is Save (its card keeps the field focused); Enter in Where puts the place in the draft (Shift+Enter: a new line)
+    document.addEventListener("keydown",function(ev){ var el=ev.target, card=el.closest&&el.closest(".evc"); if(ev.key!=="Enter"||!card||(el.tagName!=="INPUT"&&!(el.classList.contains("evc-loc")&&!ev.shiftKey))||!el.dataset.f) return; ev.preventDefault();
+      if(el.tagName!=="INPUT"){ el.blur(); return; }
+      var where=card.dataset.where, f=el.dataset.f; if(el.type==="checkbox"){ var e=evNow(el.dataset.eid); if(e) evStage(e,f,el.checked); }
+      evDraftSave(); var c=document.querySelector(where==="pop"?"#evpop .evc":(where==="sheet"?"#modal-root .evc":"#rightbar .evc")), el2=c&&c.querySelector('[data-f="'+f+'"]'); if(el2) el2.focus({preventScroll:true}); },true);
+    document.addEventListener("input",function(ev){ var el=ev.target; if(el&&el.dataset&&el.dataset.f&&el.closest&&el.closest(".evc")) evSaveBar(); });
     document.addEventListener("pointerdown",function(){ evPress=true; },true); document.addEventListener("pointerup",function(){ evPress=false; },true); document.addEventListener("pointercancel",function(){ evPress=false; },true);
     // V6.11 finding 2: a field a redraw put back (restoreUi) was refocused with his text already in it, so leaving it fires no change; apply it here
     // (after a real change the card is redrawn, so this field is gone, and a second apply of the same value is a no-op)
@@ -5459,17 +5704,27 @@ function GENA_MAIN() {
       evQuickApply(el.dataset.eid,el.dataset.f,el.value,card); },true);
     document.addEventListener("click",function(ev){ var el=ev.target.closest&&ev.target.closest(".evc button[data-f]"); if(el){ evQuickApply(el.dataset.eid,el.dataset.f,el.dataset.v,el.closest(".evc")); return; }
       var p=document.getElementById("evpop"); if(!p||p.hidden) return;
-      var t=ev.target; if(!t.isConnected||t.closest("#evpop,#rightbar,#modal-root,#scrim,[data-eid],.toast,#toast")) return;   // an event anywhere (grid, chips, Up next) opens or moves it
+      var t=ev.target; if(evLeaveOn||!t.isConnected||t.closest("#evpop,#rightbar,#modal-root,#scrim,[data-eid],.toast,#toast")) return;   // an event anywhere (grid, chips, Up next) opens or moves it
       closeEvDetails(); });
     document.addEventListener("dragstart",function(){ var p=document.getElementById("evpop"); if(p&&!p.hidden) p.classList.add("drag"); },true);
     document.addEventListener("dragend",function(){ var p=document.getElementById("evpop"); if(p) p.classList.remove("drag"); },true);
     window.addEventListener("resize",function(){ if(evIsPhone()) evPopClose(); else evPopSync(); });
+    // V25 finding 2: the page going keeps changes not saved on this device (the field he is in too); a browser also asks first
+    var going=function(){ evFoldLive(); evStashSync(); };
+    window.addEventListener("pagehide",going);
+    document.addEventListener("visibilitychange",function(){ if(document.hidden) going(); });
+    window.addEventListener("beforeunload",function(ev){ going(); if(!macApi()&&evDraft&&evDraftDirty()){ ev.preventDefault(); ev.returnValue=""; } });
   })();
   function evCopyText(e){ return [evTitle(e), evWhenText(e), evCalLabel(e)].concat(e.loc?["Where: "+e.loc]:[]).concat(e.desc?["Notes: "+e.desc]:[]).concat(e.who&&e.who.length?["Guests: "+e.who.join(", ")]:[]).join("\n"); }
   function evdAct(k,id){
-    var e=evById(id);
+    var e=evNow(id); if(e) id=e.id;
     if(k==="close"){ closeEvDetails(); return; }
+    if(k==="save"){ evDraftSave(); return; }
+    if(k==="cancel"){ evDraftCancel(); return; }
+    if(k==="restore"){ evStashUse(id); return; }   // V25 finding 2
+    if(k==="unstash"){ evStashDrop(id); evCardsDraw(); return; }
     if(!e) return;
+    if(/^(edit|gedit|hide|reset)$/.test(k)&&evDraftOf(id)&&evDraftDirty()){ evLeave(function(){ evdAct(k,id); }); return; }   // GD-075: these leave the card; his changes are asked about first
     var mw=!!(e.mac&&!macRO(e));
     if(k==="edit"&&(!e.sourceId||mw)){ evPopClose(); openEventModal(e.date,e); }
     else if(k==="gedit"&&e.sourceId&&!mw){ evPopClose(); openEventModal(e.date,e); }
@@ -5478,7 +5733,7 @@ function GENA_MAIN() {
     else if(k==="where") toast("Gena shows this calendar; change the event in "+evEditHome(e).name);
     else if(k==="addto") openAddToSheet(e);
     else if(k==="copy") copyText(evCopyText(e),function(){ toast("Details copied"); });
-    else if(k==="del"&&!e.sourceId){ confirmModal("Delete this event?","It disappears from the calendar.","Delete",function(){ S.events=S.events.filter(function(x){ return x.id!==e.id; }); selEvId=null; evPopClose(); save(); render(); }); }
+    else if(k==="del"&&!e.sourceId){ confirmModal("Delete this event?","It disappears from the calendar.","Delete",function(){ S.events=S.events.filter(function(x){ return x.id!==e.id; }); if(evDraftOf(e.id)) evDraft=null; selEvId=null; evPopClose(); save(); render(); }); }
     else if(k==="hide"){ var s=e.sourceId?calById(e.sourceId):calGena(); if(!s) return; calSetHidden(s,true); selEvId=null; evPopClose(); save(); render();
       toastUndo("“"+calName(s)+"” hidden",function(){ var s2=e.sourceId?calById(e.sourceId):calGena(); if(s2){ calSetHidden(s2,false); save(); render(); } }); }
   }
@@ -5569,17 +5824,17 @@ function GENA_MAIN() {
     var t=today(), vd=viewDay;
     var isToday=vd===t, isPast=vd<t;
     var focusItems=(S.focus[vd]||[]).filter(function(f){
-      if(f.habitId){ var fh0=habitById(f.habitId); return !!fh0 && !isPaused(fh0,vd); }   // P3: a paused habit is out of Focus until it resumes
+      if(f.habitId){ var fh0=habitById(f.habitId); return !!fh0 && !isPaused(fh0,vd) && inScope(fh0); }   // P3: a paused habit is out of Focus until it resumes; V6.6.1: and out of any filter it is not in
       if(f.taskId){ var lk=taskById(f.taskId); return lk && inScope(lk); }
       if(f.personId){ var fpe=S.people.find(function(x){ return x.id===f.personId; }); return !!fpe && !isPaused(fpe,vd) && personInScope(fpe); }   // V6.1 P2
       if(typeof f.text!=="string") return false;   // P3: a kind this version does not know is not counted either
-      return !f.projectId||inScope(f); });
+      return inScope(f); });   // V6.6.1 (GD-074): while a filter is on, an entry with no Focus is hidden; it shows again under All
     var open=dayTodo(vd).filter(function(k){return isOpen(k) && inScope(k);});
     var doneV=S.tasks.filter(function(k){return k.status==="done" && k.completedOn===vd && inScope(k);});
     // a repeat that lapsed on this day — resolved, so not in `open`, but the day still shows it
     var skipV=tasksOn(vd).filter(function(k){return isSkipped(k) && inScope(k);});
     var blocks=["morning","afternoon","evening"];
-    var sugg=isToday?computeSuggestions():[];
+    var sugg=isToday&&!scopeActive()?computeSuggestions():[];   // V6.6.1: suggestions read every Domain, so a filter hides them
     var dayHabits=S.habits.filter(function(h){return h.inDay && !isPaused(h,vd) && inScope(h);});   // a paused habit leaves the day (P3)
     var habitsOpen=dayHabits.filter(function(h){return !habitDoneOn(h,vd);}), habitsDone=dayHabits.filter(function(h){return habitDoneOn(h,vd);});
     // the ring: a skipped habit is neutral (out of both counts); a week or month habit that met its goal counts as done
@@ -5644,8 +5899,8 @@ function GENA_MAIN() {
     var doneA=doneV.filter(function(k){return !k.block;}).length;
     var someday=orderTasks(S.tasks.filter(function(k){return !k.day && isOpen(k) && inScope(k);}),false);
     var somedayDone=S.tasks.filter(function(k){return !k.day && k.status==="done" && inScope(k);}).length;
-    var hb='';
-    S.habits.forEach(function(h){
+    var hb='', habitsIn=S.habits.filter(function(h){ return inScope(h); });   // V6.6.1: the habits card follows the filter too
+    habitsIn.forEach(function(h){
       var st=habitStreak(h.id), sk=habitSkipped(h,vd), pz=isPaused(h,vd);
       if(pz){ hb+='<div class="habit dim" data-hid="'+esc(h.id)+'"><span class="hname" data-act="edithabit" data-hid="'+esc(h.id)+'" style="cursor:pointer" title="Tap to edit">'+(h.emoji?esc(h.emoji)+" ":"")+esc(h.name)+'</span>'+
         '<span class="hbar-n">'+esc(pauseLabel(h))+'</span><button class="chip" data-act="resume-habit">Resume</button></div>'; return; }
@@ -5657,7 +5912,7 @@ function GENA_MAIN() {
     hb+='<button class="chip" data-act="addhabit" style="margin-top:10px">+ habit</button>';
     // per habit min(1, progress/goal), over the count of habits (H4): a 10,000-step goal cannot swamp it; a skip is neutral
     var habitDone=0, habitTotal=0, habitFrac=0;
-    S.habits.forEach(function(h){ if(habitSkipped(h,vd)||isPaused(h,vd)) return; habitTotal++; habitFrac+=habitScore(h,vd); if(habitMet(h,vd)) habitDone++; });
+    habitsIn.forEach(function(h){ if(habitSkipped(h,vd)||isPaused(h,vd)) return; habitTotal++; habitFrac+=habitScore(h,vd); if(habitMet(h,vd)) habitDone++; });
     var fOpen=focusItems.filter(function(f){ return !focusItemDone(f); }), fDone=focusItems.filter(focusItemDone);
     curList="focus"; var focusHtml=fOpen.map(focusRow).join(""); curList=null;
     curList="done:focus"; var focusDoneHtml=doneStrip("focus", fDone.map(focusRow).join(""), fDone.length); curList=null;
@@ -5704,7 +5959,7 @@ function GENA_MAIN() {
       tasks: fold("tasks","To-do",masterHtml+masterDoneHtml,groupChips+foldProg(doneCount,total)),
       blocks: oneCard?undefined:blocksHtml,
       habitsnotes: '<div class="grid2">'+fold("habits","Habits &amp; wellness",hb,foldProg(habitDone,habitTotal,habitTotal?habitFrac/habitTotal:0))+fold("notes","Notes",richTextHtml("daily",S.notes[vd]||"","Jot anything — ideas, blockers, wins… try [[a Focus name]]",110))+'</div>'+
-        fold("sessions","Timer sessions"+(focusMinutes(vd)?" · "+focusMinutes(vd)+"m":""), focusLogHtml(vd))
+        (scopeActive()?'':fold("sessions","Timer sessions"+(focusMinutes(vd)?" · "+focusMinutes(vd)+"m":""), focusLogHtml(vd)))   // V6.6.1: sessions have no Focus
     };
     var cd=isToday?comingDueTasks():[];
     if(cd.length){
@@ -5831,7 +6086,8 @@ function GENA_MAIN() {
     /* H4: Today (the day's events) and Coming due open at the top; the rest below, folded until he opens one.
        Every panel section folds on this device (data-uifold, A1). The old synced panel-* keys are no longer read:
        an open <details> wrote false into them on every draw, so "folded by default" could never apply through them. */
-    var evs=evAll().filter(function(e){ return evOnDay(e,vd)&&calVisible(e)&&!(e.projectId&&!inScope(e)); }).sort(evByTime);
+    // V6.6.1 (GD-074): on Today a filter hides an event with no Focus too; Plan keeps them (fixed times it plans around)
+    var evs=evAll().filter(function(e){ return evOnDay(e,vd)&&calVisible(e)&&(view==="today"?inScope(e):!(e.projectId&&!inScope(e))); }).sort(evByTime);
     var evBody=evs.length?evs.map(function(e){ return rbEvRow(e,null,vd); }).join(""):'<div class="empty">No events '+(vd===today()?"today":"this day")+'</div>';
     var cd=comingDueTasks();
     var cdBody=cd.length?cd.map(function(k){ var p=k.projectId?proj(k.projectId):null;
@@ -7671,7 +7927,7 @@ function GENA_MAIN() {
         else if(a.closest("#rightbar")||a.closest(".proj-card")||a.closest(".rep-card")||a.closest(".modal")||a.closest(".wk-land")||a.closest(".card.brief")||a.closest('[data-fold="comingdue"]')) openTaskModal({edit:tk});
         else { ieList=ieListOf(a); editingTaskId=tk.id; render(); var ti=document.getElementById("ie-title"); if(ti){ ti.focus(); ti.setSelectionRange(ti.value.length,ti.value.length); } } }
       else if(act==="wiki"){ var wk=a.dataset.kind, wid=a.dataset.id;
-        if(wk==="project"){ S.filterProjects=[wid]; view="projects"; save(); syncNav(); render(); }
+        if(wk==="project"){ setUiScope(null); S.filterProjects=[wid]; view="projects"; save(); syncNav(); render(); }
         else if(wk==="person"){ view="people"; syncNav(); render(); var pc=document.querySelector('.proj-card [data-act="editperson"][data-id="'+wid+'"]'); if(pc) pc.scrollIntoView({block:"center"}); }
         else { var wt=S.tasks.find(function(x){return x.id===wid;}); if(wt){ if(wt.day){ viewDay=wt.day; view="today"; } syncNav(); render(); toast("Jumped to “"+wt.title.slice(0,40)+"”"); } } }
       else if(act==="subs-toggle"){ toggleSubs(a.dataset.id||id||anyId); }
@@ -7792,7 +8048,7 @@ function GENA_MAIN() {
         save(); render(); toast(to==="someday"?"Moved to Someday":"Moved to "+to); } }
       else if(act==="tlview"){ S.tlView=a.dataset.v; save(); render(); }
       else if(act==="tl-day"){ viewDay=a.dataset.d; view="today"; syncNav(); render(); window.scrollTo({top:0,behavior:"smooth"}); }
-      else if(act==="clearscope"){ S.filterProjects=[]; S.activeProfile="all"; save(); render(); toast("Showing everything"); }
+      else if(act==="clearscope"){ setUiScope(null); S.filterProjects=[]; S.activeProfile="all"; save(); render(); qaFollowScope(); toast("Showing everything"); }
       else if(act==="bulk-enter"){ bulkMode=true; bulkIds={}; render(); toast("Tap tasks to select them"); }
       else if(act==="bulk-exit"){ bulkMode=false; bulkIds={}; render(); }
       else if(act==="bulk-toggle"){ var bid2=(id||anyId); if(bid2){ bulkIds[bid2]=!bulkIds[bid2];
@@ -8412,6 +8668,7 @@ function GENA_MAIN() {
     if(r.v!==undefined) dfSet(sel,r.v);
     if(r.p!==undefined&&eff){ eff.value=r.p; eff.dispatchEvent(new Event("change",{bubbles:true})); }
     dfPaint(sel,d.d!==undefined&&st.dom===d.d?".dfp-fcs button":null);
+    if(sel.id==="q-proj") qaScope(sel);   // V6.6.1: a pick in the quick-add filters the page
   }
   function dfKey(sel,e){ var st=sel.__dfp, t=e.target;
     if(t.closest(".nb-add")){ if(e.key==="Enter"){ e.preventDefault(); e.stopPropagation(); dfAddGo(sel); }
@@ -8559,11 +8816,14 @@ function GENA_MAIN() {
      panel that expands under it: a Shape row, a circle with two halves (tap a half, then a colour), the family
      grid, the neon row, the originals, No second colour, and an optional Custom wheel. It is not a modal(), so
      the editor and what he typed stay, and V5.1's modal hold covers a sync that arrives while it is open.
-     o.shapes false: one colour only (areas, calendar sources). onPick gets {color, pat} on every change. */
+     o.shapes false: one colour only (areas, calendar sources). onPick gets {color, pat} on every change.
+     V6.6.1 (GD-074): o.only, a list of {color, pat} (a Domain's free family slots, famFree), is all a Focus or Project is offered;
+     o.near(colour) names the Domain a colour is too close to, and that swatch is greyed out and cannot be picked. */
   function openColorPicker(host, val, onPick, o){
-    o=o||{}; var shapes=o.shapes!==false, uidp=host.id||("cp"+uid());
+    o=o||{}; var only=o.only&&o.only.length?o.only:null, shapes=o.shapes!==false&&!only, uidp=host.id||("cp"+uid());
     var st={a:val.color||null, shape:"solid", b:null, half:0};
-    var pv=shapes?patValid(val.pat):null; if(pv){ st.shape=pv.shape; st.b=pv.b; }
+    var pv=(shapes||only)?patValid(val.pat):null; if(pv){ st.shape=pv.shape; st.b=pv.b; }
+    if(only) return openShadePicker(host,uidp,st,only,onPick,o);
     function pat(){ return st.shape==="solid"?null:{shape:st.shape, b:st.b}; }
     function shapeLabel(){ for(var i=0;i<PAT_SHAPES.length;i++) if(PAT_SHAPES[i][0]===st.shape) return PAT_SHAPES[i][1]; return "Solid"; }
     function short(c){ return colourName(c).replace(/, shade (\d) of 5/," $1").replace(/^Custom .*/,"Custom"); }
@@ -8596,6 +8856,9 @@ function GENA_MAIN() {
       [].forEach.call(panel.querySelectorAll(".sw"),function(b){ b.setAttribute("aria-pressed",b.dataset.c===cur); });
       var li=panel.querySelector(".cp-prev li"); if(li){ li.className="task pc"+pk({color:st.a,pat:p}); li.setAttribute("style",pcVars({color:st.a})); }
     }
+    // greyed: a colour too close to another Domain's (o.near) stays visible, says why, and cannot be picked
+    if(o.near) [].forEach.call(panel.querySelectorAll(".sw[data-c]"),function(b){ var n=o.near(b.dataset.c); if(!n) return;
+      b.classList.add("sw-near"); b.setAttribute("aria-disabled","true"); b.title="Too close to "+n; b.setAttribute("aria-label",b.getAttribute("aria-label")+", too close to "+n); });
     function changed(){ paint(); onPick({color:st.a, pat:pat()}); }
     function setOpen(on){ panel.hidden=!on; chip.setAttribute("aria-expanded",on); }
     chip.onclick=function(){ setOpen(panel.hidden); };
@@ -8603,7 +8866,7 @@ function GENA_MAIN() {
       var t=e.target.closest("button"); if(!t) return;
       if(t.dataset.shape){ st.shape=t.dataset.shape; if(st.shape==="solid") st.half=0; changed(); }
       else if(t.dataset.half){ if(t.disabled) return; st.half=+t.dataset.half; paint(); }
-      else if(t.dataset.c){ if(st.half) st.b=t.dataset.c; else st.a=t.dataset.c; changed(); }
+      else if(t.dataset.c){ if(t.getAttribute("aria-disabled")==="true") return; if(st.half) st.b=t.dataset.c; else st.a=t.dataset.c; changed(); }
       else if(t.classList.contains("cp-nob")){ st.b=null; st.half=0; changed(); }
       else if(t.classList.contains("cp-wheel")){ wheel.hidden=false; wheel.value=/^#[0-9a-f]{6}$/i.test(st.half?st.b:st.a)?(st.half?st.b:st.a):"#c99a3a"; try{ wheel.focus(); wheel.click(); }catch(err){} }
     };
@@ -8611,6 +8874,26 @@ function GENA_MAIN() {
     host.onkeydown=function(e){ if(e.key==="Escape"&&!panel.hidden){ e.preventDefault(); e.stopPropagation(); setOpen(false); chip.focus(); } };
     paint();
     return { get:function(){ return {color:st.a, pat:pat()}; }, open:function(){ setOpen(true); } };
+  }
+  // V6.6.1 (GD-074): the Focus and Project picker: only the Domain's free shades (each with its pattern once the plain ones are taken)
+  function openShadePicker(host,uidp,st,only,onPick,o){
+    var key=function(c,p){ return famKey({color:c,pat:p}); }, cur=function(){ return key(st.a,st.shape==="solid"?null:{shape:st.shape,b:st.b}); };
+    var lab=function(i){ var s=only[i], p=patValid(s.pat); return "Shade "+(i+1)+(p?" with "+p.shape:""); };
+    host.innerHTML='<button type="button" class="cp-chip" aria-expanded="false" aria-controls="'+esc(uidp)+'-panel"><span class="cp-swatch"></span><span class="cp-name"></span><span class="fold-chev">▸</span></button>'+
+      '<div class="cp-panel" id="'+esc(uidp)+'-panel" role="group" aria-label="Colour" hidden><div class="cp-label">'+esc(o.label||"Free shades of its Domain")+'</div>'+
+      '<div class="cp-row cp-shades">'+only.map(function(s,i){ return '<button type="button" class="sw" data-n="'+i+'" style="background:'+esc(patBg(s.color,patValid(s.pat),0.6,"tile"))+'" aria-label="'+esc(lab(i))+'" aria-pressed="false"></button>'; }).join("")+'</div></div>';
+    var chip=host.querySelector(".cp-chip"), panel=host.querySelector(".cp-panel");
+    function paint(){ var k=cur(), at=-1; only.forEach(function(s,i){ if(key(s.color,s.pat)===k) at=i; });
+      chip.querySelector(".cp-swatch").style.background=st.a?patBg(st.a,st.shape==="solid"?null:{shape:st.shape,b:st.b},0.6,"tile"):"var(--line)";
+      chip.querySelector(".cp-name").textContent=at>=0?lab(at):"Its Domain’s next free shade";
+      [].forEach.call(panel.querySelectorAll(".sw"),function(b){ b.setAttribute("aria-pressed",+b.dataset.n===at); }); }
+    function setOpen(on){ panel.hidden=!on; chip.setAttribute("aria-expanded",on); }
+    chip.onclick=function(){ setOpen(panel.hidden); };
+    panel.onclick=function(e){ var b=e.target.closest("[data-n]"); if(!b) return; var s=only[+b.dataset.n], p=patValid(s.pat);
+      st.a=s.color; st.shape=p?p.shape:"solid"; st.b=p?p.b:null; paint(); onPick({color:st.a, pat:p}); };
+    host.onkeydown=function(e){ if(e.key==="Escape"&&!panel.hidden){ e.preventDefault(); e.stopPropagation(); setOpen(false); chip.focus(); } };
+    paint();
+    return { get:function(){ return {color:st.a, pat:st.shape==="solid"?null:{shape:st.shape,b:st.b}}; }, open:function(){ setOpen(true); } };
   }
   var ACCENTS=[["Gold","#c99a3a"],["Amber","#d98324"],["Clay","#a8472c"],["Rose","#b5528a"],
     ["Plum","#8a5a9e"],["Indigo","#4a6fa5"],["Teal","#2a9d8f"],["Forest","#4f6b52"],
@@ -8915,7 +9198,10 @@ function GENA_MAIN() {
       '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="p-del" style="margin-right:auto">Delete</button>':'')+
       '<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>',"form");
     var color=p.color, patV=patValid(p.pat);
-    openColorPicker(document.getElementById("p-sw"),{color:p.color,pat:p.pat},function(v){ color=v.color; patV=v.pat; });
+    // V6.6.1 (GD-074): in a Domain, only that Domain's free shades; drawn again when the Domain changes
+    var pSw=function(){ var dm=(document.getElementById("p-prof")||{}).value, free=famFree(dm,editing?p:null), h=editing&&dm===p.profileId?hueOf(p):{color:color,pat:patV};
+      openColorPicker(document.getElementById("p-sw"),free?{color:h.color,pat:h.pat}:{color:color,pat:patV},function(v){ color=v.color; patV=v.pat; },{only:free}); };
+    pSw(); document.getElementById("p-prof").addEventListener("change",pSw);
     var stateV=p.state||"active"; var psb=document.getElementById("p-state");
     if(psb) psb.onclick=function(e){ var b=e.target.closest("[data-st]"); if(!b) return; stateV=b.dataset.st; [].forEach.call(psb.children,function(c){c.setAttribute("aria-pressed",c===b);}); };
     var tp=document.getElementById("p-toproj");
@@ -9009,7 +9295,12 @@ function GENA_MAIN() {
       '<div class="fld"><label>Notes</label>'+richTextHtml(null,base.notes||"","What it is, where it stands…",56,"ef-notes","rte-compact")+'</div>'+
       '<div class="modal-actions">'+(editing?'<button class="btn ghost danger" id="ef-del" style="margin-right:auto">Delete</button>':'')+
       '<button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="m-save">Save</button></div>',"form");
-    openColorPicker(document.getElementById("ef-sw"),{color:color,pat:base.pat},function(v){ color=v.color; patV=v.pat; });
+    // V6.6.1 (GD-074): only the free shades of the Domain it shows in (its Focus's, else its own); drawn again when either changes
+    var efSw=function(){ var fv=proj((document.getElementById("ef-foc")||{}).value), dm=fv&&profileById(fv.profileId)?fv.profileId:(document.getElementById("ef-dom")||{}).value;
+      var x=editing?(effortById(e.id)||e):null, xf=x&&proj(x.projectId), xd=x&&(xf&&profileById(xf.profileId)?xf.profileId:x.profileId);
+      var free=famFree(dm,x), h=free&&x&&dm===xd?hueOf(x):{color:color,pat:patV};
+      openColorPicker(document.getElementById("ef-sw"),{color:h.color,pat:h.pat},function(v){ color=v.color; patV=v.pat; },{only:free}); };
+    efSw(); ["ef-dom","ef-foc"].forEach(function(id){ var s=document.getElementById(id); if(s) s.addEventListener("change",efSw); });
     var colsOf=wireColChips(base.cols);
     var ep=document.getElementById("ef-people"); if(ep) ep.onclick=function(ev){ var b=ev.target.closest("[data-pid]"); if(!b) return; var i=people.indexOf(b.dataset.pid); if(i<0) people.push(b.dataset.pid); else people.splice(i,1); b.setAttribute("aria-pressed",i<0); };
     var est=document.getElementById("ef-state"); est.onclick=function(ev){ var b=ev.target.closest("[data-st]"); if(b){ stateV=b.dataset.st; [].forEach.call(est.querySelectorAll("[data-st]"),function(c){ c.setAttribute("aria-pressed",c===b); }); } };
@@ -9073,7 +9364,8 @@ function GENA_MAIN() {
     document.querySelector("[data-x]").onclick=close;
     var pp=document.getElementById("pf-projs"), pfCols=wireColChips(base.cols);
     window.__pfColor=base.color||null;
-    openColorPicker(document.getElementById("pf-sw"),{color:base.color||null},function(v){ window.__pfColor=v.color; },{shapes:false});
+    // V6.6.1 (GD-074): a colour too close to another Domain's is greyed out
+    openColorPicker(document.getElementById("pf-sw"),{color:base.color||null},function(v){ window.__pfColor=v.color; },{shapes:false, near:function(c){ var o=S.profiles.filter(function(x){ return x!==pr&&domTooClose(x.color,c); })[0]; return o?o.name:null; }});
     pp.onclick=function(e){ var b=e.target.closest(".chip"); if(!b)return; var on=b.getAttribute("aria-pressed")==="true"; b.setAttribute("aria-pressed",!on); assigned[b.dataset.pid]=!on; };
     var mg=document.getElementById("pf-merge");
     if(mg) mg.onchange=function(){ var to=profileById(mg.value); if(!to) return;
@@ -9102,7 +9394,7 @@ function GENA_MAIN() {
       var target=pr;
       var pfColor=(window.__pfColor!==undefined)?window.__pfColor:base.color;
       if(!editing) target=addDomain(name,emoji,pfColor);   // V6.8: its own neon colour, last in the order
-      else { target.name=name; target.emoji=emoji; target.color=pfColor; }
+      else { target.name=name; target.emoji=emoji; target.color=pfColor; target.apartRev=1; }   // V6.6.1: his colour, never moved
       setCols(target,pfCols());
       S.projects.forEach(function(p){
         if(assigned[p.id]) p.profileId=target.id;
@@ -9780,7 +10072,7 @@ function GENA_MAIN() {
      Nothing from EventKit goes into S: the events live in MAC.evs for this page session only (never saved, synced or put in
      localStorage); this device's display choices (a name, hidden, the subscription it stands in for) are gena-mac-cals.
      With no bridge (the website, the PWA, the phone, the old Mac app) each function here returns at once and nothing changes */
-  var MAC={access:"", cals:[], evs:[], from:"", to:"", busy:false, err:"", gen:0, loaded:false, ix:null};
+  var MAC={access:"", cals:[], evs:[], from:"", to:"", busy:false, err:"", gen:0, loaded:false, ix:null, gone:null, moved:{}};
   var MAC_KEY="gena-mac-cals", MAC_PAD=14, MAC_MAX_DAYS=400;
   function macApi(){ var g=typeof window!=="undefined"&&window.GenaNative; return g&&g.v>=1&&typeof g.events==="function"&&typeof g.save==="function"?g:null; }
   // one bridge call → an object; never throws, never rejects (a failure is {ok:false, code})
@@ -9877,15 +10169,24 @@ function GENA_MAIN() {
       if(g!==MAC.gen) return;
       MAC.busy=false;
       var bad=!r[0].ok?r[0]:(!r[1].ok?r[1]:null);
-      if(bad){ MAC.err=bad.code||"failed"; if(bad.code==="denied"){ MAC.access="denied"; macForget(); } macDraw(); if(then) then(false); return; }
+      if(bad){ if(MAC.gone){ MAC.gone=null; toast(macSay({code:"gone"})); } MAC.err=bad.code||"failed"; if(bad.code==="denied"){ MAC.access="denied"; macForget(); } macDraw(); if(then) then(false); return; }
       MAC.err=""; MAC.cals=(Array.isArray(r[0].calendars)?r[0].calendars:[]).filter(function(c){ return c&&typeof c.id==="string"&&c.id; });
       var seen=Object.create(null), live=Object.create(null); MAC.cals.forEach(function(c){ live[c.id]=1; });
       MAC.evs=(Array.isArray(r[1].events)?r[1].events:[]).map(macEvent).filter(function(e){ if(!e||!live[e.sourceId.slice(4)]||seen[e.id]) return false; seen[e.id]=1; return true; });
       MAC.loaded=true; MAC.ix=null;
       macEditsAfterLoad();
-      macDraw(); if(then) then(true);
+      var mv=macRekey();
+      if(MAC.gone){ var g0=MAC.gone; MAC.gone=null; toast(macSay({code:macMovedTo(g0)?"changed":"gone"})); }   // V28 finding 1: gone, yet still there: Calendar moved it
+      macDraw(); if(mv) whenIdle(evSheetDraw); if(then) then(true);
     });
   }
+  /* V28 finding 1: a one-off's id holds its start (mac:<eid>@<occ>), so Calendar moving it (his iPhone, the organiser) gives it a new
+     id. When the draft's event is no longer read and exactly one event read has its eid and does not repeat, the draft (and the open
+     card) follow it; evDraftMerged then lays his fields over Calendar's new times. A repeating event's occurrence keeps its id */
+  function macMovedTo(eid){ var m=MAC.evs.filter(function(e){ return e.mac.eid===eid; }); return m.length===1&&!m[0].mac.rec?m[0]:null; }
+  function macRekey(){ var d=evDraft, id=d&&d.id; if(!id||!/^mac:/.test(id)||evById(id)) return false;
+    var n=macMovedTo(id.slice(4,id.lastIndexOf("@"))); if(!n) return false;
+    MAC.moved[id]=n.id; if(selEvId===id) selEvId=n.id; d.id=n.id; return true; }
   function macForget(){ MAC.cals=[]; MAC.evs=[]; MAC.from=MAC.to=""; MAC.loaded=false; MAC.ix=null; }
   function macDraw(){ whenIdle(function(){ renderPassive(); }); }
   function macBusyPaint(){ if(typeof document==="undefined"||!document.querySelector) return; var g=document.querySelector("#sidebar .mac-h"); if(g) g.classList.toggle("busy",MAC.busy); }
@@ -9924,6 +10225,7 @@ function GENA_MAIN() {
   function macAfter(r,e,what){
     var cal=e&&macCal(e.sourceId), name=cal?cal.name:"";
     if(r.ok){ if(e&&selEvId===e.id&&r.eid) selEvId="mac:"+r.eid+"@"+r.occ; toast(what+(name?" in "+name:"")); }
+    else if(r.code==="gone"&&e&&e.mac&&!e.mac.rec){ MAC.gone=e.mac.eid; if(!macEnsure(true)){ MAC.gone=null; toast(macSay(r,name)); } return; }   // V28 finding 1: the re-read says whether it moved
     else toast(macSay(r,name));
     macEnsure(true);
   }
@@ -9940,7 +10242,7 @@ function GENA_MAIN() {
   }
   function macDelete(e){
     if(e.mac.guests){ toast(macSay({code:"guests"})); return; }   // GD-072 (1)
-    var cal=macCal(e.sourceId), go=function(span){ macCall("remove",macRef(e,span)).then(function(r){ if(r.ok){ selEvId=null; evPopClose(); } macAfter(r,e,"Deleted"); }); };
+    var cal=macCal(e.sourceId), go=function(span){ macCall("remove",macRef(e,span)).then(function(r){ if(r.ok){ if(evDraftOf(e.id)) evDraft=null; selEvId=null; evPopClose(); } macAfter(r,e,"Deleted"); }); };
     confirmModal("Delete this event?","It is deleted from “"+(cal?cal.name:"Calendar")+"” in the Calendar app, and from your other devices on their next refresh.","Delete",function(){
       if(e.mac.rec) setTimeout(function(){ macSpanAsk("Delete",false,go); },0); else go("this"); });
   }
@@ -9964,27 +10266,15 @@ function GENA_MAIN() {
     return set;
   }
   function macCopy(e){ var x={id:e.id, title:e.title, date:e.date, loc:e.mac.loc, notes:e.mac.notes}; ["end","at","to"].forEach(function(k){ if(e[k]) x[k]=e[k]; }); return x; }
-  // a card field on a writable Mac event (the popout, the panel, the sheet): the same rules as his own events (evQuick), then the bridge
-  function macQuick(e,f,v){
-    var x=macCopy(e), set;
-    if(f==="cal"){ var tc=macCal(v); if(!tc||tc.ro||!tc.enabled||v===e.sourceId) return false; set={cal:tc.mac.id}; }
-    else if(f==="loc"||f==="notes"){ x[f]=String(v||"").trim().slice(0,f==="loc"?500:5000); set=macSet(e,x); }
-    else { if(!evQuick(x,f,v)) return false; set=macSet(e,x); }
-    if(!Object.keys(set).length) return false;
-    var was={}, ks=["title","date","end","at","to","loc","desc"]; ks.forEach(function(k){ was[k]=e[k]; }); was.mloc=e.mac.loc; was.mnotes=e.mac.notes;
-    var undo=function(){ ks.forEach(function(k){ if(was[k]===undefined) delete e[k]; else e[k]=was[k]; }); e.mac.loc=was.mloc; e.mac.notes=was.mnotes; };
-    ["title","date","end","at","to"].forEach(function(k){ if(x[k]) e[k]=x[k]; else if(k!=="title") delete e[k]; });   // shown at once; the read that follows confirms it
-    if(set.loc!==undefined){ e.mac.loc=set.loc; if(set.loc) e.loc=set.loc.slice(0,120); else delete e.loc; }
-    if(set.notes!==undefined){ e.mac.notes=set.notes; if(set.notes) e.desc=set.notes.slice(0,300); else delete e.desc; }
-    macWrite(e,set,"Change",null,undo);
-    return true;
-  }
-  // M5: his own event to a Mac calendar, from Details: it becomes a Calendar event and leaves Gena's own events once Calendar has it
-  function macMoveOwn(e,calId){
-    var c=macCal("mac:"+calId); if(!c||c.ro) return;
+  // M5: his own event to a Mac calendar, from Details: it becomes a Calendar event and leaves Gena's own events once Calendar has it.
+  // GD-075: x is the Details draft (its title, day and times go, as Save says); then runs after his yes and Calendar's answer.
+  // V25 finding 1: the draft waits for Calendar's yes; a refusal puts it back in the open card (back: the phone's sheet again)
+  function macMoveOwn(e,calId,x,then,back){
+    var c=macCal("mac:"+calId), y=x||e; if(!c||c.ro) return;
     confirmModal("Move to “"+c.name+"”?","It becomes an event in the Calendar app ("+c.account+") and leaves Gena’s own events. Its Focus, colour, pattern and emoji stay behind.","Move",function(){
-      macCreate(calId,{title:evTitle(e), date:e.date, end:e.end, at:e.at, to:e.to},function(r){ if(!r.ok){ render(); return; }
-        S.events=S.events.filter(function(x){ return x.id!==e.id; }); save(); render(); }); });
+      var d=evDraftOf(e.id); if(d) evDraft=null;
+      macCreate(calId,{title:evTitle(y), date:y.date, end:y.end, at:y.at, to:y.to},function(r){ if(!r.ok){ if(d&&!evDraft) evDraft=d; evCardsDraw(); if(back) back(); return; }
+        S.events=S.events.filter(function(z){ return z.id!==e.id; }); save(); render(); if(then) then(); }); });
   }
   // M6: the one-line choice on a subscription that is also in Calendar; "Use Mac Calendar" pauses the feed here (never deletes it).
   // GD-072 (4): the same for a Mac calendar he picks by hand for a subscription (fid), when a rename keeps them from matching
@@ -9997,9 +10287,11 @@ function GENA_MAIN() {
     calSheet("Use a Mac calendar for “"+calName(feed)+"”",cs.map(function(c){ return [c.id,'<span class="mac-pdot" style="background:'+esc(c.color||"var(--p0)")+'"></span>',macAccount(c)+" · "+(c.title||"Calendar")+(c.allowsModify?"":" · read-only")]; }),function(id){ macUse(id,feed.id); }); }
   function macKeep(macId){ var d=macIx().dup[macId]; if(!d) return; macPrefSet(macId,{keep:d.id}); render(); }
   function macUnlink(macId){ var f=macPref(macId).sub; macPrefSet(macId,{sub:null}); render(); if(f) refreshCalendars(function(){ renderPassive(); },{only:f}); }
+  // GD-075 F4: the Mac app says it saved a download (a backup, the tasks CSV, an .ics) to Downloads, or could not (a fixed notice, no name)
+  if(typeof window!=="undefined"&&window.addEventListener) window.addEventListener("gena-native",function(e){ if(e.detail==="saved") toast("Saved to Downloads"); else if(e.detail==="savefail") toast("Couldn’t save the file to Downloads"); });
   (function macWire(){
     if(!macApi()) return;
-    window.addEventListener("gena-native",function(e){ if(e.detail==="changed") whenIdle(function(){ macEnsure(true); }); else macStart(); });
+    window.addEventListener("gena-native",function(e){ if(e.detail==="changed") whenIdle(function(){ macEnsure(true); }); else if(e.detail!=="saved"&&e.detail!=="savefail") macStart(); });
     window.addEventListener("focus",function(){ macStart(); });
   })();
 
@@ -10111,6 +10403,7 @@ function GENA_MAIN() {
   }
   function openEventModal(ds, ev, o){
     o=o||{}; var mw=!!(ev&&ev.mac&&!macRO(ev)), editing=!!ev, sub=!!(ev&&ev.sourceId)&&!mw, own=!sub&&!mw;   // Mac Calendar: a writable Mac event is edited here and saved through the bridge
+    var mro=sub&&!!ev.mac;   // GD-075 (his answer 2026-10-21): Edit in Gena on a read-only Mac calendar's event hides colour, pattern and emoji, as its Details do; a saved one is kept until Reset
     var base=ev||{title:"",date:ds||today(),projectId:null}, gcal=calGena(), src=sub||mw?calById(ev.sourceId):gcal, home=sub?evEditHome(ev):null;
     var at0=o.at||base.at||null;
     var st={at:at0, to:at0?(base.to||(o.at||!editing?hhmm(toMins(at0)+60):null)):null, color:base.color||null, pat:base.pat||"", emoji:base.emoji||""};
@@ -10149,8 +10442,8 @@ function GENA_MAIN() {
     var $=function(id){ return document.getElementById(id); };
     if(mw){ $("ev-t").readOnly=!!ev.mac.titleCut; $("ev-loc").readOnly=!!ev.mac.locCut; }   // a title or place the bridge or this page cut is read-only (V9 re-check R1, R2)
     // a Mac calendar takes a place and notes, and keeps its own colour; Gena's own events keep colour, pattern, emoji and Focus
-    function macMode(){ var on=!sub&&macOn(); ["ev-col-fld","ev-pat-fld","ev-p-fld","ev-addto-fld"].forEach(function(id){ if($(id)) $(id).hidden=on; });
-      ["ev-loc-fld","ev-desc-fld"].forEach(function(id){ if($(id)) $(id).hidden=!on&&!sub; }); if($("ev-emo-b")) $("ev-emo-b").hidden=on; if(on){ $("ev-emo-pane").hidden=true; }
+    function macMode(){ var on=!sub&&macOn(), bare=on||mro; ["ev-col-fld","ev-pat-fld","ev-p-fld","ev-addto-fld"].forEach(function(id){ if($(id)) $(id).hidden=bare; });
+      ["ev-loc-fld","ev-desc-fld"].forEach(function(id){ if($(id)) $(id).hidden=!on&&!sub; }); if($("ev-emo-b")) $("ev-emo-b").hidden=bare; if(bare){ $("ev-emo-pane").hidden=true; }
       if(!sub) $("ev-sub").textContent=on?"In "+(macCal($("ev-cal").value)||{name:""}).name+", in the Calendar app.":"An event of your own, in "+calName(gcal)+"."; }
     $("ev-cal").onchange=function(){ st.color=null; macMode(); draw(); };   // (a) the calendar's colour, shown live; he may override it below
     $("ev-emo-b").onclick=function(){ var p=$("ev-emo-pane"), open=p.hidden; p.hidden=!open; this.setAttribute("aria-expanded",String(open)); if(open){ var f=$("ev-emo"); f.focus(); f.select(); } };   // (c) and the system picker: Ctrl+Cmd+Space in the field
@@ -10255,9 +10548,11 @@ function GENA_MAIN() {
      A calendar standing in for a subscription is drawn on that subscription's row instead; a twin not moved yet is not drawn (M6) */
   function macSidebarHtml(n){
     if(!macApi()) return "";
-    var a=MAC.access, body="", tick=function(c){ return /^#/.test(c||"")?inkOn(c):"#fff"; };
-    var head='<div class="sb-row cal-acct mac-h'+(MAC.busy?" busy":"")+'"><span class="sb-name">Mac Calendar</span><span class="mac-spin" role="status" aria-label="Reading your calendars"></span>'+
+    var a=MAC.access, body="", tick=function(c){ return /^#/.test(c||"")?inkOn(c):"#fff"; }, shut=uiFolded("sb-mac",false);   // GD-075 (5): folds, open by default, this device
+    var head='<div class="sb-row cal-acct mac-h'+(MAC.busy?" busy":"")+'" data-sb="macfold" data-mkey="">'+
+      '<button class="sb-fold" data-sb="macfold" data-mkey="" aria-expanded="'+!shut+'" aria-label="'+(shut?"Open":"Fold")+' Mac Calendar">'+(shut?"▸":"▾")+'</button><span class="sb-name">Mac Calendar</span><span class="mac-spin" role="status" aria-label="Reading your calendars"></span>'+
       (a==="full"?'<button class="sb-star" data-sb="macrefresh" title="Read your calendars again" aria-label="Read your Mac calendars again">↻</button>':'')+'</div>';
+    if(shut) return '<div class="cal-grp mac-grp" data-key="mac">'+head+'</div>';
     if(!a) body='<div class="sb-mini">Checking your calendars…</div>';
     else if(a==="notDetermined") body='<div class="sb-mini mac-msg">Show and edit the calendars from the Calendar app (Google, iCloud, Outlook) here. <button class="chip" data-sb="macallow">Allow access</button></div>';
     else if(a!=="full") body='<div class="sb-mini mac-msg mac-denied">Gena can’t read your calendars'+(a==="writeOnly"?" (it may only add events)":"")+'. In System Settings, open Privacy &amp; Security → Calendars and give Gena full access. <button class="chip" data-sb="macsettings">Open System Settings</button></div>';
@@ -10267,13 +10562,14 @@ function GENA_MAIN() {
       var ix=macIx(), by=Object.create(null), keys=[];
       MAC.cals.forEach(function(c){ var x=ix.src["mac:"+c.id]; if(!x||x.link||x.dup) return; var k=x.account; if(!by[k]){ by[k]=[]; keys.push(k); } by[k].push(x); });
       keys.sort(function(p,q){ var i=MAC_ACCTS.indexOf(p), j=MAC_ACCTS.indexOf(q); i=i<0?99:i; j=j<0?99:j; return i-j||(p.toLowerCase()<q.toLowerCase()?-1:p.toLowerCase()>q.toLowerCase()?1:0); });
-      body=keys.map(function(k){ return '<div class="mac-acct">'+esc(k)+'</div>'+by[k].map(function(x){ var id=esc(x.mac.id), c=x.color, nm=x.name;
+      body=keys.map(function(k){ var ks=uiFolded("sb-mac:"+k,false);
+        return '<div class="mac-acct" data-sb="macfold" data-mkey="'+esc(k)+'"><button class="sb-fold" data-sb="macfold" data-mkey="'+esc(k)+'" aria-expanded="'+!ks+'" aria-label="'+(ks?"Open ":"Fold ")+esc(k)+'"></button>'+esc(k)+'</div>'+(ks?"":by[k].map(function(x){ var id=esc(x.mac.id), c=x.color, nm=x.name;
         return '<div class="sb-row cal-row mac-row'+(x.ro?" mac-ro":"")+'" data-sb="macrow" data-mcid="'+id+'" style="--cal:'+esc(c)+';--calink:'+tick(c)+'">'+
           '<span class="cal-grip" aria-hidden="true"></span>'+
           '<button class="cal-chk" role="checkbox" aria-checked="'+!x.hidden+'" data-sb="macchk" data-mcid="'+id+'" aria-label="Show '+esc(nm)+'"></button>'+
           '<span class="sb-name" title="'+esc(nm)+(x.ro?' · read-only':'')+'">'+esc(nm)+'</span>'+(x.ro?'<span class="cnt" title="Read-only in Calendar" aria-label="read-only">🔒</span>':'')+
           (n["mac:"+x.mac.id]?'<span class="cnt">'+n["mac:"+x.mac.id]+'</span>':'')+
-          '<button class="sb-star" data-sb="macmore" data-mcid="'+id+'" title="Options" aria-label="Options for '+esc(nm)+'">⋯</button></div>'; }).join(""); }).join("");
+          '<button class="sb-star" data-sb="macmore" data-mcid="'+id+'" title="Options" aria-label="Options for '+esc(nm)+'">⋯</button></div>'; }).join("")); }).join("");
       if(!body&&MAC.loaded) body='<div class="sb-mini">Every calendar here is shown on its subscription above.</div>';
       if(!MAC.loaded) body='<div class="sb-mini">Reading your calendars…</div>';
     }
