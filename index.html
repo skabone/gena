@@ -864,6 +864,35 @@
   .ie-title{ font-size:15.5px !important; font-weight:600; }
   .ie-notes{ resize:vertical; }
   .ie-sub{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .ie-row .fu-ie-sub input.fu-ie-done{ width:auto; flex:none; }
+  /* V6.8 his log 4: the note button sits at the card's top right; on hover on the Mac, always on a phone, none with the Hub switch off */
+  .note-btn{ position:absolute; top:6px; right:30px; z-index:3; width:24px; height:24px; padding:0; border:0; border-radius:50%; background:var(--card); color:var(--ink-faint); font-size:12px; line-height:24px; text-align:center; cursor:pointer; opacity:0; transition:opacity var(--dur) var(--ease); }
+  summary > .note-btn{ position:static; flex:none; margin-left:4px; order:5; }
+  #rightbar summary > .note-btn, #sidebar .note-btn{ background:none; }
+  #sidebar section.sb-sec, .tg-x, .mg, .yr-grid, .card, .proj-card, .evpop-h{ position:relative; }
+  #sidebar .note-btn{ top:2px; right:2px; }
+  .evpop-h .note-btn{ position:static; margin-left:auto; }
+  :hover > .note-btn, :hover > summary > .note-btn, .note-btn:focus-visible{ opacity:1; }
+  @media (hover:none){ .note-btn{ opacity:.75; } }
+  body.notes-off .note-btn{ display:none; }
+  .imp-src{ margin-right:4px; font-size:11px; }
+  .imp-notes-sw{ margin:0 0 10px; }
+  /* V6.8 his log 5: pinned pages above, pinned items below, the side panel's section line between them (no labels) */
+  .sb-pin-line{ border-bottom:1px solid var(--line-soft); margin:5px 2px; }
+  .pg-pin{ padding:2px 10px; font-size:12px; }
+  .pg-pin.on{ color:var(--terra-deep); }
+  .modal.note-box{ max-width:420px; }   /* V6.8 his log 1b: the checkbox keeps its size (.ie-row input is 100%) */
+  .fu-ie-title{ font-weight:650; padding:6px 2px; }
+  .tc-subs{ width:100%; margin:4px 0 6px; font-size:13px; }
+  /* his log 7: the habit editor's When group; [hidden] must win over .cyc-row and .wd's display:flex (the V6.8 picker trap) */
+  .modal .h-when [hidden], .modal #h-once-f[hidden], .modal #h-daymin-row[hidden]{ display:none; }
+  .h-when .cyc-row, .h-when .wd{ margin-top:6px; align-items:center; gap:6px; }
+  .modal #h-daymin{ width:110px; }
+  /* his log 1a: a person card is narrow: its rows are the phone row (checkbox, title, subtasks, one ⋯ with every action) */
+  .person-card li.task{ --fill-icons:48px; }
+  .person-card li.task .task-main{ flex:1 1 auto; min-width:0; }
+  .person-card li.task .task-addsub, .person-card li.task .task-bump, .person-card li.task .task-focus, .person-card li.task .task-star, .person-card li.task .task-x, .person-card li.task .row-br{ display:none; }
+  .person-card li.task .task-more{ display:inline-flex; }
   .ie-sub .chk{ flex:none; }
   .ie-sub input{ flex:1; }
   .ie-subnew{ margin-top:6px; }
@@ -1347,6 +1376,9 @@
   #rightbar .rb-tray{ max-height:none; padding:0; margin:0; }
   #rightbar li.task.rb-un{ flex-wrap:wrap; cursor:grab; padding:7px 9px; margin:0 0 6px; border:1px solid var(--line); border-left:3px solid var(--c); border-radius:var(--r-row); background:var(--card); }
   #rightbar li.task.rb-un .task-title{ font-size:13.5px; }
+  /* V6.8 round 2: a Focus and a person: the edge split in half, drawn under a clear border so the corners stay round */
+  #rightbar li.task.rb-un.two{ border-left-color:transparent; background:linear-gradient(var(--c),var(--c)) left top/3px 50% no-repeat border-box, linear-gradient(var(--c2),var(--c2)) left bottom/3px 50% no-repeat border-box, var(--card); }
+  #rightbar li.task.rb-un.two.bulk-on{ background-color:var(--terra-bg); }
   #rightbar .rb-tray li.empty{ list-style:none; }
   #rightbar .rb-hint{ font-size:12px; color:var(--ink-faint); padding:0 2px 6px; }
   .seg.seg-mini{ margin:0; padding:2px; border-radius:var(--r-row); }
@@ -1461,9 +1493,15 @@
   .dfp-row{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-width:0; }
   .dfp-row + .dfp-row{ padding-left:10px; border-left:2px solid var(--line); }   /* a Domain's Focuses, a Focus's Projects */
   .dfp-b{ display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
-  .dfp-b .dfp-dot{ width:10px; height:10px; border-radius:3px; flex:none; }
+  /* V6.8 Preview comment 1 (Oct 27, "just make the bubble the color"): a Domain or Focus bubble is filled with its colour, white text (round
+     2; a bright colour darkened in its own hue until white reads, bubFill); the pick is a ring in the ink colour; a patterned Focus shows its pattern in a wider border round the solid fill */
+  .chip.dfp-b.dfp-fill{ background:var(--bf); border-color:var(--bf); color:var(--bi); }
+  .chip.dfp-b.dfp-fill.dfp-pat{ border:4px solid transparent; padding:3.5px 9.5px; background:linear-gradient(var(--bf),var(--bf)) padding-box, var(--bp); background-origin:border-box; }
+  .chip.dfp-b.dfp-fill[aria-pressed="true"]{ box-shadow:0 0 0 2px var(--card), 0 0 0 4px var(--ink); }
+  .chip.dfp-b.dfp-fill[aria-pressed="true"]:focus-visible{ outline-offset:5px; }
   .dfp-b.dfp-dom{ font-size:13px; font-weight:700; }   /* a Domain a step larger than its Focuses (W24) */
   .dfp-b.dfp-has{ border-color:var(--slate); border-style:dashed; }   /* holds the pick while another Domain is open */
+  .chip.dfp-b.dfp-fill.dfp-has{ outline:2px dashed var(--ink-soft); outline-offset:2px; }
   .chip.dfp-add{ min-width:34px; border-style:dashed; color:var(--ink-soft); }
   .dfp-b:focus-visible, .chip.dfp-add:focus-visible{ outline:2px solid var(--terra); outline-offset:1px; }
   .nb-add{ display:inline-flex; flex-wrap:wrap; gap:6px; align-items:center; max-width:100%; }
@@ -1474,7 +1512,9 @@
   body.tg-on .capture{ position:relative; }
   body.tg-on .capture .dfp{ display:none; position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:40; padding:8px; background:var(--sheet); border:1px solid var(--line); border-radius:var(--r-card); box-shadow:0 14px 34px var(--shadow); }
   body.tg-on .capture.dfp-open .dfp{ display:flex; }
-  @media (max-width:760px){ .capture .dfp-row{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; } .capture .dfp-row::-webkit-scrollbar{ display:none; } }
+  @media (max-width:760px){ .capture .dfp-row{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; } .capture .dfp-row::-webkit-scrollbar{ display:none; }
+    /* Preview comment 1: room inside the scrolling rows for the pick's 4 px ring (the margins keep the rows where they were) */
+    .capture .dfp-row{ padding-top:4px; padding-right:4px; padding-bottom:6px; margin:-4px -4px -4px 0; } .capture .dfp-row:first-child{ padding-left:4px; margin-left:-4px; } }
   /* V6.10 W38: Collections start folded: a small row with the picked count */
   .colf-t{ display:inline-flex; align-items:center; gap:6px; border:0; background:none; padding:2px 0; margin:0 0 6px; font:inherit; font-size:12px; font-weight:700; color:var(--ink-soft); cursor:pointer; }
   .colf-t:hover{ color:var(--ink); } .colf-chev{ font-size:10px; transition:transform var(--t-normal) var(--ease); } .colf.shut .colf-chev{ transform:rotate(-90deg); }
@@ -1542,6 +1582,7 @@
 
   /* bulk select mode */
   .task.bulk-on{ background:var(--terra-bg); border-radius:var(--r-row); }
+  .tblock.bulk-on{ outline:2px solid var(--terra); outline-offset:1px; z-index:4; }   /* V6.8 his log 2: a selected block on the time grid */
   .bulk-bar{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:46; background:var(--slate); color:var(--slate-ink); border-radius:var(--r-card); padding:10px 14px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; box-shadow:0 18px 40px -12px rgba(0,0,0,.45); max-width:min(96vw,860px); }
   .bulk-bar b{ font-size:12.5px; margin-right:4px; white-space:nowrap; }
   .bulk-bar .chip{ background:rgba(255,255,255,.13); border-color:transparent; color:var(--slate-ink); }
@@ -2098,7 +2139,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-10-27-V6.7.1";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-10-27-V6.8";   // set by ship.sh on every release — the footer is how you tell a surface is current
   // The day V5 shipped (tag gena-2026-10-05-V5): the closing-states cutoff, fixed, so a later build's stamp
   // never moves it (I-28). Above `var S = load()`, which reads it.
   var V5_SHIP_DAY = "2026-10-05";
@@ -3248,6 +3289,11 @@ function GENA_MAIN() {
   function relLumHex(h){ var o=hexToRgb(h); function ch(v){ v/=255; return v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4); }
     return 0.2126*ch(o.r)+0.7152*ch(o.g)+0.0722*ch(o.b); }
   function inkOn(h){ var L=relLumHex(h); return (L+0.05)/(relLumHex("#1a191e")+0.05)>=1.05/(L+0.05)?"#1a191e":"#fff"; }
+    /* V6.8 round 2 (his note 4): a bubble's fill under white text: the colour as it is where white reads at 3:1 or better, else the same
+     OKLCH hue made darker (lightness only; okHex keeps it in sRGB) just until white reaches 3:1 (luminance 0.30 or under). Pure, kept */
+  function bubFill(h){ var m=bubFill.memo||(bubFill.memo={}); if(m[h]) return m[h];
+    var x=h, o=okLch(h), L=o.L, n=0; while(relLumHex(x)>0.295&&n++<100){ L-=0.005; x=okHex(L,o.C,o.h); }
+    return (m[h]=x); }
   /* V6.8 W27, W32: a Domain's colour family. Each Focus and Project in a Domain shows its own shade of the Domain's colour (a lighter
      or darker step in the same hue, V6.7.1), kept between 1.5:1 on the light card and 1.5:1 on the dark one; past the shades, a shade
      with a pattern whose second colour is another shade of the family. Display only: a Focus's or Project's stored colour is never
@@ -3394,7 +3440,7 @@ function GENA_MAIN() {
   function addToPriority(day,habits,tasks,people){
     var arr=S.focus[day]||[], n=0, isT=day===today();
     (habits||[]).forEach(function(h){
-      if(!h||!h.startPriority||!h.inDay||isPaused(h,day)||habitSkipped(h,day)) return;
+      if(!h||!h.startPriority||!h.inDay||isPaused(h,day)||!habitOnDay(h,day)||habitSkipped(h,day)) return;
       if(arr.some(function(f){ return f.habitId===h.id; })) return;
       arr.push({id:uid(),habitId:h.id}); n++; });
     (tasks||[]).forEach(function(k){
@@ -3952,7 +3998,8 @@ function GENA_MAIN() {
   function moveSay(d){ return d?"Moved to "+dayWord(d)+".":"Moved to Someday."; }
   /* V6.7 P3: after a Move, Clear or Pause the next row takes the focus (the one below, else the one above), so the keyboard
      carries on down the list; the ring shows only for the keyboard (:focus-visible). Rows are focusable after each draw. */
-  var ROWSEL='li.task[data-id]:not(.ie-row):not(.inline-row):not(.empty-li), .panel-task[data-id]', kbNext=null;
+  // round 2 (his note 2): BULK_MORE, what selects besides rows: a block on a time grid and a task chip in Plan Week's lane
+  var ROWSEL='li.task[data-id]:not(.ie-row):not(.inline-row):not(.empty-li), .panel-task[data-id]', kbNext=null, BULK_MORE=".tblock[data-id], .cal-ev[data-tid]";
   function rowOf(el){ return el&&el.closest?el.closest(ROWSEL):null; }
   function pickNext(ids,i){ return i<0?null:(ids[i+1]!=null?ids[i+1]:(i>0?ids[i-1]:null)); }
   function rowNextId(el){ var r=rowOf(el); if(!r) return null; var box=r.closest("ul.tasks, .card, .fold-body")||r.parentNode;
@@ -3962,9 +4009,13 @@ function GENA_MAIN() {
   // the row a row button's click came from, for the dialog it opens (📅, 💤): taken once, and only straight after the click
   var actRow=null;
   function takeActRow(){ var x=actRow; actRow=null; return x&&x.el&&x.el.isConnected&&Date.now()-x.t<300?x.el:null; }
+  /* V6.8 his log 2: a row lights up by the task behind it (a Priority row's data-id is its entry's, not its task's); a habit row or a
+     free-text Priority entry has no task, so it is never selected */
+  function bulkRowOn(r){ var k=taskForRow(r); return !!(k&&bulkIds[k.id]); }
   function rowsAfterRender(){
     ["view","rightbar"].forEach(function(id){ var root=document.getElementById(id); if(!root) return;
-      [].forEach.call(root.querySelectorAll(ROWSEL),function(r){ if(!r.hasAttribute("tabindex")) r.tabIndex=-1; if(bulkMode) r.classList.toggle("bulk-on",!!bulkIds[r.dataset.id]); }); });
+      [].forEach.call(root.querySelectorAll(ROWSEL),function(r){ if(!r.hasAttribute("tabindex")) r.tabIndex=-1; if(bulkMode) r.classList.toggle("bulk-on",bulkRowOn(r)); });
+      if(bulkMode) [].forEach.call(root.querySelectorAll(BULK_MORE),function(r){ r.classList.toggle("bulk-on",bulkRowOn(r)); }); });
     if(!kbNext) return; var x=kbNext; kbNext=null;
     var root=document.getElementById(x.rb?"rightbar":"view"), el=root&&[].filter.call(root.querySelectorAll(ROWSEL),function(r){ return r.dataset.id===x.id; })[0];
     if(el&&!editorOpen()){ try{ el.focus({preventScroll:true}); }catch(e){ el.focus(); } }
@@ -4327,9 +4378,9 @@ function GENA_MAIN() {
   }
   function renderNow(){
     navRecord();
-    ieShown=false;
-    if(bulkMode){ if(bulkView==null) bulkView=view; else if(bulkView!==view||!BULK_VIEWS[view]){ bulkMode=false; bulkIds={}; } }   // P6: another view ends the selection
-    if(!bulkMode) bulkView=null;
+    ieShown=false; fuShown=false;
+    if(bulkMode){ if(bulkView==null) bulkView=view; else if(bulkView!==view||!BULK_VIEWS[view]&&!bulkPanel){ bulkMode=false; bulkIds={}; } }   // P6: another view ends the selection (round 2: one begun in the side panel lasts in any view)
+    if(!bulkMode){ bulkView=null; bulkPanel=false; }
     var m=document.getElementById("view"), inner;
     if(view==="calendar") view=calTabView(S.calView)||"cal-month";   // a replayed old history step
     if(view==="today") inner=viewToday();
@@ -4355,10 +4406,13 @@ function GENA_MAIN() {
     renderPanes();
     renderGlobalHead();
     syncStrip();
+    dfRefresh();   // round 2 (his note 5)
     bind();
     restoreAnchor();
     evPopSync();   // W22: the popout follows its event to the new draw
     rowsAfterRender();   // P3, P6: rows take focus; the selection shows
+    fuEditWire();   // his log 1b
+    noteDecorate("view"); noteDecorate("evpop");   // his log 4
     if(lastRenderedView!==view){ m.classList.remove("anim"); void m.offsetWidth; m.classList.add("anim"); lastRenderedView=view; }
     syncHist();
   }
@@ -4525,15 +4579,15 @@ function GENA_MAIN() {
     var cols=(S.collections||[]).slice().sort(function(a,b){ return (a.ord||0)-(b.ord||0); }).filter(function(c){ return !sbHidden("col:"+c.id); });
     return sbSection("cols","Collections",'<button class="sb-act" data-sb="newcol">+ new</button>',cols.length?cols.map(function(c){ return row("col:"+c.id,'<span class="sb-ico">'+esc(c.emoji||"🗂")+'</span>',c.name,st.col[c.id],'<button class="sb-star sb-hov" data-sb="editcol" data-id="'+esc(c.id)+'" title="Edit Collection" aria-label="Edit Collection">✎</button>'); }).join(""):'<div class="sb-mini">No Collections.</div>');
   }
-  /* V6.8: each row carries the band the task rows use (W26): a Domain its colour (lifted to neon when dark), a Focus its own family
-     shade and pattern (W27). Domain rows are a step larger than their Focuses (W24). A Domain folds its Focuses (device-local, uiFolded),
+  /* V6.8: a Domain row carries the band the task rows use (W26), its colour lifted to neon when dark; a Focus or Project row only its
+     circle in its own family shade and pattern (W27; Preview comment 2, Oct 27: "for focus, the circle is enough"). Domain rows are a step larger than their Focuses (W24). A Domain folds its Focuses (device-local, uiFolded),
      the chevrons beside the heading fold or open them all (W29), and rows drag to reorder (W30; JIK and DRM keep the first places) */
   function sbBand(h){ return '<i class="sb-band" aria-hidden="true" style="background:'+esc(patBg(h.color,h.pat,0.5,"strip"))+'"></i>'; }
   function sbDomainsTree(st,row,more){
     var cur=curScope(), openCnt=openCount, shelved=0, kids={}, none=[], anyOpen=false;
     S.projects.forEach(function(p){ if(!projActive(p)){ shelved++; return; } if(p.profileId&&profileById(p.profileId)) (kids[p.profileId]=kids[p.profileId]||[]).push(p); else none.push(p); });
     var focusRow=function(p){ var fav=hasCol(p,"col-fav");
-      return row("fc:"+p.id,sbBand(hueOf(p))+'<span class="pdot" style="'+dotStyle(p)+'"></span>',(p.emoji?p.emoji+" ":"")+p.name,openCnt(p.id),
+      return row("fc:"+p.id,'<span class="pdot" style="'+dotStyle(p)+'"></span>',(p.emoji?p.emoji+" ":"")+p.name,openCnt(p.id),
         more("fc",p.id,p.name)+'<button class="sb-star'+(fav?" on":" sb-hov")+'" data-sb="fav" data-id="'+esc(p.id)+'" title="Favorites" aria-label="In Favorites" aria-pressed="'+fav+'">'+(fav?"★":"☆")+'</button>',null,"sb-kid",' draggable="true" data-dfc="'+esc(p.id)+'"'); };
     var branch=function(key,label,list){ var shut=uiFolded("sb-dom:"+key,true); if(list.length&&!shut) anyOpen=true;
       return '<button class="sb-arr" data-sb="domfold" data-id="'+esc(key)+'" aria-expanded="'+!shut+'" aria-label="'+(shut?"Show":"Hide")+' the Focuses in '+esc(label)+'"'+(list.length?'':' disabled')+'>'+(list.length?'▸':'')+'</button>'; };
@@ -4557,7 +4611,7 @@ function GENA_MAIN() {
     var efs=(S.efforts||[]), act=efs.filter(projActive).sort(function(a,b){ return (b.pinned?1:0)-(a.pinned?1:0); });
     var ph=efs.length&&!sbHidden("row:pjs")?row("pjs",'<span class="sb-ico">◆</span>',"All Projects",st.allEff):"";
     act.forEach(function(e){ var d=profileById(e.profileId), g=effortProgress(e.id), pc=g.all?Math.round(100*g.done/g.all):0;
-      ph+=row("pj:"+e.id,sbBand(hueOf(e))+'<span class="pdot" style="'+dotStyle(e)+'" title="'+esc(d?d.name:"No Domain")+'"></span>',(e.emoji?e.emoji+" ":"")+e.name,"",
+      ph+=row("pj:"+e.id,'<span class="pdot" style="'+dotStyle(e)+'" title="'+esc(d?d.name:"No Domain")+'"></span>',(e.emoji?e.emoji+" ":"")+e.name,"",
         '<span class="sb-prog" title="'+g.done+' of '+g.all+' steps done"><i style="width:'+pc+'%"></i></span>'+(st.eff[e.id]?'<span class="cnt">'+st.eff[e.id]+'</span>':'')+more("pj",e.id,e.name)); });
     if(!efs.length) ph='<div class="sb-mini">No Projects yet.</div>';
     else if(efs.length>act.length) ph+='<div class="sb-mini">'+(efs.length-act.length)+' paused / ended in Lists → Projects.</div>';
@@ -4644,29 +4698,44 @@ function GENA_MAIN() {
     S.people.forEach(function(p){ if(p.sbPin) out.push({kind:"person",x:p}); });
     return out.sort(function(a,b){ return a.x.sbPin-b.x.sbPin; }); }
   function sbPinToggle(x){ if(!x) return false; if(x.sbPin) delete x.sbPin; else x.sbPin=Date.now(); return !!x.sbPin; }
-  // the sections this screen shows: Pinned first where the scopes are, then the rest, without the hidden ones
-  function sbKeys(keys){ if(sbPins().length&&keys.some(function(k){ return k==="doms"||k==="cols"||k==="pjs"; })) keys=["pins"].concat(keys);
+  /* V6.8 his log 5 ("when i pin an item it goes under that thin line, when i pin whole pages then it would go above that thin line"):
+     a whole page pins with the ☆ in its head; it is kept in the synced fold map (S.collapsed["pin:<page>"] = when, a SCALAR the merge
+     already carries; no merge change) and shows on every screen. Pages sit above a thin line, items below it; the line shows only
+     when both have something; no labels */
+  function pagePinned(k){ return +((S.collapsed||{})["pin:"+k])>0; }
+  function pagePins(){ var c=S.collapsed||{}; return Object.keys(c).filter(function(k){ return k.indexOf("pin:")===0&&+c[k]>0&&pageOf(k.slice(4)); })
+    .sort(function(a,b){ return c[a]-c[b]; }).map(function(k){ return k.slice(4); }); }
+  function pagePinToggle(k){ if(!pageOf(k)) return false; S.collapsed=S.collapsed||{}; if(pagePinned(k)) delete S.collapsed["pin:"+k]; else S.collapsed["pin:"+k]=Date.now(); return pagePinned(k); }
+  function sbScoped(keys){ return keys.some(function(k){ return k==="doms"||k==="cols"||k==="pjs"; }); }
+  // the sections this screen shows: Pinned first (items where the scopes are, pages everywhere), then the rest, without the hidden ones
+  var sbKeysNow=[];
+  function sbKeys(keys){ sbKeysNow=keys; if((sbPins().length&&sbScoped(keys))||pagePins().length) keys=["pins"].concat(keys);
     return keys.filter(function(k){ return !sbHidden("sec:"+k); }); }
   function sbPinsHtml(st,row){
     var un=function(it){ return '<button class="sb-star sb-hov" data-sb="unpin" data-kind="'+it.kind+'" data-id="'+esc(it.x.id)+'" title="Unpin" aria-label="Unpin '+esc(it.x.name)+'">✕</button>'; };
-    return sbSection("pins","Pinned","",sbPins().map(function(it){ var x=it.x;
+    var pages=pagePins().map(function(k){ var pg=pageOf(k), on=pageKeyOf(view)===k;
+      return '<div class="sb-row sb-page" role="button" tabindex="0" data-sb="pinpage" data-k="'+esc(k)+'" aria-pressed="'+on+'"><span class="sb-ico">'+pg[2]+'</span><span class="sb-name">'+esc(pg[1])+'</span>'+
+        '<button class="sb-star sb-hov" data-sb="unpin" data-kind="page" data-id="'+esc(k)+'" title="Unpin" aria-label="Unpin '+esc(pg[1])+'">✕</button></div>'; }).join("");
+    var items=sbScoped(sbKeysNow)?sbPins().map(function(it){ var x=it.x;
       if(it.kind==="person") return '<div class="sb-row" role="button" tabindex="0" data-sb="pinperson" data-id="'+esc(x.id)+'"><span class="sb-ico">👤</span><span class="sb-name">'+esc(x.name)+'</span>'+un(it)+'</div>';
-      return row((it.kind==="fc"?"fc:":"pj:")+x.id,sbBand(hueOf(x))+'<span class="pdot" style="'+dotStyle(x)+'"></span>',(x.emoji?x.emoji+" ":"")+x.name,it.kind==="fc"?openCount(x.id):(st.eff[x.id]||""),un(it)); }).join("")); }
+      return row((it.kind==="fc"?"fc:":"pj:")+x.id,'<span class="pdot" style="'+dotStyle(x)+'"></span>',(x.emoji?x.emoji+" ":"")+x.name,it.kind==="fc"?openCount(x.id):(st.eff[x.id]||""),un(it)); }).join(""):"";
+    return sbSection("pins","Pinned","",pages+(pages&&items?'<div class="sb-pin-line" role="separator" aria-hidden="true"></div>':'')+items); }
   function sbPinFind(kind,id){ return kind==="fc"?proj(id):kind==="pj"?effortById(id):S.people.find(function(p){ return p.id===id; }); }
   function openSbEditModal(){
     var cols=(S.collections||[]).slice().sort(function(a,b){ return (a.ord||0)-(b.ord||0); });
     var ck=function(k,lbl){ return '<label class="check-row sbe-row"><input type="checkbox" data-sbe="'+esc(k)+'"'+(sbHidden(k)?"":" checked")+'/> '+esc(lbl)+'</label>'; };
-    var pins=sbPins();
+    var pins=pagePins().map(function(k){ var pg=pageOf(k); return {kind:"page",x:{id:k,name:pg[1],emoji:pg[2]}}; }).concat(sbPins());   // his log 5: pages first
     modal('<h3>Edit sidebar</h3><p class="sub">Untick what you never use. It hides on this device only; tick it again to bring it back.</p>'+
       '<div class="sbe-grp"><div class="ie-lbl">Sections</div>'+SB_SECS.map(function(x){ return ck("sec:"+x[0],x[1]); }).join("")+'</div>'+
       '<div class="sbe-grp"><div class="ie-lbl">Rows</div>'+ck("row:all","All (at the top of Domains)")+ck("row:pjs","All Projects")+cols.map(function(c){ return ck("col:"+c.id,(c.emoji?c.emoji+" ":"")+c.name+" (Collection)"); }).join("")+'</div>'+
       '<div class="sbe-grp"><div class="ie-lbl">Pinned</div>'+(pins.length?pins.map(function(it){ return '<div class="sbe-pin"><span>'+esc((it.x.emoji?it.x.emoji+" ":"")+it.x.name)+'</span><button type="button" class="chip" data-sbu="'+it.kind+':'+esc(it.x.id)+'">Unpin</button></div>'; }).join("")
-        :'<p class="sub" style="margin:2px 0">Nothing pinned. Pin a Focus or Project from its ⋯ in the sidebar, or a person from their card in People.</p>')+'</div>'+
+        :'<p class="sub" style="margin:2px 0">Nothing pinned. Pin a page with the ☆ at its top, a Focus or Project from its ⋯ in the sidebar, or a person from their card in People.</p>')+'</div>'+
       '<div class="modal-actions"><button class="btn ghost" id="sbe-all" style="margin-right:auto">Show everything</button><button class="btn primary" data-x>Done</button></div>');
     var root=document.getElementById("modal-root");
     document.querySelector("[data-x]").onclick=close;
     root.querySelector(".modal").onchange=function(e){ var c=e.target.closest("[data-sbe]"); if(!c) return; sbSetHidden(c.dataset.sbe,!c.checked); renderSidebar(); };
     root.querySelector(".modal").onclick=function(e){ var u=e.target.closest("[data-sbu]"); if(!u) return; var kv=u.dataset.sbu.split(":"), x=sbPinFind(kv[0],kv.slice(1).join(":"));
+      if(kv[0]==="page"){ if(pagePinned(kv[1])){ pagePinToggle(kv[1]); save(); render(); close(); openSbEditModal(); } return; }
       if(x&&x.sbPin){ sbPinToggle(x); save(); render(); close(); openSbEditModal(); } };
     document.getElementById("sbe-all").onclick=function(){ sbShowAll(); renderSidebar(); close(); openSbEditModal(); };
   }
@@ -4691,6 +4760,7 @@ function GENA_MAIN() {
       '<div class="sb-foot-line"><span class="build-line" title="Version and build ID">'+esc(buildLine())+'</span><span class="sb-sync" id="sb-sync">'+esc(syncLine())+'</span></div></div>';
     if(top){ var t=sb.querySelector(".sb-tree"); if(t) t.scrollTop=top; }
     sbMidTrim(sb);   // P15
+    noteDecorate("sidebar");   // V6.8 his log 4
   }
   /* V6.7 P15: a long name in the narrow sidebar keeps both ends ("Quarterly report draf…Review"): the last word (up to ten characters,
      else its last six) stays, the start fills what is left; the full name is the tooltip. midEllipsis is the pure part (fits(text) says
@@ -4747,6 +4817,8 @@ function GENA_MAIN() {
     else if(t==="editcol"){ var cc=colById(a.dataset.id); if(cc) openCollectionModal(cc); }
     else if(t==="cols"){ openColsModal(a.dataset.kind,a.dataset.id); }
     else if(t==="sbedit"){ openSbEditModal(); }   // P7
+    else if(t==="unpin"&&a.dataset.kind==="page"){ if(pagePinned(a.dataset.id)){ pagePinToggle(a.dataset.id); save(); render(); toast("Unpinned"); } }   // his log 5
+    else if(t==="pinpage"){ if(e.target.closest("[data-sb]")!==a) return; document.body.classList.remove("sb-open"); goView(a.dataset.k); }
     else if(t==="unpin"){ var ux=sbPinFind(a.dataset.kind,a.dataset.id); if(ux&&ux.sbPin){ sbPinToggle(ux); save(); render(); toast("Unpinned"); } }
     else if(t==="pinperson"){ if(e.target.closest("[data-sb]")!==a) return; document.body.classList.remove("sb-open"); var ppid=a.dataset.id; S.collapsed["person-"+ppid]=false; goView("people");
       setTimeout(function(){ var c=document.querySelector('#view [data-fold="person-'+ppid+'"]'); if(c&&c.scrollIntoView) c.scrollIntoView({block:"start",behavior:"smooth"}); },60); }
@@ -4908,10 +4980,66 @@ function GENA_MAIN() {
   function toggleRightbar(){ if(window.innerWidth>1000){ S.panelOpen=!S.panelOpen; save(); applyRightbarState(); } else document.body.classList.toggle("rb-open"); }
   document.getElementById("rb-toggle").onclick=toggleRightbar;
   document.getElementById("rb-scrim").onclick=function(){ document.body.classList.remove("rb-open"); };
+  /* V6.8 his log 4 (his "sure"): a 💬 on every main card (Today's cards, the side panel's sections, the popout, People and Lists
+     cards, Plan's and Calendar's grids, Hub cards, the left sidebar's sections). Shown on hover on the Mac, always on a phone; Hub's
+     "Show note buttons" hides them all on this device. A tap opens a small box; Save puts the note in the improvement log with where
+     it came from (`src`), which the list shows and "Copy open items for Claude" prints on its line. Glow's decorateFeedbackCards shape */
+  var NOTE_ROOTS=[["view","details.card, .card:not(.empty), .proj-card, .tg-x, .mg, .yr-grid",""],["rightbar","details.card.fold, section.rb-det","Side panel"],
+    ["sidebar","section.sb-sec","Sidebar"],["evpop",".evpop-h","Event popout"]];
+  var PAGE_LIST=[["today","Today","☀️"],["day","Plan","🗓"],["week","Week","🗓"],["cal","Calendar","📅"],["repeats","Repeats","↻"],["projects","Focuses","◎"],["efforts","Projects","◆"],
+    ["people","People","👤"],["backlog","Backlog","📥"],["timeline","Timeline","📈"],["journal","Journal","📓"],["learn","Learn","💡"],["hub","Hub","🧭"]];
+  function pageKeyOf(v){ v=v||view; return groupOf(v)==="cal"?"cal":v; }
+  function pageOf(k){ return PAGE_LIST.filter(function(x){ return x[0]===k; })[0]||null; }
+  function pageLabel(v){ v=v||view; var g=groupOf(v), pg=pageOf(pageKeyOf(v)), nm=pg?pg[1]:String(v||"");
+    if(g==="cal"){ var t=CAL_TABS.filter(function(x){ return x[0]===v; })[0]; return "Calendar"+(t?" › "+t[2]:""); }
+    if(g==="plan") return "Plan › "+(v==="day"?"Day":"Week");
+    if(g==="lists") return "Lists › "+nm;
+    if(v==="learn") return "Journal › Learn";
+    return nm; }
+  function notesShown(){ return !uiFolded("ui:notesoff",false); }
+  function noteLabelOf(el){ var q=function(sel){ var x=null; try{ x=el.querySelector(sel); }catch(e){} return x?x.textContent:""; }, t="";
+    if(el.matches("details")) t=q(":scope > summary .fold-label")||q(":scope > summary h3")||q(":scope > summary");
+    t=t||q(":scope > .label")||q(".sb-fold")||q("h3")||q("h4")||q(".wk-day-head")||(el.classList.contains("evpop-h")?"Details":"")||(el.classList.contains("tg-x")||el.classList.contains("mg")||el.classList.contains("yr-grid")?"Grid":"");
+    return t.replace(/💬/g,"").replace(/[▸▾⠿]/g,"").replace(/\bDrag\b/,"").replace(/\s+/g," ").replace(/\s*\d+$/,"").trim().slice(0,60)||"Card"; }
+  function noteDecorate(which){
+    if(typeof document==="undefined"||!document.body||!document.body.classList||!document.body.classList.toggle) return;
+    document.body.classList.toggle("notes-off",!notesShown());
+    NOTE_ROOTS.forEach(function(r){ if(which&&r[0]!==which) return; var root=document.getElementById(r[0]); if(!root||!root.querySelectorAll) return;
+      [].slice.call(root.querySelectorAll(r[1])).forEach(function(card){ if(card.querySelector(":scope > .note-btn, :scope > summary > .note-btn")) return;
+        var up=card.parentElement&&card.parentElement.closest(r[1]); if(up&&root.contains(up)) return;   // a card inside a card: the outer one has it
+        var lbl=noteLabelOf(card), b=document.createElement("button"); b.type="button"; b.className="note-btn"; b.textContent="💬";
+        b.dataset.noteLabel=(r[2]?r[2]+" › ":"")+lbl; b.dataset.noteCard=r[0]+":"+(card.dataset.fold||card.dataset.uifold||card.dataset.sec||card.dataset.unit||lbl.toLowerCase().replace(/[^a-z0-9]+/g,"-"));
+        b.setAttribute("aria-label","Add a note about "+b.dataset.noteLabel); b.title="Add a note to the improvement log";
+        var sum=card.matches("details")&&card.querySelector(":scope > summary"); if(sum) sum.appendChild(b); else card.appendChild(b); }); }); }
+  // what a note says about where it came from
+  function noteSrc(card,label){ return {card:card||"", label:label||"", view:pageLabel(view), day:(groupOf(view)==="cal"?calDay:viewDay)||today()}; }
+  function openNoteBox(card,label){
+    var src=noteSrc(card,label), type="idea";
+    modal('<h3>💬 Note</h3><p class="sub">'+esc(src.view+" › "+label)+'</p>'+
+      '<div class="chips" id="nb-type">'+Object.keys(IMP_META).map(function(k){ return '<button type="button" class="chip" data-t="'+k+'" aria-pressed="'+(k===type)+'">'+IMP_META[k][0]+'</button>'; }).join("")+'</div>'+
+      '<div class="fld"><textarea id="nb-text" rows="3" placeholder="What happened, or what would be better?" aria-label="Note"></textarea></div>'+
+      '<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="nb-go">Save to the log</button></div>',"note-box");
+    var tb=document.getElementById("nb-type"), tx=document.getElementById("nb-text"); if(tx) tx.focus();
+    tb.onclick=function(e){ var b=e.target.closest("[data-t]"); if(!b) return; type=b.dataset.t; [].forEach.call(tb.children,function(c){ c.setAttribute("aria-pressed",c===b); }); };
+    function keep(){ var v=tx.value.trim(); if(!v) return false; addImprove(type,v,src); return true; }
+    document.querySelector("[data-x]").onclick=close;
+    document.getElementById("nb-go").onclick=function(){ if(!tx.value.trim()){ tx.focus(); return; } close(); keep(); toast("Saved to your improvement log"); };
+    tx.onkeydown=function(e){ if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){ e.preventDefault(); document.getElementById("nb-go").onclick(); } };
+    // typing is saved: a tap outside or Escape keeps what was typed and says so, with Undo
+    onModalDismiss=function(){ var v=tx.value.trim(); close(); if(!v) return; keep(); var id=S.improve[0]&&S.improve[0].id;
+      toastUndo("Kept your note in the log",function(){ S.improve=S.improve.filter(function(x){ return x.id!==id; }); save(); render(); }); };
+  }
+  if(typeof document!=="undefined"&&document.addEventListener) document.addEventListener("click",function(e){ var b=e.target.closest&&e.target.closest(".note-btn"); if(!b) return;
+    e.preventDefault(); e.stopPropagation(); openNoteBox(b.dataset.noteCard,b.dataset.noteLabel); },true);   // before the card's own click (a summary would fold)
+  function pagePinBtnHtml(){ var k=pageKeyOf(view), pg=pageOf(k); if(!pg) return ""; var on=pagePinned(k);
+    return '<button type="button" class="chip pg-pin'+(on?" on":"")+'" data-act="pin-page" data-k="'+esc(k)+'" aria-pressed="'+on+'" title="'+(on?"Unpin "+esc(pg[1])+" from":"Pin "+esc(pg[1])+" to")+' the sidebar">'+(on?"★ Pinned":"☆ Pin page")+'</button>'; }
   function renderGlobalHead(){
     var el=document.getElementById("global-head"); if(!el) return;
     el.innerHTML=(S.name?'<span class="gh-name">'+esc(S.name)+'</span>'
-        :(S.nameNudgeGone?'':'<button class="chip" id="gh-setname" style="padding:3px 11px">👋 Add your name</button><button class="chip" id="gh-setname-x" style="padding:3px 8px" title="Don’t ask again" aria-label="Dismiss">✕</button>'));
+        :(S.nameNudgeGone?'':'<button class="chip" id="gh-setname" style="padding:3px 11px">👋 Add your name</button><button class="chip" id="gh-setname-x" style="padding:3px 8px" title="Don’t ask again" aria-label="Dismiss">✕</button>'))+
+      pagePinBtnHtml();   // his log 5: the ☆ that pins this page
+    var pb=el.querySelector('[data-act="pin-page"]');
+    if(pb) pb.onclick=function(){ var on=pagePinToggle(pb.dataset.k); save(); render(); toast(on?"Pinned to the sidebar":"Unpinned"); };
     var bx=document.getElementById("gh-setname-x");
     if(bx) bx.onclick=function(){ S.nameNudgeGone=true; save(); renderGlobalHead(); };
     var b=document.getElementById("gh-setname");
@@ -5139,8 +5267,20 @@ function GENA_MAIN() {
         '<button class="btn primary" data-ie="save">Save</button>'+
       '</div></li>';
   }
+  /* V6.8 his log 6c: the colour a row takes: its Focus; with none, the Project it is a step of when that Project sits in a Domain
+     (hueMap colours it; a row never read it, so a step of a Project straight under a Domain stayed uncoloured) */
+  function rowFocusHue(k){ var p=k&&k.projectId?proj(k.projectId):null; if(p) return p;
+    var e=k&&k.effortId?effortById(k.effortId):null; return e&&((e.projectId&&proj(e.projectId))||(e.profileId&&profileById(e.profileId)))?e:null; }
+  /* V6.8 round 2 (his notes 1, 6, 7: "half half ... if i change the color of the focus or person ... that task should be tied"): a row's
+     colour sources are its Focus or Project and its person (the first linked person who has a colour). Both: twoHue, a band split in
+     half and a tint from the first toward the second on the right; one: that one. Read from the Focus (hueOf) and the person on every
+     draw, never copied into the row */
+  function rowPerson(k){ var ids=(k&&k.personIds)||[]; for(var i=0;i<ids.length;i++){ var p=personById(ids[i]); if(p&&p.color) return p; } return null; }
+  function twoHue(a,p){ var b=p&&p.color?p:null; if(!a||!b) return a||b||null; var u=hueOf(a);
+    return {color:(u&&u.color)||"var(--p0)", two:{color:b.color, pat:b.pat}}; }
+  function rowHue(k){ return twoHue(rowFocusHue(k),rowPerson(k)); }
   function taskLi(k){
-    var p=proj(k.projectId);
+    var p=proj(k.projectId), ph=rowHue(k);
     // pills as a list, so the row shows the few that matter and folds the rest into "+N" —
     // five saturated chips per row meant the titles lost every glance
     var pl=[];
@@ -5181,7 +5321,7 @@ function GENA_MAIN() {
     if(ieOpensHere(k.id)) return inlineEditorLi(k);
     if(pendingSubAdd===k.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+esc(k.id)+'" value="'+esc(draftOf("sub:"+k.id))+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
     var subsHtml=subRows?'<ul class="subs">'+subRows+'</ul>':'';
-    return '<li class="task '+(k.status==="done"?"done":(isSkipped(k)?"skipped":""))+(p?" pc"+pk(p):"")+'" data-id="'+esc(k.id)+'" draggable="true"'+(p?' style="'+pcVars(p)+'"':'')+'>'+
+    return '<li class="task '+(k.status==="done"?"done":(isSkipped(k)?"skipped":""))+(ph?" pc"+pk(ph):"")+'" data-id="'+esc(k.id)+'" draggable="true"'+(ph?' style="'+pcVars(ph)+'"':'')+'>'+
       '<button class="chk '+(k.status==="done"?"done":"")+'" data-act="toggle" aria-label="Toggle done" aria-pressed="'+(k.status==="done")+'"></button>'+
       '<div class="task-main" data-act="edit" title="Tap to edit"><div class="task-title">'+subsCaret(k.id,(k.subs||[]).length)+esc(k.title)+'</div>'+
       (pills?'<div class="task-meta">'+pills+'</div>':'')+subsHtml+rowSubsDone(k)+'</div>'+
@@ -5280,7 +5420,7 @@ function GENA_MAIN() {
       var k=S.tasks.find(function(x){return x.id===f.taskId;});
       if(!k) return "";
       if(ieOpensHere(k.id)) return inlineEditorLi(k);
-      var kp=k.projectId?proj(k.projectId):null;
+      var kp=k.projectId?proj(k.projectId):null, kh=rowHue(k);
       var done=k.status==="done";
       var lpills=(k.priority?'<span class="pill imp">★ important</span>':"")+
         (kp?'<span class="pill proj'+pk(kp)+'" style="'+pcVars(kp)+'"><i class="pdot"></i>'+(kp.emoji?esc(kp.emoji)+" ":"")+esc(kp.name)+'</span>':"")+
@@ -5297,7 +5437,7 @@ function GENA_MAIN() {
       }
       if(pendingSubAdd===k.id) lsubRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-subfor="'+esc(k.id)+'" value="'+esc(draftOf("sub:"+k.id))+'" placeholder="Add a subtask… (Esc to close)" aria-label="Add a subtask"/></li>';
       var lsubsHtml=lsubRows?'<ul class="subs">'+lsubRows+'</ul>':'';
-      return '<li class="task '+(done?"done":"")+(kp?" pc"+pk(kp):"")+'" data-id="'+esc(f.id)+'" data-focus="1" draggable="true"'+(kp?' style="'+pcVars(kp)+'"':'')+'>'+
+      return '<li class="task '+(done?"done":"")+(kh?" pc"+pk(kh):"")+'" data-id="'+esc(f.id)+'" data-focus="1" draggable="true"'+(kh?' style="'+pcVars(kh)+'"':'')+'>'+
         '<button class="chk '+(done?"done":"")+'" data-act="focus-tasktoggle" data-tid="'+esc(k.id)+'" aria-label="Complete task" aria-pressed="'+done+'"></button>'+
         '<div class="task-main" data-act="focus-editlinked" data-tid="'+esc(k.id)+'" title="Tap to edit the task"><div class="task-title">'+subsCaret(k.id,(k.subs||[]).length)+esc(k.title)+'</div><div class="task-meta">'+lpills+'</div>'+lsubsHtml+rowSubsDone(k)+'</div>'+
         taskBtns(k,f)+'</li>';
@@ -5313,7 +5453,7 @@ function GENA_MAIN() {
     }
     if(pendingSubAdd===f.id) subRows+='<li class="sub"><span class="inline-plus" style="width:15px;font-size:13px">⤷</span><input class="inline-add" data-fsubfor="'+esc(f.id)+'" value="'+esc(draftOf("fsub:"+f.id))+'" placeholder="Add a subitem… (Esc to close)" aria-label="Add a subitem"/></li>';
     var subsHtml=subRows?'<ul class="subs">'+subRows+'</ul>':'';
-    return '<li class="task '+(f.done?"done":"")+'" data-id="'+esc(f.id)+'" data-focus="1" draggable="true">'+
+    return '<li class="task '+(f.done?"done":"")+(p?" pc"+pk(p):"")+'" data-id="'+esc(f.id)+'" data-focus="1" draggable="true"'+(p?' style="'+pcVars(p)+'"':'')+'>'+   // his log 6c: a free-text entry with a Focus takes its colour
       '<button class="chk '+(f.done?"done":"")+'" data-act="focus-toggle" aria-label="Toggle done" aria-pressed="'+!!f.done+'"></button>'+
       '<div class="task-main" data-act="focus-edit" title="Tap to edit"><div class="task-title">'+subsCaret(f.id,(f.subs||[]).length)+esc(f.text)+'</div>'+
       (pills?'<div class="task-meta">'+pills+'</div>':"")+subsHtml+'</div>'+
@@ -5464,13 +5604,22 @@ function GENA_MAIN() {
       '<span class="rb-subadd"><button type="button" class="pill tap" data-act="rb-subs" data-tid="'+esc(k.id)+'">+ subtask</button></span></span>'; }
   // a timed task: click to edit, drag to move, the strip at the bottom to resize (unchanged behaviour)
   function taskBlockHtml(b){
-    var k=b.k, p=k.projectId?proj(k.projectId):null, bd=evBand(p), st=toMins(k.at), w=clockLabel(st)+"–"+clockLabel(st+(k.dur||60));
+    var k=b.k, p=rowHue(k), bd=evBand(p), st=toMins(k.at), w=clockLabel(st)+"–"+clockLabel(st+(k.dur||60));   // his log 6c
     // a white card with its Focus colour on the edge (a pattern draws its strip there); events are the filled blocks (D3)
     return '<div class="tblock tk'+(k.status==="done"?" done":"")+(p?"":" plain")+bd[0]+'" draggable="true" data-id="'+esc(k.id)+'" data-act="tb-edit" '+
       'style="'+tgPos(b)+'--c:'+esc(p?hueOf(p).color:"var(--terra)")+';" title="'+esc(k.title)+' · '+w+'">'+
       '<span class="tb-title"><button type="button" class="tb-chk'+(k.status==="done"?" on":"")+'" data-act="toggle" aria-pressed="'+(k.status==="done")+'" aria-label="'+(k.status==="done"?"Mark not done":"Mark done")+'"></button>'+(k.priority?"★ ":"")+esc(k.title)+'</span><span class="tb-time">'+w+((k.subs||[]).length?' · '+subCountText(k.subs,k.day,goalDone(k)):'')+'</span>'+
       '<span class="tb-resize" title="Drag to change the length"></span></div>';
   }
+  // V6.8 his log 3: a follow-up with a time, drawn like a timed task in its person's usual Focus; a tap opens the person (no data-id:
+  // the grid's drag, resize and selection read .tblock[data-id] as a task)
+  function fuBlockHtml(b){ var p=b.fu, fp=twoHue(p.focusId?proj(p.focusId):null,p), w=clockLabel(b.s)+"–"+clockLabel(b.e);
+    return '<div class="tblock fu-block'+(fp?evBand(fp)[0]:" plain")+'" data-act="fu-open" data-pid="'+esc(p.id)+'" role="button" tabindex="0" style="'+tgPos(b)+'--c:'+esc(fp?hueOf(fp).color:"var(--terra)")+';" title="Follow up with '+esc(p.name)+' · '+w+'">'+
+      '<span class="tb-title">👤 Follow up with '+esc(p.name)+'</span><span class="tb-time">'+w+((p.fuSubs||[]).length?' · '+subCountText(p.fuSubs):'')+'</span></div>'; }
+  // V6.8 his log 7: a habit with a time, drawn like a timed task in its colour; ✓ once met that day; a tap opens its editor
+  function habitBlockHtml(b,d){ var h=b.hb, hc=habitHue(h), w=clockLabel(b.s)+"–"+clockLabel(b.e), met=habitMet(h,d);
+    return '<div class="tblock hb-block'+(met?" done":"")+(hc?evBand(hc)[0]:" plain")+'" data-act="edithabit" data-hid="'+esc(h.id)+'" role="button" tabindex="0" style="'+tgPos(b)+'--c:'+esc(hc?hueOf(hc).color:"var(--terra)")+';" title="'+esc(h.name)+' · '+w+'">'+
+      '<span class="tb-title">'+(met?"✓ ":"")+(h.emoji?esc(h.emoji)+" ":"🌱 ")+esc(h.name)+'</span><span class="tb-time">'+w+'</span></div>'; }
   var selEvId=null;   // the event whose details are open (D1); this device, this session
   /* V6.5 W14: an event's emoji goes before its title everywhere; its pattern (Solid, Stripes, Dots, Outline, Light fill) is a
      class on the block, the chip and the details' dot; W13: a subscribed event he edited here carries a small ✎ */
@@ -5519,7 +5668,7 @@ function GENA_MAIN() {
        lane, so it counts chips, marks and tasks alike) on the shared fold; the lane itself stays a drop target however full */
     if(o.plan&&o.lane){ per.forEach(function(x,i){ var lo=orderTasks(x.loose,false); if(!open&&lo.length>AD_CAP) hidden[i]+=lo.length-AD_CAP;
       cells+='<ul class="tasks wk-allday" data-list="day:'+x.d+'" style="grid-column:'+(i+2)+';grid-row:'+r+'" title="Tasks without a time: drop a block here to clear its time">'+
-        (open?lo:lo.slice(0,AD_CAP)).map(function(k){ var p=proj(k.projectId), bd=evBand(p);
+        (open?lo:lo.slice(0,AD_CAP)).map(function(k){ var p=rowHue(k), bd=evBand(p);
           return '<li class="cal-ev tkc'+bd[0]+'" draggable="true" data-tid="'+esc(k.id)+'" data-act="tb-edit" data-id="'+esc(k.id)+'" style="--c:'+esc(p?hueOf(p).color:"var(--terra)")+'" title="'+esc(k.title)+'">'+(k.priority?"★ ":"")+esc(k.title)+'</li>'; }).join("")+'</ul>'; }); r++; }
     var more=open||hidden.some(function(x){ return x>0; });
     if(more){ days.forEach(function(d,i){ if(!open&&!hidden[i]) return; if(open&&i) return;
@@ -5568,10 +5717,13 @@ function GENA_MAIN() {
     if(plan) per.forEach(function(x){
       if(show.tasks){ var all=tasksOn(x.d).filter(function(k){ return inScope(k); });
         all.forEach(function(k){ if(isTimed(k)){ var st=toMins(k.at); x.items.push({s:st, e:Math.min(1440,st+(k.dur||60)), k:k}); } else if(isOpen(k)) x.loose.push(k); }); }
+      if(show.tasks) S.habits.forEach(function(h){ if(!h.at||toMins(h.at)==null||isPaused(h,x.d)||!habitOnDay(h,x.d)||!inScope(h)) return;   // his log 7
+        var hs=toMins(h.at); x.items.push({s:hs, e:Math.min(1440,hs+(+h.dur||60)), hb:h}); });   // review: no length is 1 hour, as the editor's Length says
       var Ld=landingOn(x.d);
       if(show.due) Ld.due.forEach(function(k){ x.marks.push(tgMark("⚑",k.title,'data-act="tb-edit" data-id="'+esc(k.id)+'"',"due")); });
       if(show.fu){ Ld.checkbacks.forEach(function(k){ x.marks.push(tgMark("⏸",k.title,'data-act="tb-edit" data-id="'+esc(k.id)+'"')); });
-        Ld.followups.forEach(function(p){ x.marks.push(tgMark("👤","Follow up with "+p.name,'data-act="editperson" data-id="'+esc(p.id)+'"')); }); }
+        Ld.followups.forEach(function(p){ if(p.fuAt&&toMins(p.fuAt)!=null){ var fs=toMins(p.fuAt); x.items.push({s:fs, e:Math.min(1440,fs+(+p.fuDur||60)), fu:p}); return; }   // his log 3
+          x.marks.push(tgMark("👤","Follow up with "+p.name,'data-act="editperson" data-id="'+esc(p.id)+'"')); }); }
       if(show.due){ Ld.phaseStarts.forEach(function(ph){ x.marks.push(tgMark("◧",ph.title+" starts","")); });   // finding 3: phase edges are dates due, under Show → Due dates
         Ld.phaseEnds.forEach(function(ph){ x.marks.push(tgMark("◧",ph.title+" ends","")); }); }
     });
@@ -5586,7 +5738,7 @@ function GENA_MAIN() {
     if(days.indexOf(t)>=0) hours+='<b class="now-tag" style="top:calc(var(--hh) * '+(nm/60).toFixed(3)+')">'+esc(clockLabel(nm))+'</b>';
     WORK_BANDS.forEach(function(b){ hours+='<span class="tg-band-emo" data-band="'+b.k+'" style="top:calc(var(--hh) * '+b.from+')" title="'+esc(bandLabel(b))+'" aria-label="'+esc(bandLabel(b))+'">'+b.emoji+'</span>'; });   // W2
     var cols=per.map(function(x){
-      var blocks=laneLayout(x.items).map(function(b){ return b.k?taskBlockHtml(b):evBlockHtml(b); }).join("");
+      var blocks=laneLayout(x.items).map(function(b){ return b.k?taskBlockHtml(b):b.fu?fuBlockHtml(b):b.hb?habitBlockHtml(b,x.d):evBlockHtml(b); }).join("");
       return '<div class="day-grid tg-col'+(x.d===t?" tdy":"")+'" data-d="'+x.d+'" data-lo="0" data-hi="23">'+
         (x.d===t?'<div class="now-line" data-t="'+esc(clockLabel(nm))+'" style="top:calc(var(--hh) * '+(nm/60).toFixed(3)+')"></div>':'')+
         tgFreeHtml(x.d,x.items,t,nm)+'<div class="tb-layer">'+blocks+'</div></div>'; }).join("");
@@ -5795,7 +5947,7 @@ function GENA_MAIN() {
     var a=anchor&&anchor.isConnected&&anchor.getBoundingClientRect().width?anchor:evPopFind(e.id,evPopAt); if(!a){ evPopClose(); return; }
     var p=evPopEl();
     p.innerHTML='<div class="evpop-h"><span>Details</span><button type="button" class="evd-x" data-act="evd" data-k="close" aria-label="Close the details" title="Close (Esc)">✕</button></div>'+evDetailsHtml(e,"pop");
-    p.hidden=false; evPopPlace(p,a);
+    p.hidden=false; evPopPlace(p,a); noteDecorate("evpop");
   }
   // after a draw: the popout follows its event, or goes (the event is not on screen); the panel was drawn with the page
   function evPopSync(){ var p=document.getElementById("evpop"); if(!p||p.hidden) return; var e=selEvId?evById(selEvId):null;
@@ -6124,7 +6276,7 @@ function GENA_MAIN() {
     var skipV=tasksOn(vd).filter(function(k){return isSkipped(k) && inScope(k);});
     var blocks=["morning","afternoon","evening"];
     var sugg=isToday&&!scopeActive()?computeSuggestions():[];   // V6.6.1: suggestions read every Domain, so a filter hides them
-    var dayHabits=S.habits.filter(function(h){return h.inDay && !isPaused(h,vd) && inScope(h);});   // a paused habit leaves the day (P3)
+    var dayHabits=S.habits.filter(function(h){return h.inDay && !isPaused(h,vd) && habitOnDay(h,vd) && inScope(h);});   // a paused habit leaves the day (P3); his log 7: so does a day off its rule
     var habitsOpen=dayHabits.filter(function(h){return !habitDoneOn(h,vd);}), habitsDone=dayHabits.filter(function(h){return habitDoneOn(h,vd);});
     // the ring: a skipped habit is neutral (out of both counts); a week or month habit that met its goal counts as done
     var habitsCounted=dayHabits.filter(function(h){ return !habitSkipped(h,vd); });
@@ -6208,18 +6360,20 @@ function GENA_MAIN() {
     var ag=agenda(vd);
     var fuRows=ag.followups.map(function(p){return followupRowHtml(p,vd);}).join("");
     var oneCard=(S.todayLayout!=="cards"), grp=scopeKind()==="col"?"project":(S.todayGroup||"flat");   // K2: a Collection's pull is grouped by Domain, then Focus
+    if(habitsOpen.some(function(h){ return h.at; })) habitsOpen=habitsOpen.slice().sort(function(a,b){ return (a.at||"99")<(b.at||"99")?-1:((a.at||"99")>(b.at||"99")?1:0); });   // his log 7: a time orders them (stable: none keeps the old order)
     var headRows=habitsOpen.map(function(h){return habitRowHtml(h,vd);}).join("")+fuRows;
+    var hbIn=function(b){ return habitsOpen.filter(function(h){ return (BLOCK_ICONS[h.block]?h.block:null)===b; }).map(function(h){ return habitRowHtml(h,vd); }).join(""); };
     var masterHtml;
     if(oneCard && grp==="block"){
       // one card, four lists — each keeps its own data-list so a drop still sets the block
       var loose=orderTasks(open.filter(function(k){return !k.block;}),true);
       curList="loose";
-      masterHtml='<ul class="tasks" data-list="loose">'+headRows+loose.map(taskLi).join("")+inlineAddRow("loose","Add a task — try @priority @morning, or “tomorrow”…")+'</ul>';
+      masterHtml='<ul class="tasks" data-list="loose">'+hbIn(null)+fuRows+loose.map(taskLi).join("")+inlineAddRow("loose","Add a task — try @priority @morning, or “tomorrow”…")+'</ul>';   // his log 7: a habit with a block sits in it
       blocks.forEach(function(b){
         var items=orderTasks(open.filter(function(k){return k.block===b;}),true);
         curList=b;
         masterHtml+=gOpen("g:blk:"+b)+gHead("g:blk:"+b,BLOCK_ICONS[b]+' '+b.charAt(0).toUpperCase()+b.slice(1)+(b===nowBlock?' <span class="now-pill">now</span>':'')+'<span class="cnt">'+items.length+'</span>',false,"grp-head grp-block")+
-          '<ul class="tasks" data-list="'+b+'">'+items.map(taskLi).join("")+inlineAddRow(b,"Add to "+b+"…")+'</ul></div>';
+          '<ul class="tasks" data-list="'+b+'">'+hbIn(b)+items.map(taskLi).join("")+inlineAddRow(b,"Add to "+b+"…")+'</ul></div>';
       });
       curList=null;
     } else if(oneCard && grp==="project"){
@@ -6281,7 +6435,7 @@ function GENA_MAIN() {
   }
   // shift-click: every row between the anchor and this one, in the order drawn
   function selRange(ids,from,to){ var a=ids.indexOf(from), b=ids.indexOf(to); if(b<0) return []; if(a<0) a=b; return ids.slice(Math.min(a,b),Math.max(a,b)+1); }
-  var bulkAnchor=null, bulkView=null, BULK_VIEWS={today:1,backlog:1,projects:1,efforts:1,week:1};
+  var bulkAnchor=null, bulkView=null, BULK_VIEWS={today:1,day:1,backlog:1,projects:1,efforts:1,week:1,people:1};   // his log 2: Plan's Day too; round 2: People's cards
   function bulkSelected(){ return Object.keys(bulkIds).filter(function(id){ return bulkIds[id] && S.tasks.some(function(k){return k.id===id;}); }); }
   function bulkCount(){ return bulkSelected().length; }
   function bulkApply(fn,msg){
@@ -6414,8 +6568,8 @@ function GENA_MAIN() {
     // D5: Plan's panel: the details, Unscheduled (drag onto an hour), Coming due, then four folded sections
     if(g==="plan"){ var show=weekShow(), days=view==="week"?(planWeekMode()==="grid"?planWeekDays():[0,1,2,3,4,5,6].map(function(i){ return addDays(today(),i); })):[viewDay], un=[];
       if(show.tasks) days.forEach(function(d){ tasksOn(d).forEach(function(k){ if(!isTimed(k)&&isOpen(k)&&inScope(k)) un.push({k:k,d:d}); }); });
-      var unBody=!show.tasks?'<div class="empty">Tasks are off in Show</div>':(un.length?'<div class="hint rb-hint">Drag one onto an hour</div>':'')+'<ul class="tasks day-tray rb-tray" data-unsched="1">'+(un.length?un.map(function(x){ var k=x.k, p=k.projectId?proj(k.projectId):null;
-        return '<li class="task rb-un" data-id="'+esc(k.id)+'" draggable="true" style="--c:'+esc(p?hueOf(p).color:"var(--terra)")+'"><div class="task-main" data-act="edit" title="Drag onto an hour, or tap to edit"><div class="task-title">'+esc(k.title)+'</div>'+(days.length>1||p?'<div class="task-meta"><span class="sub">'+esc([days.length>1?shortDate(x.d):"",p?p.name:""].filter(Boolean).join(" · "))+'</span></div>':'')+'</div>'+rbSubsHtml(k)+'</li>'; }).join(""):'<li class="empty">Nothing unscheduled. Drop a block here to clear its time.</li>')+'</ul>';
+      var unBody=!show.tasks?'<div class="empty">Tasks are off in Show</div>':(un.length?'<div class="hint rb-hint">Drag one onto an hour</div>':'')+'<ul class="tasks day-tray rb-tray" data-unsched="1">'+(un.length?un.map(function(x){ var k=x.k, p=k.projectId?proj(k.projectId):null, h=rowHue(k);   // round 2: its row's colours, a split edge for two
+        return '<li class="task rb-un'+(h&&h.two?" two":"")+'" data-id="'+esc(k.id)+'" draggable="true" style="'+esc("--c:"+(h?hueOf(h).color:"var(--terra)")+(h&&h.two?";--c2:"+h.two.color:""))+'"><div class="task-main" data-act="edit" title="Drag onto an hour, or tap to edit"><div class="task-title">'+esc(k.title)+'</div>'+(days.length>1||p?'<div class="task-meta"><span class="sub">'+esc([days.length>1?shortDate(x.d):"",p?p.name:""].filter(Boolean).join(" · "))+'</span></div>':'')+'</div>'+rbSubsHtml(k)+'</li>'; }).join(""):'<li class="empty">Nothing unscheduled. Drop a block here to clear its time.</li>')+'</ul>';
       rb.innerHTML=brand+evDetailsSection()+uf("p:unsched","Unscheduled"+n(un.length),unBody)+uf("p:due","Coming due"+n(cd.length),cdBody)+
         uf("p:sugg","Suggestions"+n(sg.length),sgBody,true)+uf("p:backlog","Backlog"+n(backlog.length),blBody,true)+uf("p:carried","Carried over"+n(carried.length),cb,true)+
         uf("p:done","Done "+(vd===today()?"today":"this day")+n(doneV.length),db,true);
@@ -6519,7 +6673,7 @@ function GENA_MAIN() {
   function agenda(day){
     var t=today(), isT=(day===t);
     var tasks=dayTodo(day).filter(function(k){ return isOpen(k) && inScope(k); });
-    var habits=S.habits.filter(function(h){ return h.inDay && !isPaused(h,day) && inScope(h); });
+    var habits=S.habits.filter(function(h){ return h.inDay && !isPaused(h,day) && habitOnDay(h,day) && inScope(h); });
     // a follow-up that is overdue keeps landing on today until it is logged or pushed
     var followups=S.people.filter(function(p){ return p.next && !isPaused(p,day) && (isT ? p.next<=day : p.next===day) && personInScope(p); });
     var checkbacks=S.tasks.filter(function(k){ return isWaiting(k) && k.nextAt && (isT ? k.nextAt<=day : k.nextAt===day) && inScope(k); });
@@ -6558,7 +6712,7 @@ function GENA_MAIN() {
     function keep(){
       var pp=S.people.find(function(x){ return x.id===p.id; })||p;   // by id: a sync may have replaced it
       var items=[].map.call(box.querySelectorAll(".tc-item"),function(r){ var q=function(c){ return r.querySelector(c)||{}; };
-        return {title:q(".tc-title").value, day:q(".tc-day").value, due:q(".tc-due").value, sb:q(".tc-sb").value, sp:!!q(".tc-sp").checked, focusId:q(".tc-foc").value}; });
+        return {title:q(".tc-title").value, day:q(".tc-day").value, due:q(".tc-due").value, sb:q(".tc-sb").value, sp:!!q(".tc-sp").checked, focusId:q(".tc-foc").value, subs:q(".tc-subs").value}; });
       var had=S.tasks.length, notes0=pp.notes;
       var n=captureTouch(pp,touch?val("tc-notes"):"",items,val("tc-in")), ids=S.tasks.slice(had).map(function(k){ return k.id; });
       save();
@@ -6576,6 +6730,7 @@ function GENA_MAIN() {
   // One row of the Items form; the Focus select starts on the person's usual Focus
   function captureItemHtml(p){
     return '<div class="tc-line"><input class="tc-title" placeholder="What to do" aria-label="Item"/><button type="button" class="task-x" style="opacity:1" data-tcx aria-label="Remove this item">✕</button></div>'+
+      '<textarea class="tc-subs" rows="2" placeholder="Subtasks, one per line (optional)" aria-label="Subtasks, one per line"></textarea>'+   // his log 1a
       '<div class="tc-grid"><label>Day (blank: Backlog)<input type="date" class="tc-day" aria-label="Day (blank: Backlog)"/></label>'+
       '<label>Due<input type="date" class="tc-due" aria-label="Due"/></label>'+
       '<label>Show in To-do<span class="tc-sbw"><input type="number" min="0" max="60" class="tc-sb" placeholder="off" aria-label="Days before due"/> days before due</span></label>'+
@@ -6593,6 +6748,7 @@ function GENA_MAIN() {
     (items||[]).forEach(function(it){ var title=String(it.title||"").trim(); if(!title) return;
       var k=mk({title:title, projectId:(it.focusId&&proj(it.focusId))?it.focusId:null, day:it.day||null, block:null, at:null, priority:false});
       if(it.due) k.due=it.due;
+      var sl=String(it.subs||"").split(/\n/).map(function(l){ return l.trim(); }).filter(Boolean); if(sl.length) k.subs=sl.map(function(l){ return {id:uid(),text:l,done:false}; });   // his log 1a
       var sb=String(it.sb==null?"":it.sb).trim(); if(it.due&&sb!==""&&+sb>=0) k.showBefore=Math.floor(+sb);
       if(it.sp){ k.startPriority=true; if(k.day) addToPriority(k.day,null,[k]); } });
     String(lines||"").split(/\n/).map(function(l){ return l.trim(); }).filter(Boolean).forEach(function(line){
@@ -6642,16 +6798,66 @@ function GENA_MAIN() {
   // touch is logged that day; its ◎ is on and takes it out, and it drags like the other Priority rows)
   // V6.7.1 (his log: rows in a Domain and Focus "are not colored and refuse to be"): the row takes the person's usual Focus's shade, as a
   // task in that Focus does; it never read one, so a follow-up was always uncoloured
+  /* V6.8 his log 1b, 3: a follow-up has subtasks (`fuSubs`, [{id,text,done}], the shape of a task's) and an optional time (`fuAt`
+     HH:MM, `fuDur` minutes; never `nextAt`, which is a Waiting task's date). Absent on an old person: the row is as it was. Its ⤷+
+     opens the same inline editor shape as a task's (subtasks, the next day, time, length); one row a draw holds it */
+  var fuEdit=null, fuShown=false;
+  function fuEditHere(p){ if(!fuEdit||fuEdit.pid!==p.id||fuShown) return false; if(curList&&fuEdit.list&&curList!==fuEdit.list) return false; fuShown=true; return true; }
+  function fuSubRowsHtml(p){ var subs=p.fuSubs||[], key="fu:"+p.id; if(!subs.length||subsCollapsed(key)) return "";
+    return '<ul class="subs">'+subs.map(function(sb){ return '<li class="sub '+(sb.done?"done":"")+'"><button class="chk '+(sb.done?"done":"")+'" data-act="fusub-toggle" data-sid="'+esc(sb.id)+'" aria-label="Toggle subtask" aria-pressed="'+!!sb.done+'"></button><span class="sub-t">'+esc(sb.text)+'</span></li>'; }).join("")+'</ul>'; }
+  function durSelectHtml(id,dur){ var v=dur?String(dur):""; return '<select id="'+id+'" aria-label="How long">'+DUR_OPTS.map(function(o){ return '<option value="'+o[0]+'"'+(v===o[0]?" selected":"")+'>'+o[1]+'</option>'; }).join("")+'</select>'; }
+  function fuIeSubRow(sb){ return '<div class="ie-sub fu-ie-sub" data-sid="'+esc(sb.id)+'"><input type="checkbox" class="fu-ie-done"'+(sb.done?" checked":"")+' aria-label="Done"/>'+
+    '<input class="fu-ie-text" value="'+esc(sb.text)+'" aria-label="Subtask"/><button type="button" class="task-x" style="opacity:1" data-act="fu-ie-subrm" aria-label="Remove subtask">✕</button></div>'; }
+  function fuEditorLi(p){ var d=fuEdit;
+    return '<li class="task ie-row fu-ie" data-pid="'+esc(p.id)+'" data-editing="1"><div class="ie-wrap"><div class="ie-main">'+
+      '<div class="ie-title fu-ie-title">Follow up with '+esc(p.name)+'</div>'+
+      '<div class="ie-lbl">Subtasks</div><div id="fu-ie-subs">'+d.subs.map(fuIeSubRow).join("")+'</div>'+
+      '<input class="ie-subnew" id="fu-ie-subnew" placeholder="Add a subtask — press Enter" aria-label="Add a subtask"/></div>'+
+      '<div class="ie-side"><div class="ie-lbl">Next follow-up</div><input type="date" id="fu-ie-day" value="'+esc(d.next||"")+'" aria-label="Next follow-up"/>'+
+      '<div class="ie-lbl">Time <span class="ie-hint">(on Plan’s time grid; never sent to Mac Calendar)</span></div>'+timeInputHtml("fu-ie-at",d.at)+
+      '<div class="ie-lbl">Length</div>'+durSelectHtml("fu-ie-dur",d.dur)+'</div></div>'+
+      '<div class="ie-acts"><button class="btn ghost" data-act="fu-ie-cancel">Cancel</button><button class="btn primary" data-act="fu-ie-save">Save</button></div></li>'; }
+  function fuEditOpen(p,list){ fuEdit={pid:p.id, list:list||null, subs:JSON.parse(JSON.stringify(p.fuSubs||[])), next:p.next||"", at:p.fuAt||null, dur:p.fuDur?String(p.fuDur):""}; editingTaskId=null; }
+  // what the open editor holds now (a draw in between keeps it)
+  function fuDraftRead(){ var row=document.querySelector("li.fu-ie[data-editing]"); if(!row||!fuEdit) return fuEdit;
+    fuEdit.subs=[].map.call(row.querySelectorAll(".fu-ie-sub"),function(r){ return {id:r.dataset.sid, text:r.querySelector(".fu-ie-text").value, done:!!r.querySelector(".fu-ie-done").checked}; });
+    var g=function(id){ return document.getElementById(id)||{}; }, at=String(g("fu-ie-at").value||"").trim();
+    fuEdit.next=g("fu-ie-day").value||""; fuEdit.at=at?(parseLooseTime(at)||fuEdit.at):null; fuEdit.dur=g("fu-ie-dur").value||""; return fuEdit; }
+  // Save writes the draft onto the person; empty subtasks drop out; a field left empty is removed, so nothing new is stored by default
+  function fuApply(p,d){
+    var subs=(d.subs||[]).map(function(sb){ var o=Object.assign({},sb); o.id=sb.id||uid(); o.text=String(sb.text||"").trim(); o.done=!!sb.done; return o; }).filter(function(sb){ return sb.text; });
+    if(subs.length) p.fuSubs=subs; else delete p.fuSubs;
+    var nx=d.next||null; if(nx!==(p.next||null)){ p.next=nx; p.prepFor=null; }
+    if(d.at){ p.fuAt=d.at; if(+d.dur>0) p.fuDur=+d.dur; else delete p.fuDur; } else { delete p.fuAt; delete p.fuDur; } }
+  /* Logging the touch (the follow-up is done): ticked subtasks go into that touch's record, a dated line in the person's notes
+     ("Oct 27: ✓ Ask about the move · ✓ Send the photos"); open ones stay for the next follow-up. Returns what Undo puts back */
+  function fuSubsTouch(p){ var was={subs:p.fuSubs, n0:p.notes, added:""}, subs=p.fuSubs||[]; if(!subs.length) return null;
+    var dn=subs.filter(function(sb){ return sb.done; }), op=subs.filter(function(sb){ return !sb.done; });
+    if(dn.length){ was.added=personNoteEntry(dn.map(function(sb){ return "✓ "+sb.text; }).join(" · ")); p.notes=was.added+(p.notes||""); }
+    if(op.length) p.fuSubs=op; else delete p.fuSubs;
+    return was; }
+  // V6.8 review: Undo takes out only the line the touch wrote, so a note added since (a sync, the capture window) stays; no subtasks, nothing to undo
+  function fuSubsUndo(p,was){ if(!was) return; if(was.subs) p.fuSubs=was.subs; else delete p.fuSubs;
+    var nt=String(p.notes||""), i=was.added?nt.indexOf(was.added):-1; if(i<0) return;
+    nt=nt.slice(0,i)+nt.slice(i+was.added.length); if(nt===String(was.n0||"")&&was.n0===undefined) delete p.notes; else p.notes=nt===String(was.n0||"")?was.n0:nt; }
+  function fuEditWire(){ var n=document.getElementById("fu-ie-subnew"); if(!n||n.__fu) return; n.__fu=1;
+    n.onkeydown=function(e){ if(e.key==="Enter"&&!e.isComposing){ e.preventDefault(); var v=n.value.trim(); if(!v) return; fuDraftRead(); fuEdit.subs.push({id:uid(),text:v,done:false}); render();
+        var m=document.getElementById("fu-ie-subnew"); if(m) m.focus(); }
+      else if(e.key==="Escape"){ e.preventDefault(); fuEdit=null; render(); } }; }
   function followupRowHtml(p,day,inReview,f){
-    var t=today(), late=p.next&&p.next<t?diffDays(t,p.next):0, done=!!(f&&p.last===day), on=f?true:inFocusPerson(p.id), fp=p.focusId?proj(p.focusId):null;
+    if(!inReview&&fuEditHere(p)) return fuEditorLi(p);
+    // round 2 (his note 6): the band is the usual Focus's and the person's own colour, split (twoHue); either alone when there is one
+    var t=today(), late=p.next&&p.next<t?diffDays(t,p.next):0, done=!!(f&&p.last===day), on=f?true:inFocusPerson(p.id), fp=twoHue(p.focusId?proj(p.focusId):null,p), fsub=p.fuSubs||[];
     return '<li class="task fu-row'+(done?" done":"")+(fp?" pc"+pk(fp):"")+'" data-pid="'+esc(p.id)+'"'+(f?' data-id="'+esc(f.id)+'" data-focus="1" draggable="true"':'')+(fp?' style="'+pcVars(fp)+'"':'')+'>'+
       '<button class="chk'+(done?" done":"")+'" data-act="fu-done" aria-label="Logged a touch with '+esc(p.name)+'" aria-pressed="'+done+'"></button>'+
-      '<div class="task-main" data-act="editperson" data-id="'+esc(p.id)+'" title="Open '+esc(p.name)+'"><div class="task-title">Follow up with '+esc(p.name)+'</div>'+
+      '<div class="task-main" data-act="editperson" data-id="'+esc(p.id)+'" title="Open '+esc(p.name)+'"><div class="task-title">'+subsCaret("fu:"+p.id,fsub.length)+'Follow up with '+esc(p.name)+'</div>'+
       '<div class="task-meta"><span class="pill imp">👤 '+esc(p.relationship||"person")+'</span>'+
+        (p.fuAt?'<span class="pill block">🕒 '+fmtTime(p.fuAt)+'</span>':'')+
         (late?'<span class="pill aged'+(late>=7?" hot":"")+'">'+late+'d overdue</span>':'')+
         (p.cadence?'<span class="pill rec">↻ every '+p.cadence+'d</span>':'')+
-        (p.last?'<span class="pill block">last '+esc(niceDate(p.last))+'</span>':'')+personOpenPill(p)+'</div></div>'+
+        (p.last?'<span class="pill block">last '+esc(niceDate(p.last))+'</span>':'')+personOpenPill(p)+(fsub.length?subsPill("fu:"+p.id,fsub):'')+'</div>'+(inReview?'':fuSubRowsHtml(p))+'</div>'+
       (inReview?'<button class="chip" data-act="fu-snooze" title="Push it a week">+7d</button>':
+      rowBtn("task-addsub","fu-edit","⤷+","Subtasks and time")+
       rowBtn("task-bump","fu-snooze","+7d","Push it a week")+
       rowBtn("task-bump rb-more","fu-pick","📅","Pick the next follow-up day")+
       '<span class="row-br"></span>'+
@@ -6690,9 +6896,25 @@ function GENA_MAIN() {
   function habitProgress(h,day){ var per=habitPer(h); if(per==="day") return habitLog(day,h.id);
     var m=ixOk()?(IX.prog||(IX.prog={})):null, k=h.id+"|"+day;
     if(m&&(k in m)) return m[k];
-    var v=periodDays(per,day).reduce(function(a,d){ return a+habitLog(d,h.id); },0);
+    var once=habitOnce(h), v=periodDays(per,day).reduce(function(a,d){ return a+(once?(habitDayCounts(h,d)?1:0):habitLog(d,h.id)); },0);
     if(m) m[k]=v; return v; }
   function habitMet(h,day){ return habitProgress(h,day)>=habitGoal(h); }
+  /* V6.8 his log 7 (his "sure" to all): a habit takes the task editor's options, every field optional (none set: today's habit).
+     `weekdays` [0-6] chosen days; `every` N with `everyUnit` "day" or "week" from `start`; `start` the first day; `at` + `dur` a
+     time on Plan's grid; `block` Morning/Afternoon/Evening; `once` (a week or month habit): each day counts at most once toward the
+     goal, so "12K Steps on 5 of 7 days" is goal 5 with `dayMin` 12000 (a day counts when it reaches it; none: any amount) */
+  function habitRuled(h){ return !!(h&&(h.start||(Array.isArray(h.weekdays)&&h.weekdays.length)||(+h.every>1))); }
+  function habitOnDay(h,day){
+    if(!habitRuled(h)) return true;
+    if(h.start&&day<h.start) return false;
+    var wd=Array.isArray(h.weekdays)&&h.weekdays.length?h.weekdays:null, n=Math.floor(+h.every)||0, a=h.start;
+    if(n>1&&a){ if(h.everyUnit==="week"){ if(Math.floor(diffDays(periodStart("week",day),periodStart("week",a))/7)%n) return false; if(!wd) return dow(day)===dow(a); }
+      else return diffDays(day,a)%n===0; }
+    return !wd||wd.indexOf(dow(day))>=0; }
+  function habitOnce(h){ return !!(h&&h.once&&habitPer(h)!=="day"); }
+  function habitDayMin(h){ var m=+(h&&h.dayMin); return m>0?m:0; }
+  function habitDayCounts(h,day){ var v=habitLog(day,h.id), m=habitDayMin(h); return m?v>=m:v>0; }
+  function habitStep(h){ return habitOnce(h)?1:habitBox(h); }   // one circle: a box of the amount, or a day for a once-a-day habit
   function habitSkipped(h,day){ return !!(h&&h.skips&&h.skips[day]) && !(habitLog(day,h.id)>0); }
   // "done" moves a row to the done strip: day habits only. A week or month habit that met its goal stays
   // in place, dimmed, "✓ achieved" (U3), so it is never done here; habitMet drives that label.
@@ -6728,7 +6950,7 @@ function GENA_MAIN() {
   function habitTick(hid,day){
     var h=habitById(hid); if(!h) return;
     if(habitSkipped(h,day)) habitUnskip(h,day);
-    else setHabitLog(day,hid, habitLog(day,hid)+habitBox(h));
+    else setHabitLog(day,hid, habitOnce(h)&&!habitDayCounts(h,day)&&habitDayMin(h)?Math.max(habitLog(day,hid)+habitBox(h),habitDayMin(h)):habitLog(day,hid)+habitBox(h));
     save(); render();
   }
   function habitRemoveOne(hid,day){
@@ -6758,13 +6980,14 @@ function GENA_MAIN() {
      amount habit in bar form gets a typed entry that sets the day's total (`entry`). */
   var HABIT_MAX_DOTS=12;
   function habitUnitsHtml(h,day,entry){
-    var goal=habitGoal(h), box=habitBox(h), units=Math.ceil(goal/box), prog=habitProgress(h,day);
+    var goal=habitGoal(h), box=habitStep(h), units=Math.ceil(goal/box), prog=habitProgress(h,day);
     var filled=Math.floor(prog/box+1e-9), hid=esc(h.id), unit=h.unit?" "+esc(h.unit):"", out="";
     if(units<=HABIT_MAX_DOTS){
       for(var i=1;i<=units;i++) out+='<button class="dot'+(i<=filled?" on":"")+'" data-act="habit-unit" data-u="'+i+'" aria-label="'+esc(h.name)+' '+i+' of '+units+'" aria-pressed="'+(i<=filled)+'"></button>';
       var ex=filled-units;
       for(var j=1;j<=Math.min(ex,HABIT_MAX_DOTS);j++) out+='<button class="dot extra" data-act="habit-unit" data-u="'+(units+j)+'" aria-label="'+esc(h.name)+' extra '+j+'" title="Past the goal">✦</button>';
       if(ex>HABIT_MAX_DOTS) out+='<span class="hx">✦ ×'+ex+'</span>';
+      if(entry&&h.unit&&habitOnce(h)) out+='<input class="habit-amt" type="number" min="0" inputmode="numeric" data-hid="'+hid+'" value="'+(habitLog(day,h.id)||"")+'" placeholder="today" aria-label="'+esc(h.name)+' today"/>';   // his log 7: the day's amount
       return out;
     }
     var pct=Math.min(100,Math.round(100*prog/goal)), left=goal-prog;
@@ -6777,6 +7000,10 @@ function GENA_MAIN() {
   function fmtNum(n){ n=Math.round(n*100)/100; return Math.abs(n)>=1000?n.toLocaleString("en-US"):String(n); }
   function habitUnitTap(hid,day,i){
     var h=habitById(hid); if(!h) return;
+    if(habitOnce(h)){ var dn=Math.floor(habitProgress(h,day)+1e-9), mn=habitDayCounts(h,day)?1:0;   // his log 7: a circle is a day
+      if(i>dn){ if(mn){ toast("Today already counts (once a day)"); return; } if(habitSkipped(h,day)) habitUnskip(h,day); setHabitLog(day,hid,Math.max(habitLog(day,hid)+habitBox(h),habitDayMin(h))); save(); render(); return; }
+      if(mn&&i>dn-1){ setHabitLog(day,hid,0); save(); render(); return; }
+      toast("Logged on an earlier day: open that day to change it"); return; }
     var box=habitBox(h), filled=Math.floor(habitProgress(h,day)/box+1e-9), mine=Math.min(filled,Math.ceil(habitLog(day,hid)/box-1e-9));
     if(i>filled){ if(habitSkipped(h,day)) habitUnskip(h,day); setHabitLog(day,hid,habitLog(day,hid)+box); save(); render(); return; }
     if(i>filled-mine){ habitRemoveOne(hid,day); return; }
@@ -6792,11 +7019,19 @@ function GENA_MAIN() {
   }
   function inFocusHabit(hid){ return (S.focus[viewDay]||[]).some(function(f){return f.habitId===hid;}); }
   function habitPerLabel(h){ var per=habitPer(h), g=fmtNum(habitGoal(h)), u=h.unit?" "+h.unit:"";
+    if(habitOnce(h)) return (habitDayMin(h)?fmtNum(habitDayMin(h))+u+" on ":"")+g+" day"+(habitGoal(h)===1?"":"s")+" a "+per;   // his log 7
     return per==="day"?((habitGoal(h)>1||h.unit)?g+u+" a day":"habit"):g+u+" a "+per; }
+  // his log 7: the rule in a few words, for the row ("Mon, Wed, Fri", "every 2 weeks", "from Nov 3")
+  function habitRuleLabel(h){ if(!habitRuled(h)) return ""; var n=Math.floor(+h.every)||0, wd=Array.isArray(h.weekdays)&&h.weekdays.length?h.weekdays.slice().sort(function(a,b){ return ((a+6)%7)-((b+6)%7); }):null, out=[];
+    if(n>1) out.push("every "+n+" "+(h.everyUnit==="week"?"weeks":"days"));
+    if(wd&&wd.length<7&&!(n>1&&h.everyUnit!=="week")) out.push(wd.map(function(d){ return DOWNAMES[d]; }).join(", "));
+    if(h.start&&h.start>today()) out.push("from "+niceDate(h.start));
+    return out.join(" · "); }
   // The meta line both habit rows share: period, circles or bar, ✓ achieved, ⏭ skipped, streak
   function habitMetaHtml(h,day){
-    var per=habitPer(h), st=habitStreak(h.id), units=Math.ceil(habitGoal(h)/habitBox(h)), prog=habitProgress(h,day);
-    var m='<span class="pill rec">🌱 '+esc(habitPerLabel(h))+'</span>';
+    var per=habitPer(h), st=habitStreak(h.id), units=Math.ceil(habitGoal(h)/habitStep(h)), prog=habitProgress(h,day), rl=habitRuleLabel(h);
+    var m='<span class="pill rec">🌱 '+esc(habitPerLabel(h))+'</span>'+(rl?'<span class="pill rec">↻ '+esc(rl)+'</span>':'')+
+      (h.at?'<span class="pill block">🕒 '+fmtTime(h.at)+'</span>':'')+(h.block?'<span class="pill block">'+h.block+'</span>':'');   // his log 7
     if(habitSkipped(h,day)) return m+'<span class="pill block">⏭ skipped today</span>';
     if(per!=="day"&&prog>=habitGoal(h)) m+='<span class="pill good">✓ achieved this '+per+'</span>';
     if(units>1||prog>0) m+='<span class="dots" data-hid="'+esc(h.id)+'">'+habitUnitsHtml(h,day,true)+'</span>';
@@ -6996,7 +7231,7 @@ function GENA_MAIN() {
     var m=IX.streak||(IX.streak={}); return (hid in m)?m[hid]:(m[hid]=habitStreakWalk(h));
   }
   function habitStreakWalk(h){
-    var per=habitPer(h), goal=habitGoal(h), t=today(), log=S.habitLog, id=h.id, sk=h.skips||{}, cut=addDays(t,-400);
+    var per=habitPer(h), goal=habitGoal(h), t=today(), log=S.habitLog, id=h.id, sk=h.skips||{}, cut=addDays(t,-400), once=habitOnce(h), dmin=habitDayMin(h), ruled=habitRuled(h);
     var pStart=periodStart(per,t), pDays=periodDays(per,t), d=parse(pDays[pDays.length-1]);
     var s=0, idx=0, sum=0, neutral=true;
     for(;;){
@@ -7006,8 +7241,8 @@ function GENA_MAIN() {
         idx++; if(day<cut) return s;
         pStart=per==="day"?day:periodStart(per,day); sum=0; neutral=true;
       }
-      var v=+((log[day]||{})[id])||0; if(v>0) sum+=v;
-      if(neutral&&!(day>t||(sk[day]&&!(v>0))||isPaused(h,day))) neutral=false;
+      var v=+((log[day]||{})[id])||0; if(v>0) sum+=once?(dmin?(v>=dmin?1:0):1):v;
+      if(neutral&&!(day>t||(sk[day]&&!(v>0))||isPaused(h,day)||(ruled&&per==="day"&&!habitOnDay(h,day)))) neutral=false;   // his log 7: a day off its rule neither counts nor breaks
       d.setDate(d.getDate()-1);
     }
   }
@@ -7839,7 +8074,7 @@ function GENA_MAIN() {
     // Re-render unconditionally here, or the stale select would revert the project on the next save.
     if(reopenEditorFor){ var _r=reopenEditorFor; reopenEditorFor=null; editingTaskId=_r; render(); return; }
     // ---- inline task editor wiring (Phase 8) ----
-    var ieRow=v.querySelector("li.ie-row[data-editing]");
+    var ieRow=v.querySelector("li.ie-row[data-editing]:not(.fu-ie)");   // his log 1b: a follow-up's editor has its own wiring
     if(!ieRow) ieKeep=null;   // kept only while the editor stays on screen: one reopened later starts from S (review R1)
     if(ieRow){
       var ieId=ieRow.dataset.id, ieCarried=!!ieKeep&&ieKeep.id===ieId;
@@ -8251,7 +8486,8 @@ function GENA_MAIN() {
       else if(act==="gfold"){ var gw=a.closest(".gwrap"); if(gw){ var gs=!gw.classList.contains("closed"); gw.classList.toggle("closed",gs); a.setAttribute("aria-expanded",String(!gs)); uiSetFold(a.dataset.g,gs); } renderAnchor=null; }
       else if(act==="edit"){ var tk=S.tasks.find(function(x){return x.id===(id||anyId);});
         if(!tk){}
-        else if(a.closest("#rightbar")||a.closest(".proj-card")||a.closest(".rep-card")||a.closest(".modal")||a.closest(".wk-land")||a.closest(".card.brief")||a.closest('[data-fold="comingdue"]')) openTaskModal({edit:tk});
+        // his log of Oct 27 (1a): a person card's rows edit in place, as on Today
+        else if(a.closest("#rightbar")||(a.closest(".proj-card")&&!a.closest(".person-card"))||a.closest(".rep-card")||a.closest(".modal")||a.closest(".wk-land")||a.closest(".card.brief")||a.closest('[data-fold="comingdue"]')) openTaskModal({edit:tk});
         else { ieList=ieListOf(a); editingTaskId=tk.id; render(); var ti=document.getElementById("ie-title"); if(ti){ ti.focus(); ti.setSelectionRange(ti.value.length,ti.value.length); } } }
       else if(act==="wiki"){ var wk=a.dataset.kind, wid=a.dataset.id;
         if(wk==="project"){ setUiScope(null); S.filterProjects=[wid]; view="projects"; save(); syncNav(); render(); }
@@ -8308,8 +8544,8 @@ function GENA_MAIN() {
       else if(act==="fu-pick"||act==="fu-clear"||act==="fu-pause"){ var fq=S.people.find(function(x){return x.id===(a.closest("[data-pid]")||{}).dataset.pid;});
         if(!fq){}
         else if(act==="fu-pause") openPauseModal("person",fq.id);
-        else if(act==="fu-pick"){ var fnx=rowNextId(a); openPickDayModal("Follow up with "+fq.name,fq.next,null,function(dv){ var fq2=S.people.find(function(x){return x.id===fq.id;}); if(!fq2) return;
-          kbNext=fnx; fq2.next=dv; save(); render(); undoToast("Follow-up moved to "+dayWord(dv)+"."); }); }
+        else if(act==="fu-pick"){ var fnx=rowNextId(a); openPickDayModal("Follow up with "+fq.name,fq.next,null,function(dv,fat){ var fq2=S.people.find(function(x){return x.id===fq.id;}); if(!fq2) return;
+          kbNext=fnx; fq2.next=dv; if(fat!==undefined){ if(fat) fq2.fuAt=fat; else { delete fq2.fuAt; delete fq2.fuDur; } } save(); render(); undoToast("Follow-up moved to "+dayWord(dv)+"."); },{at:fq.fuAt||null}); }
         else { rowNext(a); var fqb=fq.next; clearFollowup(fq); save(); render();
           toastUndo("Cleared. No touch logged"+(fq.next?", next "+niceDate(fq.next):"")+".",function(){ fq.next=fqb; save(); render(); }); } }
       else if(act==="review"){ openReviewModal(new Date().getHours()>=14?"evening":"morning", S.lastOpen); }
@@ -8322,9 +8558,20 @@ function GENA_MAIN() {
       else if(act==="focus-tasktoggle"){ toggleTask(a.dataset.tid, a.closest("li.task")); }
       else if(act==="todaygroup"){ S.todayGroup=a.dataset.g; save(); render(); }
       else if(act==="fu-done"){ var fp=S.people.find(function(x){return x.id===(a.closest("[data-pid]")||{}).dataset.pid;});
-        if(fp){ var fb={last:fp.last,next:fp.next}; retirePrep(fp); fp.last=today(); fp.next=fp.cadence?addDays(today(),fp.cadence):null; save(); render();
-          toastUndo("Logged a touch with "+fp.name+(fp.next?" — next "+niceDate(fp.next):""),function(){ fp.last=fb.last; fp.next=fb.next; save(); render(); });
+        if(fp){ var fb={last:fp.last,next:fp.next}, fsw=fuSubsTouch(fp); retirePrep(fp); fp.last=today(); fp.next=fp.cadence?addDays(today(),fp.cadence):null; save(); render();
+          toastUndo("Logged a touch with "+fp.name+(fp.next?" — next "+niceDate(fp.next):""),function(){ fp.last=fb.last; fp.next=fb.next; fuSubsUndo(fp,fsw); save(); render(); });
           openTouchCaptureModal(fp); } }
+      else if(act==="fu-edit"){ var fep=S.people.find(function(x){return x.id===(a.closest("[data-pid]")||{}).dataset.pid;}); if(fep){ fuEditOpen(fep,ieListOf(a)); render(); var fn0=document.getElementById("fu-ie-subnew"); if(fn0) fn0.focus(); } }   // his log 1b, 3
+      else if(act==="fu-ie-cancel"){ fuEdit=null; render(); }
+      else if(act==="fu-ie-subrm"){ var frm=a.closest(".fu-ie-sub"); if(frm) frm.remove(); fuDraftRead(); }
+      else if(act==="fu-ie-save"){ var fsv=fuEdit&&S.people.find(function(x){return x.id===fuEdit.pid;}); fuDraftRead();
+        if(fsv){ var fat=String((document.getElementById("fu-ie-at")||{}).value||"").trim(); fuEdit.at=fat?readTimeInput("fu-ie-at",fsv.fuAt):null; fuApply(fsv,fuEdit); }
+        fuEdit=null; save(); render(); if(fsv) toast("Saved"); }
+      else if(act==="fusub-toggle"){ var fst=S.people.find(function(x){return x.id===(a.closest("[data-pid]")||{}).dataset.pid;}), fss=fst&&(fst.fuSubs||[]).find(function(x){ return x.id===a.dataset.sid; });
+        if(fss){ fss.done=!fss.done; save(); render(); } }
+      else if(act==="notes-sw"){ uiSetFold("ui:notesoff",notesShown()); a.setAttribute("aria-checked",String(notesShown())); noteDecorate(); toast(notesShown()?"Note buttons on":"Note buttons hidden"); }   // his log 4
+      else if(act==="pin-page"){ var ppk=a.dataset.k||pageKeyOf(view), ppon=pagePinToggle(ppk); save(); render(); toast(ppon?"Pinned to the sidebar":"Unpinned"); }   // his log 5
+      else if(act==="fu-open"){ var fop=S.people.find(function(x){return x.id===a.dataset.pid;}); if(fop) openPersonModal(fop); }
       else if(act==="fu-item"||act==="person-item"){ var fip=S.people.find(function(x){return x.id===(act==="fu-item"?(a.closest("[data-pid]")||{}).dataset.pid:anyId);}); if(fip) openTouchCaptureModal(fip,{items:true}); }
       else if(act==="person-open"){ var pop=a.dataset.id; S.collapsed["person-"+pop]=false; goView("people");
         setTimeout(function(){ var c=document.querySelector('#view [data-fold="person-'+pop+'"]'); if(c&&c.scrollIntoView) c.scrollIntoView({block:"start",behavior:"smooth"}); },60); }
@@ -8530,6 +8777,7 @@ function GENA_MAIN() {
   }
   // the panel's folds remember themselves; its rows are replaced by every build, so this runs after each one
   function wireRightbar(){
+    noteDecorate("rightbar");   // V6.8 his log 4
     var rb=document.getElementById("rightbar"); if(!rb) return;
     rb.querySelectorAll("details.fold").forEach(function(d){ d.addEventListener("toggle",function(){
       if(d.dataset.uifold){ if(uiFolds()[d.dataset.uifold]!==(d.open?0:1)) uiSetFold(d.dataset.uifold,!d.open); return; }   // H4: this device's; a draw that changes nothing writes nothing
@@ -8632,7 +8880,7 @@ function GENA_MAIN() {
         ["habit-skip", "⏭", "Skip today"]]).concat([
       o.focusRow?["focus-del", "◎", "Remove from Priority"]:["habit-focus", "◎", o.inFocus?"Remove from Priority":"Add to Priority"], ["habit-pause", "💤", "Pause it"], ["edit", "✎", "Edit the habit"]]).filter(Boolean);
     // V6.1 (B6): the sheet carries the row's own buttons, in the row's order
-    if(kind==="followup") return [["fu-done", "✓", "Logged a touch"], ["fu-snooze", "+7", "Push it a week"], ["fu-pick", "📅", "Pick a day…"],
+    if(kind==="followup") return [["fu-done", "✓", "Logged a touch"], ["fu-edit", "⤷", "Subtasks and time"], ["fu-snooze", "+7", "Push it a week"], ["fu-pick", "📅", "Pick a day…"],
       o.focusRow?["focus-del", "◎", "Remove from Priority"]:["fu-focus", "◎", o.inFocus?"Remove from Priority":"Add to Priority"], ["fu-clear", "🧹", "Clear this one"], ["fu-item", "＋", "＋ Item"], ["fu-pause", "💤", "Pause "+k.name], ["edit", "👤", "Open "+k.name]];
     if(kind==="waiting") return (o.landed?[["wait-still", "⏸", "Still waiting"]]:[]).concat([["wait-live", "▶", "It’s live"]],
       o.landed?[["wait-letgo", "✕", "Let it go"]]:[], [["wait-week", "+7", "Check back a week later"], ["wait-pick", "📅", "Pick a day…"],
@@ -8718,17 +8966,19 @@ function GENA_MAIN() {
     if((m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s))) return nlYmd(+m[1],+m[2],+m[3]);
     return nlDate(s.replace(/^on /,""));
   }
-  function openPickDayModal(what,val,empty,fn){
+  // V6.8 his log 3: tm ({at}) adds an optional time; fn gets it as its second argument (null: cleared)
+  function openPickDayModal(what,val,empty,fn,tm){
     var t=today(), Q=[["Today",t],["Tomorrow",addDays(t,1)],["+7 days",addDays(t,7)],["Next Monday",nextDow(1)]].concat(empty?[["Someday",""]]:[]);
     modal('<h3>📅 Pick a day</h3><p class="sub">'+esc(what)+'</p>'+
       '<div class="fld"><label for="mv-t">Type a day</label><input id="mv-t" autocomplete="off" placeholder="tue, +3, next mon, oct 30" aria-describedby="mv-say"/>'+
         '<div class="sub pd-say" id="mv-say" aria-live="polite">&nbsp;</div></div>'+
       '<div class="chips pd-quick">'+Q.map(function(q){ return '<button type="button" class="chip" data-pd="'+q[1]+'">'+q[0]+'</button>'; }).join("")+'</div>'+
       '<div class="fld"><label>Or pick on the calendar'+(empty?' <span style="text-transform:none;letter-spacing:0;font-weight:600">('+esc(empty)+')</span>':'')+'</label><input id="mv-d" type="date" value="'+esc(val||t)+'"/></div>'+
+      (tm?'<div class="fld"><label>Time <span style="text-transform:none;letter-spacing:0;font-weight:600">(optional; on Plan’s time grid)</span></label>'+timeInputHtml("mv-at",tm.at)+'</div>':'')+
       '<div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" id="mv-ok">Move</button></div>');
     document.querySelector("[data-x]").onclick=close;
     var tx=document.getElementById("mv-t"), say=document.getElementById("mv-say");
-    function go(dv){ if(dv===null||(!dv&&!empty)) return; close(); fn(dv||null); }
+    function go(dv){ if(dv===null||(!dv&&!empty)) return; var at=tm?readTimeInput("mv-at",tm.at):undefined; close(); fn(dv||null,at); }
     function typed(){ return pickDayParse(tx.value,!!empty); }
     tx.oninput=function(){ var d=typed(); say.textContent=!tx.value.trim()?"\u00a0":(d===null?"Not a day I can read":(d?"→ "+niceDate(d):"→ Someday")); say.classList.toggle("bad",!!tx.value.trim()&&d===null); };
     tx.onkeydown=function(e){ if(e.key==="Enter"&&!e.isComposing){ e.preventDefault(); go(typed()); } };
@@ -8966,6 +9216,10 @@ function GENA_MAIN() {
      A + bubble ends the Domain row and the Focus row: it asks for a name (and emoji) in place and makes a Domain, or a Focus in the
      open Domain, with the editors' own creation code, then picks it. Arrows move along a row, Up and Down between rows. */
   var DFP_FOCUS="select#q-proj,select#ie-proj,select#m-proj,select#h-proj,select#ev-p,select#pe-foc,select.tc-foc,select#ef-foc,select.rv-proj,select#bp-proj", DFP_DOM="select#p-prof,select#ef-dom,select#pe-dom", DFP_EFF={"ie-proj":"ie-eff","m-proj":"m-eff"};
+  /* V6.8 round 2 (his note 5, "it automatically changes the things tied to it"): the quick-add's bubbles are drawn once and kept
+     across draws, and repainted only when the Focus list changed, so a Domain's new colour (or the other scheme) left them in the
+     old colours. Each draw repaints them; dfPaint writes only when the bubbles' HTML changed */
+  function dfRefresh(){ var q=document.getElementById("q-proj"); if(q&&q.__dfp) dfPaint(q); }
   function dfEnhance(root){ if(!root||!root.querySelectorAll) return; [].forEach.call(root.querySelectorAll(DFP_FOCUS+","+DFP_DOM),function(sel){ if(!sel.__dfp) dfAttach(sel,sel.matches(DFP_DOM)?"dom":"focus"); }); }
   var DFP_VALUE=typeof HTMLSelectElement!=="undefined"?Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,"value"):null;
   var DFP_INDEX=typeof HTMLSelectElement!=="undefined"?Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,"selectedIndex"):null;   // V6.11 finding 14: restoreUi sets this one
@@ -8993,16 +9247,31 @@ function GENA_MAIN() {
   function dfOpts(sel){ return [].map.call(sel.options,function(o){ return o.value; }); }
   function dfFocusDom(f){ return f&&f.profileId&&profileById(f.profileId)?f.profileId:""; }
   function dfName(x){ return x?(x.emoji?x.emoji+" ":"")+x.name:""; }
-  function dfB(attr,label,on,color,pat,cls,aria){ return '<button type="button" class="chip dfp-b'+(cls?" "+cls:"")+'" '+attr+' aria-pressed="'+!!on+'"'+(aria?' aria-label="'+esc(aria)+'"':'')+'>'+
-    (color?'<i class="dfp-dot" aria-hidden="true" style="background:'+esc(patBg(color,pat,0.5,"strip"))+'"></i>':'')+esc(label)+'</button>'; }
+  // a bubble's fill (Preview comment 1): its class and style for a colour (and pattern); null for none or a colour with no hex (the bubble stays neutral)
+  // round 2 (his note 4, "most of them would be best if the letters were white"): the text is always white; a colour too bright for
+  // white at 3:1 is drawn darker in its own hue (bubFill); the pattern round it keeps the colour as it is
+  function dfFill(color,pat){ var c=famHex(color); if(!c) return null; var p=patValid(pat);
+    return {cls:" dfp-fill"+(p?" dfp-pat":""), style:' style="'+esc("--bf:"+bubFill(c)+";--bi:#fff"+(p?";--bp:"+patBg(c,pat,0.5,"strip"):""))+'"'}; }
+  function dfB(attr,label,on,color,pat,cls,aria){ var f=color?dfFill(color,pat):null;
+    return '<button type="button" class="chip dfp-b'+(cls?" "+cls:"")+(f?f.cls:"")+'" '+attr+' aria-pressed="'+!!on+'"'+(aria?' aria-label="'+esc(aria)+'"':'')+(f?f.style:"")+'>'+esc(label)+'</button>'; }
   // the + bubble's place: a name (and an emoji) asked in place; Enter or Add makes it, Escape or ✕ puts the + back
   function dfAddHtml(what){ return '<span class="nb-add" data-noenter role="group" aria-label="'+esc(what)+'"><input class="nb-e" maxlength="4" placeholder="🙂" aria-label="'+esc(what)+': emoji"/>'+
     '<input class="nb-n" placeholder="'+esc(what)+'" aria-label="'+esc(what)+': name"/><button type="button" class="chip nb-ok">Add</button><button type="button" class="chip nb-x" aria-label="Cancel">✕</button></span>'; }
   // the rows for a select: kind, its option values, its value, the open Domain (null: none; "": No Domain), the Project select
   // ({opts, v}) where the form has one, the label, and which + is asking for a name ("dom", "fc" or null)
-  function dfHtml(kind,ov,v,dom,eff,label,add){
+  function dfHtml(kind,ov,v,dom,eff,label,add,only){
     var row=function(lab,inner,cls){ return '<div class="dfp-row'+(cls?" "+cls:"")+'" role="group" aria-label="'+esc(lab)+'">'+inner+'</div>'; },
       plus=function(k,what){ return add===k?dfAddHtml(what):dfB('data-add="'+k+'"',"+",false,null,null,"dfp-add",what); };
+    /* V6.8 his log 6a, 6b: a form whose Domain is chosen elsewhere (the person editor's Main Domain) offers only that Domain's Focuses,
+       each with its own emoji, and a "No focus" bubble that is the pick while none is chosen: no Domain bubble, so an empty Focus never
+       reads as the Domain's emoji */
+    /* round 2 (his note 3, "i should not see focus' that dont go into the domain"): nothing from another Domain, except an older
+       person's own Focus from one (kept as it was, V6.8 review), shown as the picked bubble until he picks a Domain */
+    if(kind==="focus"&&only&&profileById(only)){ var od=profileById(only), kf=proj(v), ku=kf&&dfFocusDom(kf)!==only?hueOf(kf):null;
+      return row("Focus in "+od.name,(ov.indexOf("")>=0?dfB('data-none="1"',"No focus",v==="",null,null,"dfp-none"):'')+
+        (ku?dfB('data-f="'+esc(kf.id)+'"',dfName(kf),true,ku.color,ku.pat,"dfp-keep"):'')+
+        ov.map(function(id){ return proj(id); }).filter(function(f){ return f&&dfFocusDom(f)===only; }).map(function(f){ var u=hueOf(f); return dfB('data-f="'+esc(f.id)+'"',dfName(f),v===f.id,u&&u.color,u&&u.pat); }).join("")+
+        plus("fc","New Focus in "+od.name),"dfp-fcs"); }
     if(kind==="dom") return row(label,(ov.indexOf("")>=0?dfB('data-none="1"',"None",v==="",null):'')+
       S.profiles.filter(function(d){ return ov.indexOf(d.id)>=0; }).map(function(d){ return dfB('data-d="'+esc(d.id)+'"',dfName(d),v===d.id,domBand(d.color),null,"dfp-dom"); }).join("")+plus("dom","New Domain"));
     var fcs=ov.map(function(id){ return proj(id); }).filter(Boolean), byDom={}, vf=proj(v), vd=vf?dfFocusDom(vf):null;
@@ -9034,9 +9303,10 @@ function GENA_MAIN() {
     bs.forEach(function(x){ x.tabIndex=x===on?0:-1; }); }); }
   function dfPaint(sel,want){ var st=sel.__dfp; if(!st) return; var v=sel.value, f=st.kind==="focus"&&proj(v);
     if(f&&v!==st.v) st.dom=dfFocusDom(f);   // a new pick (by a tap or by any code) opens its Domain; browsing another keeps it
+    if(st.only&&profileById(st.only)) st.dom=st.only;   // his log 6a: a Domain chosen elsewhere holds it open (its + makes a Focus there)
     st.v=v;
     var eff=DFP_EFF[sel.id]&&document.getElementById(DFP_EFF[sel.id]);
-    var html=dfHtml(st.kind,dfOpts(sel),v,st.dom,eff?{opts:dfOpts(eff),v:eff.value}:null,st.label,st.add);
+    var html=dfHtml(st.kind,dfOpts(sel),v,st.dom,eff?{opts:dfOpts(eff),v:eff.value}:null,st.label,st.add,st.only);
     if(html===st.html){ if(want){ var w0=st.box.querySelector(want); if(w0) w0.focus(); } return; }
     var a=document.activeElement, had=a&&st.box.contains(a), key=had&&a.tagName==="BUTTON"?dfKeyOf(a):null, typed=[].map.call(st.box.querySelectorAll(".nb-add input"),function(x){ return x.value; });
     st.box.innerHTML=html; st.html=html; dfRove(st.box);
@@ -9175,22 +9445,38 @@ function GENA_MAIN() {
      (--rowbg) laid over it as a gradient: opaque at the fill's left edge, 0.84 under titles, 0.7 at the icons. */
   var FADE_VEIL="linear-gradient(90deg, var(--rowbg), color-mix(in srgb, var(--rowbg) 84%, transparent) calc(100% - var(--fill-icons)), color-mix(in srgb, var(--rowbg) 70%, transparent) calc(100% - var(--fill-icons) + 12px))";
   var PAT_KEYS={}, patCssEl=null, patN=0;
+  function patRules(t){ if(!patCssEl){ patCssEl=document.createElement("style"); patCssEl.id="pat-css"; document.head.appendChild(patCssEl); }
+    patCssEl.appendChild(document.createTextNode(t)); }
   function pk(it,dflt){
-    it=hueOf(it); var q=patShown(it); if(!q) return "";
+    it=hueOf(it); if(it&&it.two) return pk2(it);
+    var q=patShown(it); if(!q) return "";
     var c=(it&&it.color)||dflt||"var(--p0)"; if(!/^[#\w(),.% -]+$/.test(c)) return "";   // a colour that could break out of a rule draws no pattern
     var sig=c+"|"+q.shape+"|"+(q.b||""), k=PAT_KEYS[sig];
     if(!k){ k=PAT_KEYS[sig]="pk-"+(++patN);
-      if(!patCssEl){ patCssEl=document.createElement("style"); patCssEl.id="pat-css"; document.head.appendChild(patCssEl); }
       var B=q.b||c;
-      patCssEl.appendChild(document.createTextNode(
+      patRules(
         "li.task.pc."+k+"::before,.person-card."+k+"::before,.tblock."+k+"::before,.cal-ev."+k+"::before{background:"+patBg(c,q,0.5,"strip")+"}\n"+
         "li.task.pc."+k+"::after{background:"+FADE_VEIL+", "+patBg(c,q,1,"fill",70)+"}\n"+
         ":root[data-rowfill=\"whole\"] li.task.pc."+k+"::after{background:"+patBg(c,q,1,"fill")+"}\n"+
         ":root[data-rowfill=\"wash\"] li.task.pc."+k+"::after{background:color-mix(in srgb, color-mix(in srgb, "+c+", "+B+") 13%, transparent)}\n"+
-        ".task-meta .pill.proj."+k+" .pdot{background:"+patBg(c,q,1,"dot")+"}\n"));
+        ".task-meta .pill.proj."+k+" .pdot{background:"+patBg(c,q,1,"dot")+"}\n");
     }
     return " pp "+k;
   }
+  /* V6.8 round 2: a row's two colours (twoHue): the band's top half the Focus's colour, its lower half the person's colour and pattern (a
+     split pattern, already two halves, shows its first colour there); the tint goes from the first colour to the second toward the
+     right, in each Row fill mode. One rule set a pair, keyed by both colours, so a changed colour is a new class on the next draw */
+  function pk2(it){ var a=it.color, b=it.two.color, q=patShown(it.two), ok=/^[#\w(),.% -]+$/;
+    if(!ok.test(a)||!ok.test(b)) return "";
+    var sig="2|"+a+"|"+b+"|"+(q?q.shape+"|"+(q.b||""):""), k=PAT_KEYS[sig];
+    if(!k){ k=PAT_KEYS[sig]="pk-"+(++patN);
+      patRules(
+        "li.task.pc."+k+"::before,.tblock."+k+"::before,.cal-ev."+k+"::before{background:linear-gradient("+a+","+a+") 0 0/100% 50% no-repeat, "+(q&&q.shape!=="split"?patBg(b,q,0.5,"strip"):b)+"}\n"+
+        "li.task.pc."+k+"::after{background:"+FADE_VEIL+", linear-gradient(90deg, "+a+" 30%, "+b+" 75%)}\n"+
+        ":root[data-rowfill=\"whole\"] li.task.pc."+k+"::after{background:linear-gradient(90deg, "+a+" 40%, "+b+" 85%)}\n"+
+        ":root[data-rowfill=\"wash\"] li.task.pc."+k+"::after{background:linear-gradient(90deg, color-mix(in srgb, "+a+" 13%, transparent) 40%, color-mix(in srgb, "+b+" 13%, transparent))}\n");
+    }
+    return " pp "+k; }
   // the item's pattern with its second colour made visible in a dark scheme (C5), or null
   function patShown(it){ var p=patValid(it&&it.pat); return p?{shape:p.shape, b:p.b?ensureVisible(p.b,darkScheme()?"dark":"light"):null}:null; }
   /* V3: a time block or calendar pill keeps colour A as its body with readable ink (cbg); a project with a
@@ -10036,6 +10322,35 @@ function GENA_MAIN() {
       var y=kind==="person"?S.people.find(function(p){ return p.id===id; }):(kind==="habit"?habitById(id):taskById(id)); if(!y){ close(); return; }   // R6: by id
       pauseItem(y,kind,u); save(); close(); kbNext=nx; render(); undoToast("Paused"+(u?" until "+niceDate(u):"")+". Resume it any time."); };
   }
+  /* V6.8 his log 7: the habit editor's "When" group, laid out like the task editor's repeat section: which days (every day, chosen
+     weekdays, every N days, every N weeks), from when, a time and length, a block, and Once a day for a week or month goal */
+  var HABIT_RULES=[["all","Every day"],["wd","Chosen days"],["nd","Every N days"],["nw","Every N weeks"]];
+  function habitRuleKind(h){ var n=Math.floor(+h.every)||0; return n>1?(h.everyUnit==="week"?"nw":"nd"):(Array.isArray(h.weekdays)&&h.weekdays.length?"wd":"all"); }
+  function habitWhenHtml(h){ var rk=habitRuleKind(h), wd=Array.isArray(h.weekdays)?h.weekdays:[], BL=[["","Anytime"],["morning","Morning"],["afternoon","Afternoon"],["evening","Evening"]];
+    return '<div class="fld h-when"><label>Which days</label><div class="chips" id="h-rule">'+HABIT_RULES.map(function(x){ return '<button type="button" class="chip" data-hr="'+x[0]+'" aria-pressed="'+(rk===x[0])+'">'+x[1]+'</button>'; }).join("")+'</div>'+
+      '<div class="cyc-row" id="h-every-row"'+(rk==="nd"||rk==="nw"?'':' hidden')+'><span>Every</span><input id="h-every" type="number" min="2" max="99" value="'+(Math.floor(+h.every)>1?Math.floor(+h.every):2)+'" aria-label="Every how many"/><span id="h-every-u">'+(rk==="nw"?"weeks":"days")+'</span></div>'+
+      '<div class="wd" id="h-wd"'+(rk==="wd"||rk==="nw"?'':' hidden')+'>'+[1,2,3,4,5,6,0].map(function(i){ return '<button type="button" data-w="'+i+'" aria-pressed="'+(wd.indexOf(i)>=0)+'" aria-label="'+DOWNAMES[i]+'">'+DOWNAMES[i][0]+'</button>'; }).join("")+'</div></div>'+
+      '<div class="row"><div class="fld"><label>Starts <span style="text-transform:none;letter-spacing:0;font-weight:600">(optional)</span></label><input id="h-start" type="date" value="'+esc(h.start||"")+'"/></div>'+
+      '<div class="fld"><label>Time</label>'+timeInputHtml("h-at",h.at)+'</div><div class="fld"><label>Length</label>'+durSelectHtml("h-dur",h.dur)+'</div></div>'+
+      '<div class="fld"><label>Block</label><div class="chips" id="h-block">'+BL.map(function(b){ return '<button type="button" class="chip" data-b="'+b[0]+'" aria-pressed="'+((h.block||"")===b[0])+'">'+b[1]+'</button>'; }).join("")+'</div></div>'+
+      '<div class="fld" id="h-once-f"'+(habitPer(h)==="day"?' hidden':'')+'><label class="check-row"><input type="checkbox" id="h-once"'+(h.once?" checked":"")+'/> Once a day <span class="sub" style="display:block;font-weight:400;text-transform:none;letter-spacing:0">Each day counts at most once toward the goal: 12K steps on 5 of 7 days is a goal of 5 days</span></label>'+
+        '<div class="cyc-row" id="h-daymin-row"'+(h.once?'':' hidden')+'><span>A day counts at</span><input id="h-daymin" type="number" min="0" step="any" value="'+(habitDayMin(h)||"")+'" placeholder="any amount" aria-label="A day counts when it reaches"/><span>'+esc(h.unit||"")+'</span></div></div>'; }
+  // what the When group says, as habit fields (null removes one, so a habit left on Every day, no time, stays as it was)
+  function habitWhenRead(per,today0){ var g=function(id){ return document.getElementById(id); }, rb=g("h-rule"), rk=((rb&&rb.querySelector('[aria-pressed="true"]'))||{dataset:{hr:"all"}}).dataset.hr;
+    var wd=[].filter.call((g("h-wd")||{children:[]}).children,function(b){ return b.getAttribute("aria-pressed")==="true"; }).map(function(b){ return +b.dataset.w; });
+    var n=Math.max(2,Math.floor(+((g("h-every")||{}).value)||2)), st=(g("h-start")||{}).value||null, at=readTimeInput("h-at",null), dur=+((g("h-dur")||{}).value)||0;
+    var blk=((g("h-block")&&g("h-block").querySelector('[aria-pressed="true"]'))||{dataset:{b:""}}).dataset.b||null, once=per!=="day"&&!!(g("h-once")||{}).checked, dm=+((g("h-daymin")||{}).value)||0;
+    var o={weekdays:(rk==="wd"||rk==="nw")&&wd.length?wd:null, every:rk==="nd"||rk==="nw"?n:null, everyUnit:rk==="nw"?"week":(rk==="nd"?"day":null), start:st,
+      at:at||null, dur:at&&dur?dur:null, block:blk, once:once||null, dayMin:once&&dm>0?dm:null};
+    if(o.every&&!o.start) o.start=today0;   // every N counts from a day: today unless he picked one
+    return o; }
+  function habitWhenWire(getPer){ var g=function(id){ return document.getElementById(id); }, rb=g("h-rule"); if(!rb) return;
+    rb.onclick=function(e){ var b=e.target.closest("[data-hr]"); if(!b) return; [].forEach.call(rb.children,function(c){ c.setAttribute("aria-pressed",c===b); });
+      var k=b.dataset.hr; g("h-every-row").hidden=!(k==="nd"||k==="nw"); g("h-wd").hidden=!(k==="wd"||k==="nw"); g("h-every-u").textContent=k==="nw"?"weeks":"days"; };
+    g("h-wd").onclick=function(e){ var b=e.target.closest("[data-w]"); if(b) b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true"); };
+    g("h-block").onclick=function(e){ var b=e.target.closest("[data-b]"); if(!b) return; [].forEach.call(g("h-block").children,function(c){ c.setAttribute("aria-pressed",c===b); }); };
+    g("h-once").onchange=function(){ g("h-daymin-row").hidden=!g("h-once").checked; };
+    return function(){ g("h-once-f").hidden=getPer()==="day"; }; }
   function openHabitModal(h){
     var editing=!!h; var base=h||{name:"",goal:1};
     var per=habitPer(base), PERS=[["day","Per day"],["week","Per week"],["month","Per month"]];
@@ -10048,6 +10363,7 @@ function GENA_MAIN() {
       '<div class="fld"><label>Unit</label><input id="h-unit" value="'+esc(base.unit||"")+'" placeholder="optional: oz, steps"/></div>'+
       '<div class="fld"><label>Each tap adds</label><input id="h-box" type="number" min="1" step="any" inputmode="decimal" value="'+habitBox(base)+'"/></div></div>'+
       '<div class="sub" style="font-size:11px;margin:-4px 0 10px">Up to 12 taps a period show as circles; a bigger goal shows a bar'+'. Steps: set Unit to steps and type the day’s total on the bar.</div>'+
+      habitWhenHtml(base)+
       '<div class="fld"><label>Focus</label><select id="h-proj"><option value="">None</option>'+projOpts+'</select></div>'+
       '<div class="fld"><label>Color <span style="text-transform:none;letter-spacing:0;font-weight:600">(optional — else the Focus’s)</span></label><div class="cp" id="h-sw"></div>'+
         '<button type="button" class="chip" id="h-sw-clear" style="margin-top:6px"'+(base.color?'':' hidden')+'>Use the Focus’s colour</button></div>'+
@@ -10064,8 +10380,9 @@ function GENA_MAIN() {
     var perBox=document.getElementById("h-per"), hint=document.getElementById("h-g-hint");
     function syncHint(){ hint.textContent=per==="day"?"Goal each day":(per==="week"?"Goal each week (Mon to Sun)":"Goal each month"); }
     syncHint();
+    var whenPer=habitWhenWire(function(){ return per; })||function(){};   // his log 7
     perBox.onclick=function(e){ var b=e.target.closest("[data-per]"); if(!b) return; per=b.dataset.per;
-      [].forEach.call(perBox.children,function(c){ c.setAttribute("aria-pressed",c===b); }); syncHint(); };
+      [].forEach.call(perBox.children,function(c){ c.setAttribute("aria-pressed",c===b); }); syncHint(); whenPer(); };
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("m-save").onclick=function(){ var n=document.getElementById("h-n").value.trim(); if(!n){toast("Name?");return;}
       var g=+document.getElementById("h-g").value; if(!(g>0)) g=1;
@@ -10075,6 +10392,7 @@ function GENA_MAIN() {
         projectId:document.getElementById("h-proj").value||null, note:document.getElementById("h-note").value.trim()||null,
         color:hColor||null, pat:hColor&&hPat?hPat:null,               // no own colour (or Solid): the fields go, nothing is written
         startPriority:!!(document.getElementById("h-sp")||{}).checked};   // P2: always explicit, so the P5 migration never touches it again
+      var when=habitWhenRead(per,today()); Object.keys(when).forEach(function(k){ data[k]=when[k]; });   // his log 7
       var tgt=editing?habitById(h.id):null;                      // the live habit: a merge may have replaced the object
       if(editing&&!tgt){ toast("That habit is no longer here"); close(); return; }
       if(!tgt){ tgt={id:uid()}; S.habits.push(tgt); }
@@ -11728,11 +12046,11 @@ function GENA_MAIN() {
       if(p.notes) html+='<div class="person-notes" style="font-size:13px;margin-top:8px">'+sanitizeRTE(p.notes)+'</div>';   // rich text (dated lines from F2), not escaped markup
       var wOn=S.tasks.filter(function(k){ return isWaiting(k) && k.waitPersonId===p.id; });
       if(wOn.length) html+='<div class="label" style="margin:12px 0 4px">⏸ Waiting on them</div><ul class="tasks">'+wOn.map(function(k){return waitingRow(k, !!(k.nextAt&&k.nextAt<=today()));}).join("")+'</ul>';
+      // V6.8 his log 1a: "it shows up on my today just like my task items so we need to treat it as such": the follow-up and the
+      // person's tasks draw with Today's rows (subtasks, caret, the inline editor)
+      if(p.next&&!pz){ curList="pfu:"+p.id; html+='<div class="label" style="margin:12px 0 4px">Follow-up</div><ul class="tasks" data-list="pfu:'+esc(p.id)+'">'+followupRowHtml(p,t)+'</ul>'; curList=null; }
       var rel=relatedTasks(p);
-      if(rel.length){ html+='<div class="label" style="margin:12px 0 4px">Related tasks</div><ul class="tasks">'+rel.slice(0,6).map(function(k){var kp=proj(k.projectId);
-        return '<li class="task" data-id="'+esc(k.id)+'"><button class="chk '+(k.status==="done"?"done":"")+'" data-act="toggle" aria-label="done" aria-pressed="'+(k.status==="done")+'"></button>'+
-          '<div class="task-main" data-act="edit"><div class="task-title" style="font-size:13.5px">'+esc(k.title)+'</div><div class="task-meta"><span class="pill block">'+(k.day?niceDate(k.day):"someday")+'</span>'+(kp?'<span class="pill proj" style="'+cbg(hueOf(kp).color)+'">'+esc(kp.name)+'</span>':"")+'</div></div></li>';
-      }).join("")+'</ul>'; }
+      if(rel.length){ curList="person:"+p.id; html+='<div class="label" style="margin:12px 0 4px">Related tasks</div><ul class="tasks" data-list="person:'+esc(p.id)+'">'+rel.slice(0,6).map(taskLi).join("")+'</ul>'; curList=null; }
       html+='<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="chip" data-act="editperson" data-id="'+esc(p.id)+'">edit</button>'+
         '<button class="chip" data-act="logtouch" data-id="'+esc(p.id)+'">✓ Logged a touch</button>'+
         '<button class="chip" data-act="person-task" data-id="'+esc(p.id)+'">+ task</button>'+
@@ -11746,6 +12064,21 @@ function GENA_MAIN() {
     if(!people.length) html+='<div class="card empty" style="padding:34px">'+(scopeActive()&&S.people.length?esHtml("Nobody in "+esc(scopeLabel())+".","",[["clearscope","Show all"]]):esHtml("No people yet.","Add someone you want to stay in touch with: a recruiter, a mentor, a friend. Gena reminds you to follow up.",[["newperson","+ Add a person"]]))+'</div>';
     return html;
   }
+  /* V6.8 his log 6a (the task editor's W38 bubbles): a Main Domain limits the usual Focus to that Domain's Focuses (a Focus from
+     another Domain is cleared); with no Domain, picking a Focus first fills its Domain. Both selects stay the source of truth.
+     Round 2 (his note 3, "if i click the domain first, then the rest ... disapear"): with no Main Domain, a Domain tapped in the
+     Focus picker is the Main Domain too, so the row then holds only its Focuses and + */
+  function personDomFocusWire(dom,foc){ if(!dom||!foc) return;
+    var lock=function(ev){ var d=dom.value&&profileById(dom.value)?dom.value:null, f=proj(foc.value);
+      // V6.8 review: opening keeps an older person's Focus from another Domain (an untouched Save must not clear it; dfHtml shows it picked); a Domain he picks clears it
+      if(d&&f&&dfFocusDom(f)!==d&&ev){ foc.value=""; foc.dispatchEvent(new Event("change",{bubbles:true})); f=null; }
+      if(foc.__dfp){ foc.__dfp.only=d; if(!d) foc.__dfp.dom=f?dfFocusDom(f):null; dfPaint(foc); } };
+    dom.addEventListener("change",lock);
+    foc.addEventListener("change",function(){ var f=proj(foc.value), fd=f?dfFocusDom(f):"";
+      if(fd&&!dom.value){ dom.value=fd; dom.dispatchEvent(new Event("change",{bubbles:true})); } });
+    if(foc.__dfp&&foc.__dfp.box) foc.__dfp.box.addEventListener("click",function(e){ var b=e.target.closest&&e.target.closest("button[data-d]"), d=b&&b.getAttribute("data-d"), f=proj(foc.value);
+      if(d&&profileById(d)&&!dom.value&&(!f||dfFocusDom(f)===d)){ dom.value=d; dom.dispatchEvent(new Event("change",{bubbles:true})); } });
+    lock(); }
   function openPersonModal(p){
     var editing=!!p; p=p||{name:"",relationship:"",company:"",cadence:"",last:"",next:"",notes:"",color:COLORS[S.people.length%COLORS.length]};
     modal('<h3>'+(editing?"Edit person":"Add person")+'</h3>'+
@@ -11759,9 +12092,11 @@ function GENA_MAIN() {
       '<div class="row"><div class="fld"><label>Prep task <span style="text-transform:none;letter-spacing:0;font-weight:600">(days before the next follow-up — 0 = none)</span></label><input id="pe-prep" type="number" min="0" max="30" value="'+(p.prepDays||"")+'" placeholder="e.g. 3"/></div></div>'+
       '<div class="row"><div class="fld"><label>Last contact</label><input id="pe-last" type="date" value="'+(p.last||"")+'"/></div>'+
       '<div class="fld"><label>Next follow-up</label><input id="pe-next" type="date" value="'+(p.next||"")+'"/></div></div>'+
+      '<div class="row"><div class="fld"><label>Time <span style="text-transform:none;letter-spacing:0;font-weight:600">(optional; on Plan’s grid, never Mac Calendar)</span></label>'+timeInputHtml("pe-fuat",p.fuAt)+'</div>'+   // his log 3
+        '<div class="fld"><label>Length</label>'+durSelectHtml("pe-fudur",p.fuDur)+'</div></div>'+
       '<div class="row"><div class="fld"><label>Usual Focus</label><select id="pe-foc"><option value="">None</option>'+focusSelectOpts(p.focusId)+'</select></div></div>'+
       '<div class="row"><div class="fld"><label>Main Domain</label><select id="pe-dom"><option value="">None</option>'+S.profiles.map(function(d){ return '<option value="'+esc(d.id)+'"'+(d.id===p.profileId?" selected":"")+'>'+esc((d.emoji?d.emoji+" ":"")+d.name)+'</option>'; }).join("")+'</select></div></div>'+
-      '<div class="fld"><label>Also in</label><div class="chips" id="pe-doms">'+S.profiles.map(function(d){ return '<button type="button" class="chip" data-dom="'+esc(d.id)+'" aria-pressed="'+((p.profileIds||[]).indexOf(d.id)>=0)+'">'+esc((d.emoji?d.emoji+" ":"")+d.name)+'</button>'; }).join("")+'</div></div>'+
+      '<div class="fld"><label>Also in</label><div class="chips" id="pe-doms">'+S.profiles.map(function(d){ var f=dfFill(domBand(d.color)); return '<button type="button" class="chip dfp-b dfp-dom'+(f?f.cls:"")+'" data-dom="'+esc(d.id)+'" aria-pressed="'+((p.profileIds||[]).indexOf(d.id)>=0)+'"'+(f?f.style:"")+'>'+esc((d.emoji?d.emoji+" ":"")+d.name)+'</button>'; }).join("")+'</div></div>'+
       '<div class="fld">'+colChipsHtml(p.cols)+'</div>'+
       '<div class="fld"><label class="check-row"><input type="checkbox" id="pe-sp"'+(p.startPriority?" checked":"")+'/> Start in Priority <span class="sub" style="display:block;font-weight:400;text-transform:none;letter-spacing:0">The day the follow-up is due, it starts in Priority</span></label></div>'+
       '<div class="fld"><label>Notes</label>'+richTextHtml(null,p.notes||"","How you know them, what to remember, what to ask next…",64,"pe-notes","rte-compact")+'</div>'+
@@ -11772,6 +12107,7 @@ function GENA_MAIN() {
     var extras=(p.profileIds||[]).slice(), peCols=wireColChips(p.cols), ped=document.getElementById("pe-doms");
     ped.onclick=function(e){ var b=e.target.closest("[data-dom]"); if(!b) return; var i=extras.indexOf(b.dataset.dom); if(i<0) extras.push(b.dataset.dom); else extras.splice(i,1); b.setAttribute("aria-pressed",i<0); };
     var cadPre=document.getElementById("pe-cad-preset"); if(cadPre) cadPre.onchange=function(){ if(cadPre.value) document.getElementById("pe-cad").value=cadPre.value; };
+    personDomFocusWire(document.getElementById("pe-dom"),document.getElementById("pe-foc"));   // his log 6a
     document.querySelector("[data-x]").onclick=close;
     document.getElementById("m-save").onclick=function(){ var name=document.getElementById("pe-name").value.trim(); if(!name){toast("Name?");return;}
       var data={name:name,emoji:(document.getElementById("pe-emoji")||{value:""}).value.trim(),relationship:document.getElementById("pe-rel").value.trim(),company:document.getElementById("pe-co").value.trim(),cadence:+document.getElementById("pe-cad").value||0,last:document.getElementById("pe-last").value,next:document.getElementById("pe-next").value,notes:rteValue("pe-notes"),color:color,
@@ -11785,7 +12121,9 @@ function GENA_MAIN() {
       if(patV) data.pat=patV;
       var peSp=!!(document.getElementById("pe-sp")||{}).checked, peSpWas=!!p.startPriority; if(peSp||p.startPriority!==undefined) data.startPriority=peSp;
       if(editing){ for(var k in data) p[k]=data[k]; if(!patV) delete p.pat; } else { data.id=uid(); S.people.push(data); }
-      var peNow=editing?p:data;   // P4: switched on with the follow-up due today, it joins today's Priority at once
+      var peNow=editing?p:data;
+      var peAt=readTimeInput("pe-fuat",p.fuAt), peDur=+((document.getElementById("pe-fudur")||{}).value)||0;   // his log 3: written only when set
+      if(peAt){ peNow.fuAt=peAt; if(peDur) peNow.fuDur=peDur; else delete peNow.fuDur; } else { delete peNow.fuAt; delete peNow.fuDur; }   // P4: switched on with the follow-up due today, it joins today's Priority at once
       if(peSp&&!peSpWas) addToPriority(today(),null,null,[peNow]);
       save(); close(); render(); };
     if(editing) document.getElementById("pe-del").onclick=function(){ confirmModal("Delete this person?","Their card and notes are removed.","Delete",function(){ S.people=S.people.filter(function(x){return x.id!==p.id;}); save(); render(); }); };
@@ -11859,6 +12197,7 @@ function GENA_MAIN() {
     // improve
     cards["hub-improve"]=fold("hub-improve","🛠 Learnings &amp; improvements",
       '<p class="sub" style="margin:0 0 8px;font-size:12px">What works, what annoys you. Copy the log into a chat with Claude when you want upgrades.</p>'+
+      '<div class="sb-secs imp-notes-sw"><button type="button" class="wd-sw" role="switch" aria-checked="'+notesShown()+'" data-act="notes-sw" aria-labelledby="imp-notes-l"></button><span id="imp-notes-l">Show note buttons <span class="sub">(💬 on every card; this device)</span></span></div>'+
       '<div class="capture" style="margin:0 0 12px"><select class="q" id="imp-type" style="flex:0 0 120px" aria-label="Type">'+Object.keys(IMP_META).map(function(k){return '<option value="'+k+'">'+IMP_META[k][0]+'</option>';}).join("")+'</select>'+
       '<input class="q" id="imp-in" placeholder="What happened, or what would be better?" aria-label="Note"/><button class="add" id="imp-add">Log</button></div>'+
       (function(){
@@ -11907,7 +12246,7 @@ function GENA_MAIN() {
     return '<div class="imp-item'+(st==="resolved"?" resolved":"")+'" data-id="'+esc(e.id)+'">'+
       (st==="open"?'<button class="chk" data-act="imp-resolve" aria-label="Mark resolved" aria-pressed="false" title="Mark resolved"></button>':'')+
       '<span class="imp-badge" style="background:'+m[1]+';color:'+m[2]+'">'+m[0]+'</span>'+
-      '<div style="flex:1"><div>'+(n?'<span class="imp-n">'+n+'</span>':'')+esc(e.text)+'</div>'+
+      '<div style="flex:1"><div>'+(n?'<span class="imp-n">'+n+'</span>':'')+(impSrcText(e)?'<span class="pill block imp-src" title="Written from this card">💬 '+esc(impSrcText(e))+'</span> ':'')+esc(e.text)+'</div>'+
       '<div class="sub" style="font-size:11px;margin-top:2px">'+meta+'</div>'+(acts?'<div class="imp-acts">'+acts+'</div>':'')+'</div>'+
       '<button class="task-x" data-act="imp-del" style="opacity:1" aria-label="delete">✕</button></div>';
   }
@@ -11978,7 +12317,9 @@ function GENA_MAIN() {
     save(); render(); toast("Flagged: "+parsed.subject.slice(0,40)); return true;
   }
   function addEmails(text){ text=(text||"").trim(); if(!text)return; text.split(/\n/).forEach(function(line){ line=line.trim(); if(!line)return; var parts=line.split(/\s[—–-]\s/); S.emails.unshift({id:uid(),subject:parts[0].trim(),sender:(parts[1]||"").trim(),done:false,created:today()}); }); save(); render(); toast("Flagged"); }
-  function addImprove(type,text){ text=(text||"").trim(); if(!text)return; S.improve.unshift({id:uid(),type:type||"idea",text:text,date:today(),build:APP_BUILD}); save(); render(); }
+  function addImprove(type,text,src){ text=(text||"").trim(); if(!text)return; var e={id:uid(),type:type||"idea",text:text,date:today(),build:APP_BUILD}; if(src) e.src=src; S.improve.unshift(e); save(); render(); }
+  // V6.8 his log 4: where a note was written from (`src`, {card, label, view, day}; absent on an older note, which reads as before)
+  function impSrcText(e){ var c=e&&e.src; if(!c||typeof c!=="object") return ""; return [c.view,c.label].filter(function(x){ return x&&typeof x==="string"; }).join(" › "); }
   // Only the open items travel, numbered — so a session never has to diff the whole log against the
   // roadmap again, and the numbers come back as "SHIPPED: 1,4" for one-tap bookkeeping.
   var IMP_COPY_END="End your reply with one line listing the numbers you actually shipped, like SHIPPED V5: 1,4,7. Shipped means built, not seen: I mark a note resolved only after I look.";
@@ -11986,7 +12327,7 @@ function GENA_MAIN() {
     var openL=S.improve.filter(function(e){return impStatus(e)==="open";});
     if(!openL.length){ toast("Nothing open — every note is shipped or resolved"); return; }
     S.impCopyIds=openL.map(function(e){return e.id;});
-    var lines=openL.map(function(e,i){return (i+1)+". ["+e.type+"] "+e.text+" ("+e.date+")";});
+    var lines=openL.map(function(e,i){ var w=impSrcText(e); return (i+1)+". ["+e.type+"] "+(w?"["+w+"] ":"")+e.text+" ("+e.date+")"; });   // his log 4: the card it came from
     var shippedN=S.improve.length-openL.length;
     copyText("Here is my Gena improvement log — only the items still open, numbered."+
       (shippedN?" ("+shippedN+" earlier items are shipped or resolved and left out.)":"")+
@@ -12514,7 +12855,7 @@ function GENA_MAIN() {
   function reviewMissedHabits(day){
     return S.habits.filter(function(h){
       if(!h.inDay||isPaused(h,day)||habitSkipped(h,day)||habitMet(h,day)) return false;
-      var per=habitPer(h); if(per==="day") return true;
+      var per=habitPer(h); if(per==="day") return habitOnDay(h,day);
       var pd=periodDays(per,day); return pd[pd.length-1]===day;
     });
   }
@@ -12782,8 +13123,8 @@ function GENA_MAIN() {
           save(); rebuild(); return; }
         var fua=e.target.closest('[data-act="fu-done"],[data-act="fu-snooze"]');
         if(fua){ var fpp=S.people.find(function(x){return x.id===(fua.closest("[data-pid]")||{}).dataset.pid;}); if(!fpp) return;
-          if(fua.dataset.act==="fu-done"){ var rvb={last:fpp.last,next:fpp.next}; retirePrep(fpp); fpp.last=t; fpp.next=fpp.cadence?addDays(t,fpp.cadence):null; save();
-            toastUndo("Logged a touch with "+fpp.name,function(){ fpp.last=rvb.last; fpp.next=rvb.next; save(); render(); });
+          if(fua.dataset.act==="fu-done"){ var rvb={last:fpp.last,next:fpp.next}, rvs=fuSubsTouch(fpp); retirePrep(fpp); fpp.last=t; fpp.next=fpp.cadence?addDays(t,fpp.cadence):null; save();
+            toastUndo("Logged a touch with "+fpp.name,function(){ fpp.last=rvb.last; fpp.next=rvb.next; fuSubsUndo(fpp,rvs); save(); render(); });
             openTouchCaptureModal(fpp,{after:function(){ openReviewModal(scope,fromDay); }}); return; }   // F1/F8: the capture window, then back to the review
           fpp.next=addDays(t,7); save(); rebuild(); return; }
         var rh=e.target.closest("[data-rvh]");
@@ -13599,19 +13940,31 @@ function GENA_MAIN() {
   function typeKeyOpens(k){ return typeof k==="string"&&k.length===1&&/\S/.test(k); }
   /* V6.7 P6: ⌘-click (Ctrl-click) adds a row to the selection, shift-click selects the range from the last one; while selecting a
      plain click toggles. Today, Backlog, Lists and Week ahead; Esc or another view ends it. Captured before the row's own action. */
+  // V6.8 his log 2: a block on Plan's time grid selects like a row (its task); hit and click are named so the harness clicks them
+  /* V6.8 round 2 (his note 2, "it shouldnt just be in priority it should be app wide"): every task row, block and lane chip, in the
+     view and in the side panel (the click listened on the view only, so the panel's Backlog never selected); People's cards; Plan
+     Week's lane chips. A ⌘-click on a row with no task (habit, follow-up, free-text Priority entry) does nothing else and says why
+     once a session: on his Today, six of seven Priority rows were habits and follow-ups, so ⌘-click looked broken */
+  var BULK_SEL=ROWSEL+", "+BULK_MORE, bulkSaid=false, bulkPanel=false;
+  // the side panel's rows select beside any view (a selection begun there lasts while the view does)
+  function bulkWhere(el){ return !!(BULK_VIEWS[view]||(el.closest&&el.closest("#rightbar"))); }
+  function bulkHit(e){ var r=e.target.closest&&e.target.closest(BULK_SEL); if(!r||!bulkWhere(r)||e.target.closest("input,textarea,select,[contenteditable=true],.bulk-bar")) return null;
+    var k=taskForRow(r); return k&&(bulkMode||e.metaKey||e.ctrlKey||e.shiftKey)?k:null; }
+  function bulkNone(e){ var r=(e.metaKey||e.ctrlKey)&&e.target.closest&&!e.target.closest("input,textarea,select,a[href],[contenteditable=true],.bulk-bar")&&e.target.closest("li.task, .tblock, .panel-task"); return !!(r&&bulkWhere(r)); }
+  function bulkClick(e,v){
+    var k=bulkHit(e);
+    if(!k){ if(!bulkNone(e)) return false; e.preventDefault(); e.stopPropagation(); if(!bulkSaid){ bulkSaid=true; toast("Only tasks select: habits, follow-ups, events and typed Priority notes have nothing to act on"); } return true; }
+    e.preventDefault(); e.stopPropagation();
+    if(!bulkMode){ bulkMode=true; bulkIds={}; bulkView=view; bulkPanel=!!(e.target.closest&&e.target.closest("#rightbar")); var fr=rowOf(document.activeElement), fk=fr&&taskForRow(fr); bulkAnchor=e.shiftKey&&fk?fk.id:null; }
+    if(e.shiftKey){ var seen={}, ids=[].map.call(v.querySelectorAll(BULK_SEL),function(x){ var t=taskForRow(x); return t&&!seen[t.id]?(seen[t.id]=1,t.id):null; }).filter(Boolean);
+      selRange(ids,bulkAnchor||k.id,k.id).forEach(function(id){ bulkIds[id]=true; }); }
+    else { bulkIds[k.id]=!bulkIds[k.id]; }
+    bulkAnchor=k.id; render(); return true;
+  }
   (function bulkSelect(){
-    var v=document.getElementById("view");
-    function hit(e){ var r=rowOf(e.target); if(!r||!BULK_VIEWS[view]||e.target.closest("input,textarea,select,[contenteditable=true],.bulk-bar")) return null;
-      var k=taskForRow(r); return k&&(bulkMode||e.metaKey||e.ctrlKey||e.shiftKey)?k:null; }
-    v.addEventListener("mousedown",function(e){ if(e.shiftKey&&hit(e)) e.preventDefault(); },true);   // no text selection on a shift-click
-    v.addEventListener("click",function(e){
-      var k=hit(e); if(!k) return; e.preventDefault(); e.stopPropagation();
-      if(!bulkMode){ bulkMode=true; bulkIds={}; bulkView=view; var fr=rowOf(document.activeElement), fk=fr&&taskForRow(fr); bulkAnchor=e.shiftKey&&fk?fk.id:null; }
-      if(e.shiftKey){ var seen={}, ids=[].map.call(v.querySelectorAll(ROWSEL),function(x){ var t=taskForRow(x); return t&&!seen[t.id]?(seen[t.id]=1,t.id):null; }).filter(Boolean);
-        selRange(ids,bulkAnchor||k.id,k.id).forEach(function(id){ bulkIds[id]=true; }); }
-      else { bulkIds[k.id]=!bulkIds[k.id]; }
-      bulkAnchor=k.id; render();
-    },true);
+    ["view","rightbar"].forEach(function(id){ var v=document.getElementById(id); if(!v) return;
+      v.addEventListener("mousedown",function(e){ if(e.shiftKey&&bulkHit(e)) e.preventDefault(); },true);   // no text selection on a shift-click
+      v.addEventListener("click",function(e){ bulkClick(e,v); },true); });
   })();
   document.getElementById("search-btn").onclick=openSearchModal;
   // catch the day change if the app stays open past midnight (tab or home-screen app)
