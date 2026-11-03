@@ -5,6 +5,9 @@
 set -e
 cd "$(dirname "$0")"
 
+# Name the oldest macOS the app runs on. Left to itself swiftc stamped macOS 28 on macOS 27 (Nov 1), and Launch Services refused to open the app (-10825)
+TARGET="$(uname -m)-apple-macos11.0"
+
 APP="Gena.app"
 BIN="Contents/MacOS/Gena"
 
@@ -14,12 +17,12 @@ rm -rf "$APP" Gena.iconset Gena.icns
 echo "› Checking the calendar bridge (its gate and request checks; no window, no calendar)…"
 # V6.9: the same file built with GENA_SELFCHECK runs the bridge's own checks and exits; a red check stops the build
 CHECK_DIR=$(mktemp -d)
-swiftc -O -D GENA_SELFCHECK Gena.swift -o "$CHECK_DIR/gena-selfcheck" -framework Cocoa -framework WebKit -framework EventKit
+swiftc -O -target "$TARGET" -D GENA_SELFCHECK Gena.swift -o "$CHECK_DIR/gena-selfcheck" -framework Cocoa -framework WebKit -framework EventKit
 "$CHECK_DIR/gena-selfcheck"
 rm -rf "$CHECK_DIR"
 
 echo "› Compiling native binary (Swift + WebKit + EventKit)…"
-swiftc -O Gena.swift -o gena-bin -framework Cocoa -framework WebKit -framework EventKit
+swiftc -O -target "$TARGET" Gena.swift -o gena-bin -framework Cocoa -framework WebKit -framework EventKit
 
 echo "› Assembling app bundle…"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"

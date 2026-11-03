@@ -20,7 +20,7 @@ let HOME_HOST = "skabone.github.io"
    EventKit when asked and handed to the page. The only script the app runs in the page is a fixed line that
    tells it the calendars changed or the app came back to the front. */
 let BRIDGE_NAME = "genaCal"
-let BRIDGE_OPS: Set<String> = ["status", "requestAccess", "calendars", "events", "save", "remove", "openSettings"]
+let BRIDGE_OPS: Set<String> = ["status", "requestAccess", "calendars", "events", "save", "remove", "openSettings", "emojiPalette"]
 let BRIDGE_SPANS: Set<String> = ["this", "future", "all"]
 let BRIDGE_MAX_DAYS = 420.0, BRIDGE_MAX_EVENTS = 5000
 let DAY_MS = 86_400_000.0
@@ -60,7 +60,7 @@ func parseBridgeRequest(_ body: Any) -> (BridgeRequest?, String?) {
     let a: [String: Any]
     if d["args"] == nil || d["args"] is NSNull { a = [:] } else if let x = d["args"] as? [String: Any] { a = x } else { return (nil, "bad arguments") }
     switch op {
-    case "status", "requestAccess", "calendars", "openSettings":
+    case "status", "requestAccess", "calendars", "openSettings", "emojiPalette":
         if !a.isEmpty { return (nil, "bad arguments") }
     case "events":
         guard onlyKeys(a, ["from", "to"]), let f = num(a["from"]), let t = num(a["to"]), t > f, t - f <= BRIDGE_MAX_DAYS * DAY_MS else { return (nil, "bad range") }
@@ -107,7 +107,8 @@ let BRIDGE_JS = """
     events: function(from, to){ return call("events", {from: from, to: to}); },
     save: function(ev){ return call("save", {event: ev}); },
     remove: function(r){ return call("remove", r); },
-    openSettings: function(){ return call("openSettings"); } })});
+    openSettings: function(){ return call("openSettings"); },
+    emojiPalette: function(){ return call("emojiPalette"); } })});
 })();
 """
 let BRIDGE_CHANGED_JS = "window.dispatchEvent(new CustomEvent('gena-native',{detail:'changed'}))"
@@ -206,6 +207,9 @@ final class CalendarBridge: NSObject, WKScriptMessageHandlerWithReply {
         case "requestAccess": requestAccess(done)
         case "openSettings":
             if let u = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") { NSWorkspace.shared.open(u) }
+            done(["ok": true])
+        case "emojiPalette":   // V7.2: the icon box's emoji button; the page has focused the box, so the Mac emoji window types into it
+            NSApp.orderFrontCharacterPalette(nil)
             done(["ok": true])
         default: queue.async { [weak self] in guard let self = self else { return }; done(self.run(r)) }
         }
@@ -476,6 +480,18 @@ final class WebController: NSViewController, WKNavigationDelegate, WKUIDelegate 
         if let u = navigationAction.request.url { NSWorkspace.shared.open(u) }
         return nil
     }
+
+    // <input type="file">: WebKit on the Mac opens no picker of its own, so without this Import did nothing here. Gena's own page only
+    func webView(_ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping ([URL]?) -> Void) {
+        let o = frame.securityOrigin
+        guard bridgeAllowed(isMainFrame: frame.isMainFrame, scheme: o.protocol, host: o.host, port: o.port, path: frame.request.url?.path) else { completionHandler(nil); return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = parameters.allowsDirectories
+        panel.allowsMultipleSelection = parameters.allowsMultipleSelection
+        let done: (NSApplication.ModalResponse) -> Void = { completionHandler($0 == .OK ? panel.urls : nil) }
+        if let w = webView.window { panel.beginSheetModal(for: w, completionHandler: done) } else { panel.begin(completionHandler: done) }
+    }
 }
 
 // GD-075 F4: where a download goes and what the page is told (macOS 11.3+, so the app still opens on 11.0)
@@ -582,6 +598,7 @@ func selfCheck() -> Int32 {
     ok(!bridgeAllowed(isMainFrame: true, scheme: "https", host: H, port: 0, path: nil), "no path is refused")
     ok(!bridgeAllowed(isMainFrame: true, scheme: nil, host: nil, port: 0, path: nil), "the offline page (no origin) is refused")
     ok(parses(["op": "status"]) && parses(["op": "calendars", "args": [String: Any]()]), "status and calendars")
+    ok(parses(["op": "emojiPalette"]) && !parses(["op": "emojiPalette", "args": ["a": 1]]), "the emoji window, with no arguments")
     ok(!parses(["op": "eval"]) && !parses(["op": "status", "x": 1]) && !parses("status") && !parses(["op": "status", "args": ["a": 1]]), "an unknown op, an extra key, a bare string, stray arguments")
     let t0 = 1_790_000_000_000.0
     ok(parses(["op": "events", "args": ["from": t0, "to": t0 + 30 * DAY_MS]]), "a month of events")
