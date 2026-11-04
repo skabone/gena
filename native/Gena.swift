@@ -5,6 +5,7 @@
 // Loads the hosted Gena so the app stays current and cloud sync works.
 // The app keeps its own private storage, separate from any browser.
 // V6.9: a narrow bridge lets the hosted page read and write the Mac's calendars through EventKit.
+// V7.2: the same bridge sets the Dock badge, moves the window from the page's top strip, and the menu bar runs Gena's commands.
 
 import Cocoa
 import WebKit
@@ -20,7 +21,7 @@ let HOME_HOST = "skabone.github.io"
    EventKit when asked and handed to the page. The only script the app runs in the page is a fixed line that
    tells it the calendars changed or the app came back to the front. */
 let BRIDGE_NAME = "genaCal"
-let BRIDGE_OPS: Set<String> = ["status", "requestAccess", "calendars", "events", "save", "remove", "openSettings", "emojiPalette"]
+let BRIDGE_OPS: Set<String> = ["status", "requestAccess", "calendars", "events", "save", "remove", "openSettings", "emojiPalette", "badge", "dragWindow", "zoomWindow"]
 let BRIDGE_SPANS: Set<String> = ["this", "future", "all"]
 let BRIDGE_MAX_DAYS = 420.0, BRIDGE_MAX_EVENTS = 5000
 let DAY_MS = 86_400_000.0
@@ -38,6 +39,7 @@ struct BridgeSet {
 }
 struct BridgeRequest {
     var op: String
+    var n = 0                                       // badge: today's open Priority count (0 clears it)
     var from = 0.0, to = 0.0                       // events
     var eid: String? = nil, occ: Double? = nil      // save, remove: the occurrence
     var span = "this", stamp: Double? = nil
@@ -60,8 +62,11 @@ func parseBridgeRequest(_ body: Any) -> (BridgeRequest?, String?) {
     let a: [String: Any]
     if d["args"] == nil || d["args"] is NSNull { a = [:] } else if let x = d["args"] as? [String: Any] { a = x } else { return (nil, "bad arguments") }
     switch op {
-    case "status", "requestAccess", "calendars", "openSettings", "emojiPalette":
+    case "status", "requestAccess", "calendars", "openSettings", "emojiPalette", "dragWindow", "zoomWindow":
         if !a.isEmpty { return (nil, "bad arguments") }
+    case "badge":   // V7.2 N1: a whole number from 0 to 9999, nothing else
+        guard onlyKeys(a, ["n"]), let v = a["n"] as? NSNumber, !isBool(v), v.doubleValue.isFinite, let i = Int(exactly: v.doubleValue), i >= 0, i <= 9999 else { return (nil, "bad count") }
+        r.n = i
     case "events":
         guard onlyKeys(a, ["from", "to"]), let f = num(a["from"]), let t = num(a["to"]), t > f, t - f <= BRIDGE_MAX_DAYS * DAY_MS else { return (nil, "bad range") }
         r.from = f; r.to = t
@@ -100,7 +105,7 @@ let BRIDGE_JS = """
   var h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.genaCal;
   if (!h || window.GenaNative) return;
   function call(op, args){ return h.postMessage({op: op, args: args || {}}).then(function(t){ return JSON.parse(t); }); }
-  Object.defineProperty(window, "GenaNative", {value: Object.freeze({ v: 1,
+  Object.defineProperty(window, "GenaNative", {value: Object.freeze({ v: 2,
     status: function(){ return call("status"); },
     requestAccess: function(){ return call("requestAccess"); },
     calendars: function(){ return call("calendars"); },
@@ -108,7 +113,10 @@ let BRIDGE_JS = """
     save: function(ev){ return call("save", {event: ev}); },
     remove: function(r){ return call("remove", r); },
     openSettings: function(){ return call("openSettings"); },
-    emojiPalette: function(){ return call("emojiPalette"); } })});
+    emojiPalette: function(){ return call("emojiPalette"); },
+    badge: function(n){ return call("badge", {n: n}); },
+    dragWindow: function(){ return call("dragWindow"); },
+    zoomWindow: function(){ return call("zoomWindow"); } })});
 })();
 """
 let BRIDGE_CHANGED_JS = "window.dispatchEvent(new CustomEvent('gena-native',{detail:'changed'}))"
@@ -116,6 +124,15 @@ let BRIDGE_ACTIVE_JS = "window.dispatchEvent(new CustomEvent('gena-native',{deta
 // V6.6.1 GD-075 F4: a download was saved to Downloads, or could not be; fixed lines like the two above (no file name goes back)
 let DOWNLOAD_SAVED_JS = "window.dispatchEvent(new CustomEvent('gena-native',{detail:'saved'}))"
 let DOWNLOAD_FAILED_JS = "window.dispatchEvent(new CustomEvent('gena-native',{detail:'savefail'}))"
+// V7.2 N2: the menu bar's commands. Each is one fixed word the page maps to its own action (MENU_CMDS in gena.html); nothing else is sent
+let MENU_COMMANDS: Set<String> = ["newTask", "newEvent", "search", "palette", "syncNow", "settings", "today", "planDay", "planWeek", "calendar", "lists",
+                                   "journal", "hub", "sidebar", "logPanel", "back", "forward", "goToday", "shortcuts"]
+func menuJS(_ name: String) -> String? {
+    guard MENU_COMMANDS.contains(name), name.allSatisfy({ $0.isASCII && $0.isLetter }) else { return nil }
+    return "window.dispatchEvent(new CustomEvent('gena-native',{detail:'cmd:\(name)'}))"
+}
+// V7.2 P4: what a double-click on the strip does is the Mac's own title-bar setting (System Settings › Desktop & Dock)
+func doubleClickAction(_ pref: String?) -> String { switch pref { case "Minimize": return "minimize"; case "None": return "none"; default: return "zoom" } }
 
 /* ---------- V6.6.1 GD-075 F4: downloads (⋯ → Export, the tasks CSV, an .ics) ----------
    The page saves a file the way a browser does, a link with `download` to a blob it made. WKWebView does nothing with that unless
@@ -175,6 +192,7 @@ private func hexOf(_ c: NSColor?) -> String {
 
 final class CalendarBridge: NSObject, WKScriptMessageHandlerWithReply {
     let store = EKEventStore()
+    var lastMouseDown: NSEvent?   // V7.2 P4: the press a strip drag starts from (GenaWebView keeps it)
     let queue = DispatchQueue(label: "com.mintaymisgano.gena.calendar")   // EventKit work never runs on the window's thread
     weak var web: WKWebView?
     private var changed: DispatchWorkItem?
@@ -210,6 +228,22 @@ final class CalendarBridge: NSObject, WKScriptMessageHandlerWithReply {
             done(["ok": true])
         case "emojiPalette":   // V7.2: the icon box's emoji button; the page has focused the box, so the Mac emoji window types into it
             NSApp.orderFrontCharacterPalette(nil)
+            done(["ok": true])
+        case "badge":   // V7.2 N1: today's open Priority count on the Dock icon; none at 0
+            NSApp.dockTile.badgeLabel = r.n > 0 ? String(r.n) : nil
+            done(["ok": true])
+        case "dragWindow":   // V7.2 P4: only while the press that started it is still down, and only from a press in the last second
+            var moved = false
+            if let w = web?.window, let ev = lastMouseDown, NSEvent.pressedMouseButtons & 1 != 0, ProcessInfo.processInfo.systemUptime - ev.timestamp < 1 { w.performDrag(with: ev); moved = true }
+            done(["ok": moved])
+        case "zoomWindow":
+            if let w = web?.window {
+                switch doubleClickAction(UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick")) {
+                case "minimize": w.performMiniaturize(nil)
+                case "none": break
+                default: w.performZoom(nil)
+                }
+            }
             done(["ok": true])
         default: queue.async { [weak self] in guard let self = self else { return }; done(self.run(r)) }
         }
@@ -375,8 +409,14 @@ let OFFLINE_HTML = """
 <a href="\(APP_URL)">Try again</a></main>
 """
 
+// V7.2 P4: the web view remembers the last press, so a drag the page asks for starts from it (performDrag needs the mouse-down)
+final class GenaWebView: WKWebView {
+    weak var bridge: CalendarBridge?
+    override func mouseDown(with event: NSEvent) { bridge?.lastMouseDown = event; super.mouseDown(with: event) }
+}
+
 final class WebController: NSViewController, WKNavigationDelegate, WKUIDelegate {
-    let web: WKWebView
+    let web: GenaWebView
     let calendar = CalendarBridge()
 
     init() {
@@ -386,9 +426,10 @@ final class WebController: NSViewController, WKNavigationDelegate, WKUIDelegate 
         // V6.9: the calendar bridge, in the page's own world; the handler itself refuses any other page or a frame
         cfg.userContentController.addUserScript(WKUserScript(source: BRIDGE_JS, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         cfg.userContentController.addScriptMessageHandler(calendar, contentWorld: .page, name: BRIDGE_NAME)
-        self.web = WKWebView(frame: NSRect(x: 0, y: 0, width: 1200, height: 820), configuration: cfg)
+        self.web = GenaWebView(frame: NSRect(x: 0, y: 0, width: 1200, height: 820), configuration: cfg)
         super.init(nibName: nil, bundle: nil)
         calendar.web = web
+        web.bridge = calendar
     }
     required init?(coder: NSCoder) { fatalError() }
 
@@ -529,6 +570,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     @objc func reload(_ sender: Any?) { controller?.reload(sender) }
+    // V7.2 N2: a Gena command from the menu bar, run by the page (its own action); the item names it in representedObject
+    @objc func menuCommand(_ sender: NSMenuItem) {
+        guard let name = sender.representedObject as? String, let js = menuJS(name) else { return }
+        controller?.calendar.tell(js)
+    }
+}
+
+// V7.2 N2: one menu line for a Gena command: its title, its key (shown by macOS beside it) and the command word
+func commandItem(_ title: String, _ key: String, _ mods: NSEvent.ModifierFlags, _ name: String, _ delegate: AppDelegate) -> NSMenuItem {
+    let it = NSMenuItem(title: title, action: #selector(AppDelegate.menuCommand(_:)), keyEquivalent: key)
+    it.keyEquivalentModifierMask = mods
+    it.representedObject = name
+    it.target = delegate
+    return it
 }
 
 func buildMenu(_ delegate: AppDelegate) -> NSMenu {
@@ -559,12 +614,40 @@ func buildMenu(_ delegate: AppDelegate) -> NSMenu {
     editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
     editItem.submenu = editMenu
 
+    // V7.2 N2: File, View, Go and Help hold Gena's commands, each with its key; the page's own single keys (n, /, g t …) still work
+    let fileItem = NSMenuItem(); main.insertItem(fileItem, at: 1)
+    let fileMenu = NSMenu(title: "File")
+    fileMenu.addItem(commandItem("New Task", "n", [.command], "newTask", delegate))
+    fileMenu.addItem(commandItem("New Event", "n", [.command, .option], "newEvent", delegate))
+    fileMenu.addItem(.separator())
+    fileMenu.addItem(commandItem("Search", "f", [.command], "search", delegate))
+    fileMenu.addItem(commandItem("Command Palette", "k", [.command], "palette", delegate))
+    fileMenu.addItem(.separator())
+    fileMenu.addItem(commandItem("Sync Now", "s", [.command, .option], "syncNow", delegate))
+    fileMenu.addItem(commandItem("Backup and Settings…", ",", [.command], "settings", delegate))
+    fileItem.submenu = fileMenu
+
     // View menu
     let viewItem = NSMenuItem(); main.addItem(viewItem)
     let viewMenu = NSMenu(title: "View")
+    for (i, v) in [("Today", "today"), ("Plan › Day", "planDay"), ("Plan › Week", "planWeek"), ("Calendar", "calendar"), ("Lists", "lists"), ("Journal", "journal"), ("Hub", "hub")].enumerated() {
+        viewMenu.addItem(commandItem(v.0, String(i + 1), [.command], v.1, delegate))
+    }
+    viewMenu.addItem(.separator())
+    viewMenu.addItem(commandItem("Show or Hide Sidebar", "s", [.command, .control], "sidebar", delegate))
+    viewMenu.addItem(commandItem("Show or Hide Log Panel", "l", [.command, .option], "logPanel", delegate))
+    viewMenu.addItem(.separator())
     let reload = viewMenu.addItem(withTitle: "Reload", action: #selector(AppDelegate.reload(_:)), keyEquivalent: "r")
     reload.target = delegate
     viewItem.submenu = viewMenu
+
+    // Go menu
+    let goItem = NSMenuItem(); main.addItem(goItem)
+    let goMenu = NSMenu(title: "Go")
+    goMenu.addItem(commandItem("Back", "[", [.command], "back", delegate))
+    goMenu.addItem(commandItem("Forward", "]", [.command], "forward", delegate))
+    goMenu.addItem(commandItem("Go to Today", "t", [.command], "goToday", delegate))
+    goItem.submenu = goMenu
 
     // Window menu
     let winItem = NSMenuItem(); main.addItem(winItem)
@@ -573,6 +656,13 @@ func buildMenu(_ delegate: AppDelegate) -> NSMenu {
     winMenu.addItem(withTitle: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
     winItem.submenu = winMenu
     NSApp.windowsMenu = winMenu
+
+    // Help menu
+    let helpItem = NSMenuItem(); main.addItem(helpItem)
+    let helpMenu = NSMenu(title: "Help")
+    helpMenu.addItem(commandItem("Keyboard Shortcuts", "/", [.command], "shortcuts", delegate))
+    helpItem.submenu = helpMenu
+    NSApp.helpMenu = helpMenu
 
     return main
 }
@@ -625,6 +715,16 @@ func selfCheck() -> Int32 {
     ok(BRIDGE_JS.contains("location.hostname !== \"skabone.github.io\"") && BRIDGE_JS.contains("window.top !== window"), "the page script checks the origin and the frame too")
     let NP = "window.dispatchEvent(new CustomEvent('gena-native',{detail:'"
     ok([BRIDGE_CHANGED_JS, BRIDGE_ACTIVE_JS, DOWNLOAD_SAVED_JS, DOWNLOAD_FAILED_JS].allSatisfy { $0.hasPrefix(NP) && $0.hasSuffix("'}))") && $0.dropFirst(NP.count).dropLast(4).allSatisfy { $0.isLetter } }, "the only lines run in the page are the four fixed notices (calendars changed, back to the front, a download saved or not)")
+    // V7.2 N2: and one fixed line per menu command, "cmd:" and a word from the set; any other word sends nothing
+    ok(MENU_COMMANDS.allSatisfy { n in menuJS(n).map { $0 == NP + "cmd:" + n + "'}))" && $0.dropFirst(NP.count + 4).dropLast(4).allSatisfy { $0.isASCII && $0.isLetter } } ?? false }, "each menu command is one fixed line: cmd: and its word")
+    ok(menuJS("eval") == nil && menuJS("today'})) ;alert(1)//") == nil && menuJS("") == nil && menuJS("Today") == nil, "a word outside the set, or with any other character, sends nothing")
+    ok(MENU_COMMANDS.count == 19, "nineteen commands: File 6, View 9, Go 3, Help 1")
+    // V7.2 N1, P4: the badge takes a whole count only; the window ops take no arguments
+    ok(parseBridgeRequest(["op": "badge", "args": ["n": 3]]).0?.n == 3 && parses(["op": "badge", "args": ["n": 0]]), "a badge count, and 0 to clear it")
+    ok(!parses(["op": "badge", "args": ["n": -1]]) && !parses(["op": "badge", "args": ["n": 2.5]]) && !parses(["op": "badge", "args": ["n": "3"]]) && !parses(["op": "badge", "args": ["n": true]]) && !parses(["op": "badge", "args": ["n": 10000]]) && !parses(["op": "badge", "args": ["n": 1, "x": 1]]) && !parses(["op": "badge"]), "a negative, fractional, text, boolean or huge count, an extra key or no count is refused")
+    ok(parses(["op": "dragWindow"]) && parses(["op": "zoomWindow"]) && !parses(["op": "dragWindow", "args": ["x": 1]]) && !parses(["op": "zoomWindow", "args": ["y": 2]]), "the window ops, with no arguments")
+    ok(doubleClickAction(nil) == "zoom" && doubleClickAction("Maximize") == "zoom" && doubleClickAction("Fill") == "zoom" && doubleClickAction("Minimize") == "minimize" && doubleClickAction("None") == "none", "a double-click on the strip does what the Mac's title-bar setting says")
+    ok(BRIDGE_JS.contains("v: 2") && BRIDGE_JS.contains("badge: function(n)") && BRIDGE_JS.contains("dragWindow: function()") && BRIDGE_JS.contains("zoomWindow: function()"), "the page script offers the badge and the window ops (bridge v2)")
     // GD-075 F4: downloads
     ok(downloadAllowed(isMainFrame: true, scheme: "https", host: H, port: 0, path: "/gena/", linkScheme: "blob") && downloadAllowed(isMainFrame: true, scheme: "https", host: H, port: 0, path: "/gena/", linkScheme: "data"), "a download: Gena's own page, a blob or data link")
     ok(!downloadAllowed(isMainFrame: false, scheme: "https", host: H, port: 0, path: "/gena/", linkScheme: "blob") && !downloadAllowed(isMainFrame: true, scheme: "https", host: "evil.github.io", port: 0, path: "/gena/", linkScheme: "blob") && !downloadAllowed(isMainFrame: true, scheme: nil, host: nil, port: 0, path: nil, linkScheme: "blob"), "a download from a frame, another site or the offline page is refused")
