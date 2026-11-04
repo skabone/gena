@@ -790,6 +790,8 @@
   .cp-panel .sw.sw-near{ opacity:.18; box-shadow:none; }   /* V6.6.1: too close to another Domain's colour; V7.2: greyed, still picks */
   /* V7.2: the icon box in two, a small emoji button and the white box (iconFld) */
   .ib{ display:flex; align-items:stretch; gap:4px; }
+  .emo-fab{ position:fixed; z-index:70; width:24px; height:24px; padding:0; border:0; border-radius:50%; background:transparent; font-size:var(--fs-m,13px); line-height:24px; text-align:center; opacity:.65; cursor:pointer; }   /* V7.2.4: the 😀 at the end of the text line being typed in (emoLine) */
+  .emo-fab:hover{ opacity:1; background:var(--line-soft); }
   .ib-b{ flex:0 0 32px; font:inherit; font-size:var(--fs-m,15px); line-height:1; border:1px solid var(--line); border-radius:var(--r-chip); background:var(--card); cursor:pointer; padding:0; }
   .ib input{ flex:1; min-width:0; }
   .cp-custom{ display:flex; align-items:center; gap:8px; }
@@ -2568,7 +2570,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-11-04-V7.2.3";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-11-04-V7.2.4";   // set by ship.sh on every release — the footer is how you tell a surface is current
   // The day V5 shipped (tag gena-2026-10-05-V5): the closing-states cutoff, fixed, so a later build's stamp
   // never moves it (I-28). Above `var S = load()`, which reads it.
   var V5_SHIP_DAY = "2026-10-05";
@@ -6761,7 +6763,7 @@ function GENA_MAIN() {
     S.tasks.push({id:uid(),title:p.title,projectId:p.projectId||null,status:"todo",
       day:(p.day&&p.day!=="someday")?p.day:viewDay,block:p.block||null,at:p.at||null,
       priority:false,rollover:0,subs:[],personIds:p.personIds||[],created:today()});
-    var nk=applyParsed(S.tasks[S.tasks.length-1],p);
+    var nk=scopeAddTo(applyParsed(S.tasks[S.tasks.length-1],p));
     S.focus[viewDay]=S.focus[viewDay]||[];
     if(!S.focus[viewDay].some(function(f){ return f.taskId===nk.id; })) S.focus[viewDay].push({id:uid(),taskId:nk.id});
     if(S.expandOnAdd!==false){ ieList="focus"; pendingFocus=null; editingTaskId=nk.id; save(); render();
@@ -11323,6 +11325,12 @@ function GENA_MAIN() {
   function projOptLabel(p){ return esc(p.name)+(stateLabel(p)?" ("+stateLabel(p)+")":""); }
   function fillProjSelect(){ var keep=qProj.value; qProj.innerHTML='<option value="">None</option>'+S.projects.slice().sort(function(a,b){return (projActive(b)?1:0)-(projActive(a)?1:0);}).map(function(p){return '<option value="'+esc(p.id)+'">'+projOptLabel(p)+'</option>';}).join("")+'<option value="__new">+ New Focus…</option>'; if(keep&&[].some.call(qProj.options,function(o){ return o.value===keep; })) qProj.value=keep; }
   qProj.onchange=function(){ if(qProj.value==="__new"){ qProj.value=""; openProjModal(null,function(id){ qProj.value=id; }); } };
+  function scopeAddTo(k){ if(!k||k.projectId||k.effortId) return k; var sk=scopeKind(), id=scopeRef(), x, nf;   // V7.2.4 (his Nov 4 ask): a task added while a Domain, Focus, Project or Collection is filtered lands in it; a Domain's goes to its No Focus
+    if(sk==="fc"&&(x=proj(id))) k.projectId=x.id;
+    else if(sk==="pj"&&(x=effortById(id))){ k.effortId=x.id; k.projectId=x.projectId||((nf=x.profileId?noFocusOf(x.profileId,true):null)?nf.id:null); }
+    else if(sk==="dom"&&profileById(id)&&(nf=noFocusOf(id,true))) k.projectId=nf.id;
+    else if(sk==="col"&&colById(id)&&!(k.cols||[]).length) k.cols=[id];
+    return k; }
   function addTask(title,projectId,day,block,at,personIds,parsed){
     title=title.trim(); if(!title)return;
     var sd=day==="someday";
@@ -11353,7 +11361,7 @@ function GENA_MAIN() {
     var sd = p.day==="someday" || (key==="someday" && !p.day);
     var bl = (key==="loose"||key==="someday"||key==="master"||dayKey)?(p.block||null):(p.block||key);
     S.tasks.push({id:uid(),title:p.title,projectId:p.projectId||null,personIds:p.personIds||[],status:"todo",day:sd?null:(p.day||dayKey||viewDay),block:sd?null:bl,at:p.at||null,priority:false,rollover:0,subs:[],created:today()});
-    var newId=applyParsed(S.tasks[S.tasks.length-1],p).id;
+    var newId=scopeAddTo(applyParsed(S.tasks[S.tasks.length-1],p)).id;
     if(S.expandOnAdd!==false){ ieList=key||null; pendingFocus=null; editingTaskId=newId; save(); render();
       var ti=document.getElementById("ie-title"); if(ti){ ti.focus(); ti.setSelectionRange(ti.value.length,ti.value.length); } }
     else { pendingFocus=key; save(); render(); }
@@ -11365,7 +11373,7 @@ function GENA_MAIN() {
     Object.keys(all).forEach(function(id){ var m=/^(f?sub):(.+)$/.exec(id); if(!m||(best&&all[best].at>=all[id].at)) return;
       if(m[1]==="sub"?S.tasks.some(function(x){return x.id===m[2];}):(S.focus[viewDay]||[]).some(function(x){return x.id===m[2];})) best=id; });
     if(best&&draftsOn()) pendingSubAdd=best.replace(/^f?sub:/,""); })();
-  function quickAdd(){ if(!qInput.value.trim())return; var p=nlParseKeep(qInput.value); draftPut("q",""); addTask(p.title,p.projectId||qProj.value,p.day,p.block,p.at,p.personIds,p); qInput.value=""; render(); toast(p.day==="someday"?"Added to Someday":(p.day&&p.day!==today()?"Added to "+niceDate(p.day):"Added to today"+(p.block?" · "+p.block:""))); }
+  function quickAdd(){ if(!qInput.value.trim())return; var p=nlParseKeep(qInput.value); draftPut("q",""); var qn=S.tasks.length; addTask(p.title,p.projectId||qProj.value,p.day,p.block,p.at,p.personIds,p); if(S.tasks.length>qn){ scopeAddTo(S.tasks[S.tasks.length-1]); save(); } qInput.value=""; render(); toast(p.day==="someday"?"Added to Someday":(p.day&&p.day!==today()?"Added to "+niceDate(p.day):"Added to today"+(p.block?" · "+p.block:""))); }
   document.getElementById("q-more").onclick=function(){ openTaskModal({title:qInput.value,projectId:qProj.value}); };
 
   /* ---------- modals ---------- */
@@ -11808,6 +11816,28 @@ function GENA_MAIN() {
     var g=typeof window!=="undefined"&&window.GenaNative;
     if(g&&typeof g.emojiPalette==="function"){ try{ Promise.resolve(g.emojiPalette()).catch(function(){}); }catch(e){} return; }
     if(macBrowser()) toast("Control Command Space opens the emoji window"); }
+  /* V7.2.4 (his Nov 4 ask): "ANything where i am entering things i would like emoji option ... not like by checkmarks and stuff but like line items".
+     On the computer (761 px and up, a mouse), a small 😀 sits at the right end of the text line that has focus: a task or subtask title,
+     a Focus, Project, Domain or person name, notes. It opens the emoji window for that line (emojiWindow); a mousedown never takes the
+     focus or the caret from it. Not on checkboxes, pickers, the 4-character icon boxes, search, or lines under 120 px wide */
+  var emoFab, emoFor;
+  function emoLine(el){ if(!el||!el.matches||el.readOnly||el.disabled) return false;
+    if(el.closest&&el.closest(".no-emo,.emoji-pick,.ib")||el.id==="pal-in"||el.id==="srch") return false;
+    var ok=el.matches("textarea,[contenteditable=true],[contenteditable='']")||(el.matches("input")&&/^(text|)$/.test((el.getAttribute("type")||"").toLowerCase())&&!(el.maxLength>0&&el.maxLength<=4));
+    return ok&&el.getBoundingClientRect().width>=120; }
+  function emoPlace(){ if(!emoFab||!emoFor) return; var r=emoFor.getBoundingClientRect(); if(!r.width||!r.height){ emoFab.hidden=true; return; }
+    emoFab.hidden=false; emoFab.style.top=Math.round(r.height>40?r.top+6:r.top+r.height/2-12)+"px"; emoFab.style.left=Math.round(r.right-28)+"px"; }
+  function emoHide(){ if(emoFab) emoFab.hidden=true; emoFor=null; }
+  if(typeof document!=="undefined"&&document.addEventListener&&typeof window!=="undefined"&&window.matchMedia){
+    document.addEventListener("focusin",function(e){ var el=e.target; if(el===emoFab) return;
+      if(innerWidth<761||!window.matchMedia("(hover:hover)").matches||!emoLine(el)){ emoHide(); return; }
+      if(!emoFab){ emoFab=document.createElement("button"); emoFab.type="button"; emoFab.className="emo-fab"; emoFab.textContent="😀"; emoFab.tabIndex=-1;
+        emoFab.title="Emoji"; emoFab.setAttribute("aria-label","Open the emoji window"); emoFab.hidden=true;
+        emoFab.addEventListener("mousedown",function(ev){ ev.preventDefault(); });   // the line keeps its focus and caret
+        emoFab.onclick=function(){ if(emoFor) emojiWindow(emoFor); }; document.body.appendChild(emoFab); }
+      emoFor=el; emoPlace(); });
+    document.addEventListener("focusout",function(){ setTimeout(function(){ var a=document.activeElement; if(a!==emoFor&&a!==emoFab) emoHide(); },0); });
+    window.addEventListener("scroll",emoPlace,true); window.addEventListener("resize",emoPlace); }
   function wireEmojiPickers(root){
     (root||document).querySelectorAll(".ib-b").forEach(function(b){ b.onclick=function(){ emojiWindow(document.getElementById(b.dataset.ib)); }; });
     (root||document).querySelectorAll(".emoji-pick").forEach(function(box){
@@ -14995,7 +15025,7 @@ function GENA_MAIN() {
       var on=out.querySelector(".sel"); if(on&&on.scrollIntoView) on.scrollIntoView({block:"nearest"}); }
     inp.oninput=function(){ hits=searchHits(inp.value,scoped,within); sel=0; paint(); };
     function run(h){ if(!h) return; var kind=h.kind, key=h.key;
-      if(kind==="add"){ var txt=inp.value.trim(); if(!txt) return; var p=nlParse(txt); close(); addTask(p.title,p.projectId||qProj.value,p.day,p.block,p.at,p.personIds,p); render(); undoToast(addedSay(p)); }
+      if(kind==="add"){ var txt=inp.value.trim(); if(!txt) return; var p=nlParse(txt); close(); var cn=S.tasks.length; addTask(p.title,p.projectId||qProj.value,p.day,p.block,p.at,p.personIds,p); if(S.tasks.length>cn){ scopeAddTo(S.tasks[S.tasks.length-1]); save(); } render(); undoToast(addedSay(p)); }
       else if(kind==="task"){ var tk=S.tasks.find(function(x){return x.id===key;}); if(tk){ close(); openTaskModal({edit:tk}); } }
       else if(kind==="person"){ var pe=S.people.find(function(x){return x.id===key;}); if(pe){ close(); openPersonModal(pe); } }
       else if(kind==="job"){ var jb=S.jobs.find(function(x){return x.id===key;}); if(jb){ close(); openJobModal(jb); } }
