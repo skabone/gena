@@ -410,6 +410,24 @@ let OFFLINE_HTML = """
 """
 
 // V7.2 P4: the web view remembers the last press, so a drag the page asks for starts from it (performDrag needs the mouse-down)
+// V7.2.2 (his words Nov 3: "control/command + or - and it zooms in and out"): ⌘+ (and ⌘=), ⌘− and ⌘0 zoom the page from 70% to 150%
+// in 10% steps; ⌘0 is 100%. The zoom is this Mac's (UserDefaults), applied at launch, never sent to the page or synced.
+let ZOOM_KEY = "GenaPageZoom"
+let ZOOM_MIN = 0.7, ZOOM_MAX = 1.5, ZOOM_STEP = 0.1
+// the next zoom: +1 in, -1 out, 0 back to 100%; always a whole step inside the range
+func zoomStep(_ z: Double, _ dir: Int) -> Double {
+    if dir == 0 { return 1.0 }
+    let tenths = ((z.isFinite ? z : 1.0) * 10).rounded() + Double(dir.signum())
+    return min(ZOOM_MAX, max(ZOOM_MIN, tenths / 10))
+}
+// what UserDefaults held, read back: a number inside the range, rounded to a step; anything else is 100%
+func savedZoom(_ v: Any?) -> Double {
+    guard let n = v as? NSNumber, CFGetTypeID(n) != CFBooleanGetTypeID() else { return 1.0 }
+    let d = n.doubleValue
+    guard d.isFinite, d >= ZOOM_MIN - 0.001, d <= ZOOM_MAX + 0.001 else { return 1.0 }
+    return (d * 10).rounded() / 10
+}
+
 final class GenaWebView: WKWebView {
     weak var bridge: CalendarBridge?
     override func mouseDown(with event: NSEvent) { bridge?.lastMouseDown = event; super.mouseDown(with: event) }
@@ -437,7 +455,15 @@ final class WebController: NSViewController, WKNavigationDelegate, WKUIDelegate 
         web.navigationDelegate = self
         web.uiDelegate = self
         web.allowsBackForwardNavigationGestures = true
+        web.pageZoom = savedZoom(UserDefaults.standard.object(forKey: ZOOM_KEY))   // V7.2.2: this Mac's zoom, from launch
         self.view = web
+    }
+
+    // V7.2.2: ⌘+ / ⌘− / ⌘0; the page is never told, so nothing about the zoom is stored in Gena's data or synced
+    func zoom(_ dir: Int) {
+        let z = zoomStep(Double(web.pageZoom), dir)
+        web.pageZoom = CGFloat(z)
+        if z == 1.0 { UserDefaults.standard.removeObject(forKey: ZOOM_KEY) } else { UserDefaults.standard.set(z, forKey: ZOOM_KEY) }
     }
 
     // Revalidate rather than trusting the HTTP cache — GitHub Pages sends max-age=600, so a plain
@@ -570,6 +596,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     @objc func reload(_ sender: Any?) { controller?.reload(sender) }
+    @objc func zoomIn(_ sender: Any?) { controller?.zoom(1) }
+    @objc func zoomOut(_ sender: Any?) { controller?.zoom(-1) }
+    @objc func actualSize(_ sender: Any?) { controller?.zoom(0) }
     // V7.2 N2: a Gena command from the menu bar, run by the page (its own action); the item names it in representedObject
     @objc func menuCommand(_ sender: NSMenuItem) {
         guard let name = sender.representedObject as? String, let js = menuJS(name) else { return }
@@ -584,6 +613,22 @@ func commandItem(_ title: String, _ key: String, _ mods: NSEvent.ModifierFlags, 
     it.representedObject = name
     it.target = delegate
     return it
+}
+
+// V7.2.2: Zoom In (⌘+, and ⌘= without Shift, a hidden twin), Zoom Out (⌘−) and Actual Size (⌘0), in the View menu
+func zoomItems(_ delegate: AppDelegate) -> [NSMenuItem] {
+    func item(_ title: String, _ sel: Selector, _ key: String) -> NSMenuItem {
+        let it = NSMenuItem(title: title, action: sel, keyEquivalent: key)
+        it.keyEquivalentModifierMask = [.command]
+        it.target = delegate
+        return it
+    }
+    let twin = item("Zoom In", #selector(AppDelegate.zoomIn(_:)), "=")
+    twin.isHidden = true
+    if #available(macOS 13.0, *) { twin.allowsKeyEquivalentWhenHidden = true }
+    return [item("Zoom In", #selector(AppDelegate.zoomIn(_:)), "+"), twin,
+            item("Zoom Out", #selector(AppDelegate.zoomOut(_:)), "-"),
+            item("Actual Size", #selector(AppDelegate.actualSize(_:)), "0")]
 }
 
 func buildMenu(_ delegate: AppDelegate) -> NSMenu {
@@ -636,6 +681,8 @@ func buildMenu(_ delegate: AppDelegate) -> NSMenu {
     viewMenu.addItem(.separator())
     viewMenu.addItem(commandItem("Show or Hide Sidebar", "s", [.command, .control], "sidebar", delegate))
     viewMenu.addItem(commandItem("Show or Hide Log Panel", "l", [.command, .option], "logPanel", delegate))
+    viewMenu.addItem(.separator())
+    for item in zoomItems(delegate) { viewMenu.addItem(item) }
     viewMenu.addItem(.separator())
     let reload = viewMenu.addItem(withTitle: "Reload", action: #selector(AppDelegate.reload(_:)), keyEquivalent: "r")
     reload.target = delegate
@@ -738,6 +785,17 @@ func selfCheck() -> Int32 {
     ok(wide.utf8.count <= NAME_MAX_BYTES && wide.hasSuffix(".csv") && String(wide.dropLast(4)) == String(repeating: fam, count: wide.count - 4) && wide.count > 4 && acc.utf8.count <= NAME_MAX_BYTES && acc.hasSuffix(".json") && acc.count > 50 && safeFileName(String(repeating: "x", count: 300) + ".json").hasSuffix(".json") && safeFileName(String(repeating: "x", count: 300) + ".json").count == 120, "a long name is cut on its UTF-8 bytes (at most \(NAME_MAX_BYTES)) and its characters, whole characters only, and keeps its extension")
     let big = freeFileName(wide) { _ in true }, big1 = freeFileName(acc) { $0 == acc }
     ok(big.utf8.count < 255 && big.hasSuffix(".csv") && big1.utf8.count < 255 && big1.hasSuffix(" (1).json"), "…so with \" (n)\" or the last-resort UUID it stays under APFS's 255 bytes")
+    // V7.2.2: the zoom, 70% to 150% in 10% steps, this Mac's only
+    var zz = 1.0, ins: [Double] = [], outs: [Double] = []
+    for _ in 0..<8 { zz = zoomStep(zz, 1); ins.append(zz) }
+    ok(ins == [1.1, 1.2, 1.3, 1.4, 1.5, 1.5, 1.5, 1.5], "⌘+ steps 10% at a time and stops at 150%")
+    zz = 1.0; for _ in 0..<6 { zz = zoomStep(zz, -1); outs.append(zz) }
+    ok(outs == [0.9, 0.8, 0.7, 0.7, 0.7, 0.7], "⌘− steps 10% at a time and stops at 70%")
+    ok(zoomStep(1.3, 0) == 1.0 && zoomStep(0.7, 0) == 1.0 && zoomStep(Double.nan, 1) == 1.1 && zoomStep(1.04, 1) == 1.1, "⌘0 is 100%; a stray value lands on a step")
+    ok(savedZoom(1.2) == 1.2 && savedZoom(NSNumber(value: 0.7)) == 0.7 && savedZoom(nil) == 1.0 && savedZoom("1.2") == 1.0 && savedZoom(true) == 1.0 && savedZoom(9.0) == 1.0 && savedZoom(0.2) == 1.0 && savedZoom(Double.nan) == 1.0, "the saved zoom: a number in range, else 100%")
+    let zd = AppDelegate(), zi = zoomItems(zd)
+    ok(zi.map { $0.title } == ["Zoom In", "Zoom In", "Zoom Out", "Actual Size"] && zi.map { $0.keyEquivalent } == ["+", "=", "-", "0"] && zi.allSatisfy { $0.keyEquivalentModifierMask == [.command] } && zi[1].isHidden && !zi[0].isHidden && zi.allSatisfy { $0.target === zd }, "the View menu's Zoom In (⌘+, ⌘=), Zoom Out (⌘−), Actual Size (⌘0)")
+    ok(!BRIDGE_JS.contains("pageZoom") && !BRIDGE_JS.contains(ZOOM_KEY) && !MENU_COMMANDS.contains { $0.lowercased().contains("zoom") }, "the page is never told the zoom")
     print(bad.isEmpty ? "✓ bridge self-check: \(n) checks" : "✗ bridge self-check: \(bad.count) of \(n) failed: " + bad.joined(separator: "; "))
     return bad.isEmpty ? 0 : 1
 }
