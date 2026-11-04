@@ -557,6 +557,13 @@
   }
   .hgrp-fold{ border:none; background:transparent; color:var(--ink-soft); font-size:var(--fs-m,13px); width:22px; cursor:pointer; padding:0; flex:0 0 auto; }
   li.task.hgrp-kid{ margin-left:22px; }
+  @media (min-width:761px){   /* V7.2.3: the habits fold, the first item of Priority on the computer; its rows sit one step in */
+    li.task.hfold-row{ cursor:pointer; }
+    li.task.hfold-row .task-title{ font-weight:600; }
+    .hfold-list > li.task:not(.hfold-row){ margin-left:22px; }
+    .hfold-list > li.task.hgrp-kid{ margin-left:44px; }
+    .hfold-list > li.hfold-dom{ margin:8px 0 2px 22px; font-size:var(--fs-s,12px); font-weight:600; color:var(--ink-soft); }   /* V7.2.3 part 2: a Domain's quiet label */
+  }
   /* V7.0 part 5: a Domain-filtered Today opens with its branches */
   .branch-cards{ display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px; margin:8px 0 12px; }
   .branch-card{ flex:0 1 auto; max-width:260px; border:1px solid var(--line-soft); border-left:4px solid var(--bc,var(--line)); border-radius:12px; padding:8px 10px; background:var(--card); min-width:0; }
@@ -2561,7 +2568,7 @@ function GENA_MAIN() {
       });
     }catch(e){}
   })();
-  var APP_BUILD = "2026-11-04-V7.2.2";   // set by ship.sh on every release — the footer is how you tell a surface is current
+  var APP_BUILD = "2026-11-04-V7.2.3";   // set by ship.sh on every release — the footer is how you tell a surface is current
   // The day V5 shipped (tag gena-2026-10-05-V5): the closing-states cutoff, fixed, so a later build's stamp
   // never moves it (I-28). Above `var S = load()`, which reads it.
   var V5_SHIP_DAY = "2026-10-05";
@@ -5307,13 +5314,18 @@ function GENA_MAIN() {
     // V7.2 (GD-081): a control outside a row (a card's chip, the Today head) holds its own spot through data-anc
     if(!row||!row.isConnected){ var an=el&&el.closest&&el.closest("[data-anc]"); if(an&&an.isConnected) renderAnchor={self:{anc:an.dataset.anc, box:an.closest("#rightbar")?"rightbar":"view", top:an.getBoundingClientRect().top}, nb:null, at:Date.now()}; return; }
     var near=function(dir){ for(var n=row;(n=dir>0?n.nextElementSibling:n.previousElementSibling);) if(n.matches(ANCHOR_ROWS)&&n.getBoundingClientRect().height) return n; return null; };
-    var nb=near(1)||near(-1), hold=!nb&&row.closest("[data-anc]");   // V7.2 round 3: the only row leaving its list holds the list (the done strip)
-    renderAnchor={self:anchorOf(row), nb:nb?anchorOf(nb):(hold?{anc:hold.dataset.anc, box:hold.closest("#rightbar")?"rightbar":"view", top:hold.getBoundingClientRect().top}:null), at:Date.now()};
+    var fr=row.closest(".hfold-list"), af=fr&&afterFold(row); fr=fr&&fr.querySelector(".hfold-row");   // V7.2.3 part 2: a habit leaving the fold holds the fold row, so nothing above it moves; the last one takes the fold, so the first row after it holds
+    var nb=fr?null:near(1)||near(-1), hold=fr||!nb&&row.closest("[data-anc]");   // V7.2 round 3: the only row leaving its list holds the list (the done strip)
+    renderAnchor={self:anchorOf(row), nb:nb?anchorOf(nb):(hold?{anc:hold.dataset.anc, box:hold.closest("#rightbar")?"rightbar":"view", top:hold.getBoundingClientRect().top}:null), nb2:af?anchorOf(af):null, at:Date.now()};
   }
+  // V7.2.3: the last habit leaving the habits fold takes the fold with it, so the first row after the fold holds still instead
+  function afterFold(row){ var l=row.closest(".hfold-list"), box=l&&l.closest("#view,#rightbar"); if(!box) return null;
+    var all=box.querySelectorAll(ANCHOR_ROWS); for(var i=0;i<all.length;i++) if(!l.contains(all[i])&&(l.compareDocumentPosition(all[i])&4)&&all[i].getBoundingClientRect().height) return all[i];
+    return null; }
   function restoreAnchor(){
     var a=renderAnchor; renderAnchor=null;
     if(!a || Date.now()-a.at>1500) return;                 // a stale anchor must never move the page
-    var ref=anchorFind(a.self)?a.self:a.nb, el=ref&&anchorFind(ref); if(!el) return;
+    var ref=anchorFind(a.self)?a.self:(a.nb&&anchorFind(a.nb)?a.nb:a.nb2), el=ref&&anchorFind(ref); if(!el) return;
     var box=document.getElementById(ref.box), d=el.getBoundingClientRect().top-ref.top;
     // nothing to correct, or further than about 1.5 screens: that cannot be the row he was reading
     if(Math.abs(d)<=2||Math.abs(d)>1.5*(ref.box==="rightbar"?box.clientHeight:window.innerHeight)) return;
@@ -5534,6 +5546,7 @@ function GENA_MAIN() {
   function uiFolded(k,def){ var m=uiFolds(); return Object.prototype.hasOwnProperty.call(m,k)?m[k]===1:!!def; }
   function uiSetFold(k,v){ var m=uiFolds(); m[k]=v?1:0;
     if(k.indexOf("wk:")===0){ var t=fmt(new Date()); Object.keys(m).forEach(function(x){ if(x.indexOf("wk:")===0&&x.slice(3)<t) delete m[x]; }); }   // a past day's fold is never read again
+    if(k.indexOf("hfold:")===0){ var th=fmt(new Date()); Object.keys(m).forEach(function(x){ if(x!==k&&x.indexOf("hfold:")===0&&x.slice(6)<th) delete m[x]; }); }   // V7.2.3: the same for the habits fold, but the one just set
     try{ localStorage.setItem(UI_FOLD_KEY,JSON.stringify(m)); }catch(e){} }
   // Compact (the default) or Roomy, per device (D3): localStorage["gena-ui-density"], read before first paint by the head script
   function uiDensity(){ var v=null; try{ v=localStorage.getItem(UI_DENSITY_KEY); }catch(e){} return v==="roomy"?"roomy":"compact"; }
@@ -7680,15 +7693,20 @@ function GENA_MAIN() {
     // per habit min(1, progress/goal), over the count of habits (H4): a 10,000-step goal cannot swamp it; a skip is neutral
     var habitDone=0, habitTotal=0, habitFrac=0;
     habitsIn.forEach(function(h){ if(habitSkipped(h,vd)||isPaused(h,vd)||h.optional||!habitOnDay(h,vd)) return; habitTotal++; habitFrac+=habitScore(h,vd); if(habitMet(h,vd)) habitDone++; });
-    var fOpen=focusItems.filter(function(f){ return !focusItemDone(f); }), fDone=focusItems.filter(focusItemDone);
+    var hfp=phoneW()?null:habitFoldPack(vd,focusItems,dayHabits);   // V7.2.3: on the computer every habit of the day is in one fold, the first item of Priority; the phone draws as before
+    var fList=hfp?focusItems.filter(function(f){ return !f.habitId&&!f.grpId; }):focusItems;   // his habit and group entries stay in the Priority data; the fold draws them
+    var fOpen=fList.filter(function(f){ return !focusItemDone(f); }), fDone=fList.filter(focusItemDone);
+    var priN=focusItems.length, priDone=focusDone;
+    if(hfp){ priN=fList.length+(hfp.n?1:0); priDone=fDone.length+(hfp.n&&!hfp.open.length?1:0); }   // the fold is one Priority item, done when no habit is left
     curList="focus"; var focusHtml=fOpen.map(focusRow).join(""); curList=null;
     curList="done:focus"; var focusDoneHtml=doneStrip("focus", fDone.map(focusRow).join(""), fDone.length); curList=null;
     var ag=ag0;
     var fuRows=ag.followups.filter(function(p){ return !inPri[p.id]; }).map(function(p){return followupRowHtml(p,vd);}).join("");
     fuRows+=ag.subs.map(dsubRowHtml).join("");   // V7.2.2: a dated subtask on its day, its own row
     var oneCard=(S.todayLayout!=="cards"), grp=scopeKind()==="col"||domPull?"project":(S.todayGroup||"flat");   // K2: a Collection's pull is grouped by Domain, then Focus
-    if(habitsOpen.some(function(h){ return h.at; })) habitsOpen=habitsOpen.slice().sort(function(a,b){ return (a.at||"99")<(b.at||"99")?-1:((a.at||"99")>(b.at||"99")?1:0); });   // his log 7: a time orders them (stable: none keeps the old order)
+    habitsOpen=habitAtOrder(habitsOpen);   // his log 7: a time orders them (stable: none keeps the old order)
     var hgp=habitGroupPack(habitsOpen,habitsDone,vd), notPri=function(h){ return h.__grp?!inPri[h.__grp]:!inPri[h.id]; }; habitsOpen=hgp.open.filter(notPri); habitsDone=hgp.done.filter(notPri);   // V7.0 part 4 (plan G3): a group is one row
+    if(hfp) habitsOpen=[];   // V7.2.3: To-do draws no loose habit; they are in the fold
     // V7.2 T1: the day's events sit in the Calendar strip above the to-dos (V7.0 part 7C had them as rows in To-do), so they show once
     var evIn=function(){ return ""; };
     var headRows=habitsOpen.map(function(h){return habitRowHtml(h,vd);}).join("")+fuRows;
@@ -7725,10 +7743,11 @@ function GENA_MAIN() {
       return '<button class="chip" data-act="todaygroup" data-g="'+g[0]+'" aria-pressed="'+(grp===g[0])+'" style="padding:3px 9px">'+g[1]+'</button>'; }).join("")+'</span>':'';
     var skipA=skipV.filter(function(k){return !k.block;});
     var evDone=evDayRows((ag&&ag.events)||[],vd).filter(function(r){ return evChecked(r.ev,vd); });   // V7.2 round 3, his note 1: in Done like a task; never in the ring
-    curList="done:master"; var masterDoneHtml=doneStrip("master", habitsDone.map(function(h){return habitRowHtml(h,vd);}).join("")+evDone.map(function(r){ return evRowLi(r,vd); }).join("")+doneV.map(taskLi).join("")+skipA.map(taskLi).join("")+(domPull?domPull.done.map(function(r){ return '<li class="brd-li">'+boardRowHtml(r,vd)+'</li>'; }).join(""):""), doneV.length+habitsDone.length+evDone.length+(domPull?domPull.done.length:0), skipA.length); curList=null;
+    var hDoneHtml=hfp?hfp.done.map(function(e){ return habitFoldRow(e,vd); }).join(""):habitsDone.map(function(h){return habitRowHtml(h,vd);}).join(""), hDoneN=hfp?hfp.done.length:habitsDone.length;   // V7.2.3: a finished habit from the fold, the Priority ones too
+    curList="done:master"; var masterDoneHtml=doneStrip("master", hDoneHtml+evDone.map(function(r){ return evRowLi(r,vd); }).join("")+doneV.map(taskLi).join("")+skipA.map(taskLi).join("")+(domPull?domPull.done.map(function(r){ return '<li class="brd-li">'+boardRowHtml(r,vd)+'</li>'; }).join(""):""), doneV.length+hDoneN+evDone.length+(domPull?domPull.done.length:0), skipA.length); curList=null;
     var units={
       calstrip: todayCalHtml(vd,ag)||undefined,   // V7.2 T1
-      focus: fold("focus",(isToday?"Priority":"Priority — "+niceDate(vd))+prioCountHtml(focusItems.length),prioNudgeHtml(focusItems.length)+'<ul class="tasks" data-list="focus">'+(focusItems.length?'':emptyLi("Pick the one to three things that matter most — tap ◎ on any task, or type one below"))+focusHtml+inlineAddRowFocus("What matters most "+(isToday?"today":"that day")+"…")+'</ul>'+focusDoneHtml,foldProg(focusDone,focusItems.length)),
+      focus: fold("focus",(isToday?"Priority":"Priority — "+niceDate(vd))+prioCountHtml(priN),(hfp?habitFoldHtml(vd,hfp):'')+prioNudgeHtml(priN)+'<ul class="tasks" data-list="focus">'+(priN?'':emptyLi("Pick the one to three things that matter most — tap ◎ on any task, or type one below"))+focusHtml+inlineAddRowFocus("What matters most "+(isToday?"today":"that day")+"…")+'</ul>'+focusDoneHtml,foldProg(priDone,priN)),
       // card label is "To-do" (the master list); the fold key stays "tasks" so saved collapse state and
       // S.todayOrder keep working. "task" remains the generic word for any item you enter.
       tasks: fold("tasks","To-do",masterHtml+masterDoneHtml,groupChips+foldProg(doneCount,total)),
@@ -8948,6 +8967,40 @@ function GENA_MAIN() {
       '<button class="task-more" data-act="rowmenu" aria-label="More actions">⋯</button></li>';
   }
   function habitRowHtml(h,day){ return h&&h.__grp?habitGroupRowHtml(h,day):habitLi(h,day,null); }
+  function habitAtOrder(hs){ return hs.some(function(h){ return h.at; })?hs.slice().sort(function(a,b){ return (a.at||"99")<(b.at||"99")?-1:((a.at||"99")>(b.at||"99")?1:0); }):hs; }
+  /* V7.2.3 (his Nov 4 ask, and his 10:22 AM change): on the computer the day's habits sit in one fold, "🔁 Habits · 3 of 8 left", the
+     first item of Priority. It holds every habit To-do or Priority shows that day, once each: a group is one row, an entry he put in
+     Priority is drawn with that entry (its ◎ still takes it out), and a part of a group in Priority on its own follows its group. A
+     finished one goes to To-do's ✓ Done. Folded each new day; opened, it stays open that day (gena-ui-fold "hfold:<day>", never synced) */
+  function habitFoldPack(day,fItems,dayHabits){
+    var fH={}, fG={}, have={}, all=dayHabits.slice();
+    fItems.forEach(function(f){ if(f.habitId) fH[f.habitId]=f; else if(f.grpId) fG[f.grpId]=f; });
+    all.forEach(function(h){ have[h.id]=1; });
+    var add=function(h){ if(h&&!have[h.id]){ have[h.id]=1; all.push(h); } };
+    Object.keys(fH).forEach(function(id){ add(habitById(id)); });
+    Object.keys(fG).forEach(function(g){ grpParts(g,day).forEach(add); });
+    var p=habitGroupPack(habitAtOrder(all.filter(function(h){ return !habitFinished(h,day); })),all.filter(function(h){ return habitFinished(h,day); }),day), out={open:[], done:[]};
+    var put=function(h,list){ list.push({h:h, f:h.__grp?fG[h.__grp]:fH[h.id]});
+      if(h.__grp) h.hs.forEach(function(x){ if(fH[x.id]) (habitFinished(x,day)?out.done:out.open).push({h:x, f:fH[x.id]}); }); };
+    p.open.forEach(function(h){ put(h,out.open); }); p.done.forEach(function(h){ put(h,out.done); });
+    out.n=out.open.length+out.done.length;
+    return out; }
+  function habitFoldRow(e,day){ return e.h.__grp?habitGroupRowHtml(e.h,day,e.f):habitLi(e.h,day,e.f||null); }
+  function habitFoldHtml(day,pk){ var left=pk.open.length; if(!left) return "";   // none left: the row is gone, they are all in Done
+    var open=!uiFolded("hfold:"+day,true);
+    return '<ul class="tasks hfold-list" data-list="hfold"><li class="task hfold-row" data-act="hfold" data-d="'+day+'" data-anc="hfold">'+
+      '<button class="hgrp-fold" data-act="hfold" data-d="'+day+'" aria-expanded="'+open+'" aria-label="'+(open?"Fold":"Open")+' habits">'+(open?"▾":"▸")+'</button>'+
+      '<div class="task-main"><div class="task-title">🔁 Habits <span class="hgrp-n">· '+left+' of '+pk.n+' left</span></div></div></li>'+
+      (open?habitFoldByDom(pk.open,day):"")+'</ul>'; }
+  /* V7.2.3 part 2 (his 10:42 AM ask): inside the open fold the habits sit under a quiet label per Domain, in the sidebar's order
+     (sortDoms), No Domain last; a group under its first part's Domain. Within one the fold's order holds (times first). The labels
+     are no rows: they never fold, count or anchor. A Domain or No Domain filter shows its habits without them */
+  function habitFoldDom(e){ var k=habitDomainId(e.h.__grp?e.h.hs[0]:e.h); return k&&profileById(k)?k:"_none"; }
+  function habitFoldByDom(list,day){ var sk=scopeKind(), by={}, row=function(e){ return habitFoldRow(e,day); };
+    if(sk==="dom"||sk==="none") return list.map(row).join("");
+    list.forEach(function(e){ var k=habitFoldDom(e); (by[k]=by[k]||[]).push(e); });
+    return sortDoms(S.profiles||[]).map(function(pr){ return pr.id; }).concat(["_none"]).filter(function(k){ return by[k]; }).map(function(k){ var pr=profileById(k);
+      return '<li class="hfold-dom">'+(pr?(pr.emoji?esc(pr.emoji)+" ":"")+esc(pr.name):"No Domain")+'</li>'+by[k].map(row).join(""); }).join(""); }
   /* V7.0 part 4 (plans G3, G8): a Focus marked `row` draws its habits as ONE row ("🪥 Hygiene · 5 of 9") with a small labelled chip
      per part, so a habit added under it joins by itself. The row's key is the Focus id; order in it is `gord`, then the list's. Each
      chip is its own habit (its own id and log, so Glow maps each part) and taps through habitUnitTap like any circle. The row folds
@@ -10664,6 +10717,7 @@ function GENA_MAIN() {
       else if(act==="copy-excuse"){ var cex=taskById(a.dataset.tid); if(cex) copyExcuse(cex,cardDay()); }
       else if(act==="habit-unit"){ var hu=a.closest("[data-hid]"), hud=a.closest("[data-hday]"); if(hu) habitUnitTap(hu.dataset.hid, hud?hud.dataset.hday:viewDay, +a.dataset.u, a.dataset.m); }   // V7 (G2): the check on a Journal card logs that same day
       else if(act==="hgrp-fold"){ var hgk="hgrp:"+a.dataset.g; uiSetFold(hgk,!uiFolded(hgk,true)); render(); }   // V7 (G3): per device
+      else if(act==="hfold"){ var hfk="hfold:"+a.dataset.d; uiSetFold(hfk,!uiFolded(hfk,true)); render(); }   // V7.2.3: this device, this day
       else if(act==="hw-prev"||act==="hw-next"||act==="hw-this"){ hwWeek=act==="hw-this"?null:addDays(hwMonday(),act==="hw-prev"?-7:7); if(hwWeek===periodStart("week",today())) hwWeek=null; render(); }   // V7 (G4)
       else if(act==="hw-cell"){ if(Date.now()-hwPressAt<600) return; var hwc=a.dataset; if(hwc.hid&&hwc.d) habitTick(hwc.hid,hwc.d); }
       else if(act==="hw-fold"){ var hwk="hw:"+a.dataset.g; uiSetFold(hwk,!uiFolded(hwk,true)); render(); }
